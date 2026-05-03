@@ -33,6 +33,9 @@ const CourseAboutPage = () => {
   const { user, session, profile, hasCourseAccess, trialActive, selectTrialCourse, refreshProfile } = useAuth();
   const [payLoading, setPayLoading] = useState(false);
 
+  const { data: ratings = {} } = useCourseRatings();
+  const courseRating = courseId ? ratings[courseId] : undefined;
+
   const { data: course, isLoading } = useQuery({
     queryKey: ["course-about", courseId],
     queryFn: async () => {
@@ -186,6 +189,13 @@ const CourseAboutPage = () => {
                 {course.instructor_name && (
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <GraduationCap className="w-4 h-4" /> {course.instructor_name}
+                  </span>
+                )}
+                {courseRating && (
+                  <span className="flex items-center gap-1.5">
+                    <Star className="w-4 h-4 fill-primary text-primary" />
+                    <span className="font-semibold">{courseRating.avg.toFixed(1)}</span>
+                    <span className="text-muted-foreground">({courseRating.count})</span>
                   </span>
                 )}
               </div>
