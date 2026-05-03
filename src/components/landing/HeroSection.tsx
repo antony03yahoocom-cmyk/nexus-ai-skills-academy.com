@@ -34,8 +34,8 @@ const HeroSection = () => {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button variant="hero" size="lg" asChild>
-            <Link to="/signup">
-              Join Now
+            <Link to={user ? "/dashboard" : "/signup"}>
+              {user ? "Start Learning" : "Join Now"}
               <ArrowRight className="w-4 h-4 ml-1" />
             </Link>
           </Button>
