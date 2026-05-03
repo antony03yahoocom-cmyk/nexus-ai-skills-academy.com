@@ -1,0 +1,1 @@
+ALTER TABLE public.assignments ADD COLUMN IF NOT EXISTS attachment_files jsonb NOT NULL DEFAULT '[]'::jsonb;
