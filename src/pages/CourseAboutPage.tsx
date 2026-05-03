@@ -10,8 +10,10 @@ import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import {
   PlayCircle, Clock, BookOpen, CheckCircle2, Users, CreditCard,
-  Award, Target, Sparkles, ArrowRight, GraduationCap, Calendar,
+  Award, Target, Sparkles, ArrowRight, GraduationCap, Calendar, Star,
 } from "lucide-react";
+import CourseReviews from "@/components/courses/CourseReviews";
+import { useCourseRatings } from "@/hooks/useCourseRatings";
 
 const isYouTube = (u: string) => /youtube\.com|youtu\.be/.test(u);
 const ytEmbed = (u: string) => {

@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
-import { Clock, BookOpen, ArrowRight, Sparkles } from "lucide-react";
+import { BookOpen, ArrowRight, Sparkles, Star } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { useCourseRatings } from "@/hooks/useCourseRatings";
 
 const CoursesPage = () => {
   const { data: courses = [], isLoading } = useQuery({
@@ -24,6 +25,8 @@ const CoursesPage = () => {
       return counts;
     },
   });
+
+  const { data: ratings = {} } = useCourseRatings();
 
   const categoryEmojis: Record<string, string> = {
     "AI": "🤖", "Graphic Design": "🎨", "Data Analysis": "📊",
@@ -79,6 +82,13 @@ const CoursesPage = () => {
                         <span className="flex items-center gap-1">
                           <BookOpen className="w-3.5 h-3.5" /> {moduleCounts[course.id] || 0} modules
                         </span>
+                        {ratings[course.id] && (
+                          <span className="flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 fill-primary text-primary" />
+                            {ratings[course.id].avg.toFixed(1)}
+                            <span className="text-muted-foreground/70">({ratings[course.id].count})</span>
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center justify-between gap-2 pt-3 border-t border-border/50">
                         <span className="text-base sm:text-lg font-bold gradient-text">
