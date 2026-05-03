@@ -49,6 +49,7 @@ const getDayLabel = (dateStr: string) => {
 
 const MessagesPage = () => {
   const { user, isAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; is_admin?: boolean } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -59,6 +60,16 @@ const MessagesPage = () => {
   const [charCount, setCharCount] = useState(0);
   const [adminContact, setAdminContact] = useState<{ user_id: string; full_name: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-open chat with ?to=USER_ID
+  useEffect(() => {
+    const to = searchParams.get("to");
+    if (!to || !user || selectedUser?.id === to) return;
+    supabase.from("profiles").select("user_id, full_name").eq("user_id", to).single().then(({ data }) => {
+      if (data) setSelectedUser({ id: data.user_id, name: data.full_name || "Student" });
+      setSearchParams({}, { replace: true });
+    });
+  }, [searchParams, user, selectedUser, setSearchParams]);
 
   // Pre-load admin contact for students
   useEffect(() => {
