@@ -815,13 +815,52 @@ const AdminCoursesPage = () => {
                                           <Input placeholder="Task" value={assignForm.task} onChange={(e) => setAssignForm({ ...assignForm, task: e.target.value })} className="bg-secondary border-border text-xs h-8" />
                                           <Input placeholder="Deliverable" value={assignForm.deliverable} onChange={(e) => setAssignForm({ ...assignForm, deliverable: e.target.value })} className="bg-secondary border-border text-xs h-8" />
                                           <Textarea placeholder="Description" value={assignForm.description} onChange={(e) => setAssignForm({ ...assignForm, description: e.target.value })} className="bg-secondary border-border text-xs" rows={2} />
+                                          <div className="space-y-1">
+                                            <input
+                                              type="file"
+                                              multiple
+                                              id={`assign-files-${lesson.id}`}
+                                              className="hidden"
+                                              onChange={async (e) => {
+                                                const files = Array.from(e.target.files ?? []);
+                                                if (files.length === 0) return;
+                                                setUploadingAssignFiles(true);
+                                                const urls: string[] = [];
+                                                for (const f of files) {
+                                                  const url = await handleFileUpload(f, "file");
+                                                  if (url) urls.push(url);
+                                                }
+                                                setUploadingAssignFiles(false);
+                                                if (urls.length) {
+                                                  setAssignForm((prev) => ({ ...prev, attachment_files: [...prev.attachment_files, ...urls] }));
+                                                  toast.success(`${urls.length} file(s) attached`);
+                                                }
+                                                e.target.value = "";
+                                              }}
+                                            />
+                                            <Button type="button" size="sm" variant="outline" className="text-xs h-7" onClick={() => document.getElementById(`assign-files-${lesson.id}`)?.click()} disabled={uploadingAssignFiles}>
+                                              <Upload className="w-3 h-3 mr-1" /> {uploadingAssignFiles ? "Uploading…" : "Attach files"}
+                                            </Button>
+                                            {assignForm.attachment_files.length > 0 && (
+                                              <div className="flex flex-wrap gap-1 pt-1">
+                                                {assignForm.attachment_files.map((url, i) => (
+                                                  <Badge key={i} variant="secondary" className="text-[10px] gap-1">
+                                                    File {i + 1}
+                                                    <button type="button" onClick={() => setAssignForm((p) => ({ ...p, attachment_files: p.attachment_files.filter((_, idx) => idx !== i) }))}>
+                                                      <X className="w-3 h-3" />
+                                                    </button>
+                                                  </Badge>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
                                           <div className="flex gap-2">
                                             <Button size="sm" variant="hero" onClick={() => createAssignment.mutate()} disabled={!assignForm.title} className="text-xs h-7">Add</Button>
                                             <Button size="sm" variant="ghost" onClick={() => setShowAssignmentForm(null)} className="text-xs h-7">Cancel</Button>
                                           </div>
                                         </div>
                                       ) : (
-                                        <Button size="sm" variant="ghost" className="text-xs h-6 pl-4" onClick={() => { setShowAssignmentForm(lesson.id); setAssignForm({ title: "", description: "", objective: "", task: "", deliverable: "", lesson_id: lesson.id }); }}>
+                                        <Button size="sm" variant="ghost" className="text-xs h-6 pl-4" onClick={() => { setShowAssignmentForm(lesson.id); setAssignForm({ title: "", description: "", objective: "", task: "", deliverable: "", lesson_id: lesson.id, attachment_files: [] }); }}>
                                           <Paperclip className="w-3 h-3 mr-1" /> Add Assignment
                                         </Button>
                                       )}
