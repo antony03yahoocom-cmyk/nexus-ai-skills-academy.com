@@ -10,6 +10,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { Badge } from "@/components/ui/badge";
+import { useSearchParams } from "react-router-dom";
 
 interface Conversation {
   user_id: string;
@@ -48,6 +49,7 @@ const getDayLabel = (dateStr: string) => {
 
 const MessagesPage = () => {
   const { user, isAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; is_admin?: boolean } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -58,6 +60,16 @@ const MessagesPage = () => {
   const [charCount, setCharCount] = useState(0);
   const [adminContact, setAdminContact] = useState<{ user_id: string; full_name: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-open chat with ?to=USER_ID
+  useEffect(() => {
+    const to = searchParams.get("to");
+    if (!to || !user || selectedUser?.id === to) return;
+    supabase.from("profiles").select("user_id, full_name").eq("user_id", to).single().then(({ data }) => {
+      if (data) setSelectedUser({ id: data.user_id, name: data.full_name || "Student" });
+      setSearchParams({}, { replace: true });
+    });
+  }, [searchParams, user, selectedUser, setSearchParams]);
 
   // Pre-load admin contact for students
   useEffect(() => {
@@ -190,11 +202,15 @@ const MessagesPage = () => {
       const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url");
       setAllUsers((data || []).filter((p) => p.user_id !== user?.id));
     } else {
+      // Students can message admins and fellow students
       const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
-      const adminIds = (adminRoles || []).map((r) => r.user_id);
-      if (adminIds.length === 0) { setAllUsers([]); return; }
-      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url").in("user_id", adminIds);
-      setAllUsers((data || []).map((u) => ({ ...u, is_admin: true })));
+      const adminIds = new Set((adminRoles || []).map((r) => r.user_id));
+      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url");
+      setAllUsers(
+        (data || [])
+          .filter((p) => p.user_id !== user?.id)
+          .map((p) => ({ ...p, is_admin: adminIds.has(p.user_id) }))
+      );
     }
   };
 

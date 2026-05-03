@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -53,6 +53,7 @@ const DashboardTopNav = () => {
     { to: "/courses", icon: BookOpen, label: "Courses" },
     { to: "/dashboard/projects", icon: FolderOpen, label: "Projects" },
     { to: "/dashboard/certificates", icon: Award, label: "Certificates" },
+    { to: "/dashboard/classmates", icon: Users, label: "Classmates" },
     { to: "/discussions", icon: MessageCircle, label: "Discussions", badge: unreadGroups },
     { to: "/dashboard/messages", icon: Mail, label: "Messages", badge: unreadMessages },
     { to: "/subscribe", icon: CreditCard, label: "Premium" },
@@ -95,7 +96,7 @@ const DashboardTopNav = () => {
 
           <div className="hidden md:flex items-center gap-3">
             <Link
-              to="/notifications"
+              to="/dashboard/notifications"
               className="relative flex items-center px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
               title="Notifications"
             >

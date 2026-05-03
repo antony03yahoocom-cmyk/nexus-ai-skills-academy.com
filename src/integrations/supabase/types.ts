@@ -40,6 +40,7 @@ export type Database = {
       }
       assignments: {
         Row: {
+          attachment_files: Json
           created_at: string
           deliverable: string | null
           description: string | null
@@ -50,6 +51,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          attachment_files?: Json
           created_at?: string
           deliverable?: string | null
           description?: string | null
@@ -60,6 +62,7 @@ export type Database = {
           title: string
         }
         Update: {
+          attachment_files?: Json
           created_at?: string
           deliverable?: string | null
           description?: string | null
