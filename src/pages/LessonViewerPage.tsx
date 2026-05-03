@@ -457,6 +457,16 @@ const LessonViewerPage = () => {
                         {a.task && <p className="text-sm text-muted-foreground mt-1"><strong>Task:</strong> {a.task}</p>}
                         {a.deliverable && <p className="text-sm text-muted-foreground mt-1"><strong>Deliverable:</strong> {a.deliverable}</p>}
                         {a.description && <p className="text-sm text-muted-foreground mt-1">{a.description}</p>}
+                        {Array.isArray(a.attachment_files) && a.attachment_files.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="text-xs text-muted-foreground">Attachments:</span>
+                            {a.attachment_files.map((url: string, i: number) => (
+                              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">
+                                File {i + 1}
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       {subStatus && (
                         <Badge className={
