@@ -10,8 +10,10 @@ import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import {
   PlayCircle, Clock, BookOpen, CheckCircle2, Users, CreditCard,
-  Award, Target, Sparkles, ArrowRight, GraduationCap, Calendar,
+  Award, Target, Sparkles, ArrowRight, GraduationCap, Calendar, Star,
 } from "lucide-react";
+import CourseReviews from "@/components/courses/CourseReviews";
+import { useCourseRatings } from "@/hooks/useCourseRatings";
 
 const isYouTube = (u: string) => /youtube\.com|youtu\.be/.test(u);
 const ytEmbed = (u: string) => {
@@ -30,6 +32,9 @@ const CourseAboutPage = () => {
   const queryClient = useQueryClient();
   const { user, session, profile, hasCourseAccess, trialActive, selectTrialCourse, refreshProfile } = useAuth();
   const [payLoading, setPayLoading] = useState(false);
+
+  const { data: ratings = {} } = useCourseRatings();
+  const courseRating = courseId ? ratings[courseId] : undefined;
 
   const { data: course, isLoading } = useQuery({
     queryKey: ["course-about", courseId],
@@ -186,6 +191,13 @@ const CourseAboutPage = () => {
                     <GraduationCap className="w-4 h-4" /> {course.instructor_name}
                   </span>
                 )}
+                {courseRating && (
+                  <span className="flex items-center gap-1.5">
+                    <Star className="w-4 h-4 fill-primary text-primary" />
+                    <span className="font-semibold">{courseRating.avg.toFixed(1)}</span>
+                    <span className="text-muted-foreground">({courseRating.count})</span>
+                  </span>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -328,6 +340,11 @@ const CourseAboutPage = () => {
           </div>
         </section>
       )}
+
+      {/* Reviews */}
+      <div className="bg-secondary/30">
+        <CourseReviews courseId={courseId!} />
+      </div>
 
       {/* CTA */}
       <section className="py-16 bg-gradient-to-b from-transparent to-primary/5">
