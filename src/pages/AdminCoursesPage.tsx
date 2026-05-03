@@ -263,6 +263,7 @@ const AdminCoursesPage = () => {
         objective: assignForm.objective || null,
         task: assignForm.task || null,
         deliverable: assignForm.deliverable || null,
+        attachment_files: assignForm.attachment_files,
       } as any);
       if (error) throw error;
     },
@@ -270,7 +271,7 @@ const AdminCoursesPage = () => {
       invalidateAll();
       toast.success("Assignment created!");
       setShowAssignmentForm(null);
-      setAssignForm({ title: "", description: "", objective: "", task: "", deliverable: "", lesson_id: "" });
+      setAssignForm({ title: "", description: "", objective: "", task: "", deliverable: "", lesson_id: "", attachment_files: [] });
     },
     onError: (e: any) => toast.error(e.message),
   });
