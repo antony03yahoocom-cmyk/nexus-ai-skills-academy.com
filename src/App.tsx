@@ -39,6 +39,7 @@ import AdminMessagesPage from "./pages/AdminMessagesPage.tsx";
 import BlogPage from "./pages/BlogPage.tsx";
 import LeaderboardPage from "./pages/LeaderboardPage.tsx";
 import NotificationsPage from "./pages/NotificationsPage.tsx";
+import ClassmatesPage from "./pages/ClassmatesPage.tsx";
 
 const queryClient = new QueryClient();
 
