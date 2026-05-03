@@ -638,13 +638,37 @@ const AdminCoursesPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Instructor Photo URL</Label>
+                    <Label>Instructor Photo</Label>
                     <Input
-                      placeholder="https://…"
+                      placeholder="Paste image URL or upload below"
                       value={courseForm.instructor_photo_url}
                       onChange={(e) => setCourseForm({ ...courseForm, instructor_photo_url: e.target.value })}
                       className="bg-secondary border-border"
                     />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="instructor-photo-upload"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          const url = await handleFileUpload(f, "image");
+                          if (url) {
+                            setCourseForm({ ...courseForm, instructor_photo_url: url });
+                            toast.success("Instructor photo uploaded!");
+                          }
+                        }}
+                      />
+                      <Button type="button" size="sm" variant="outline" onClick={() => document.getElementById("instructor-photo-upload")?.click()} disabled={uploadingFile}>
+                        <Upload className="w-3 h-3 mr-1" />
+                        {uploadingFile ? "Uploading…" : "Upload photo"}
+                      </Button>
+                      {courseForm.instructor_photo_url && (
+                        <img src={courseForm.instructor_photo_url} alt="Instructor" className="w-10 h-10 rounded-full object-cover border border-border" />
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>Instructor Bio</Label>
