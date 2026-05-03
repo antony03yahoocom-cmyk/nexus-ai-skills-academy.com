@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import CourseReviews from "@/components/courses/CourseReviews";
 
 const CourseDetailPage = () => {
   const { courseId } = useParams();
@@ -323,7 +324,12 @@ const CourseDetailPage = () => {
               })}
             </div>
           </div>
+
+          <div className="max-w-4xl mx-auto mt-12">
+            <CourseReviews courseId={courseId!} />
+          </div>
         </div>
+      </div>
       </div>
       <Footer />
     </div>
