@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
