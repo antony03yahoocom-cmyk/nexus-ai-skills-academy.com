@@ -10,6 +10,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { Badge } from "@/components/ui/badge";
+import { useSearchParams } from "react-router-dom";
 
 interface Conversation {
   user_id: string;
