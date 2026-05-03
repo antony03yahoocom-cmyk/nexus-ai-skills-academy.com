@@ -77,7 +77,8 @@ const AdminCoursesPage = () => {
   const [editFileName, setEditFileName] = useState("");
   const [uploadingTrailer, setUploadingTrailer] = useState(false);
   const [showAssignmentForm, setShowAssignmentForm] = useState<string | null>(null);
-  const [assignForm, setAssignForm] = useState({ title: "", description: "", objective: "", task: "", deliverable: "", lesson_id: "" });
+  const [assignForm, setAssignForm] = useState<{ title: string; description: string; objective: string; task: string; deliverable: string; lesson_id: string; attachment_files: string[] }>({ title: "", description: "", objective: "", task: "", deliverable: "", lesson_id: "", attachment_files: [] });
+  const [uploadingAssignFiles, setUploadingAssignFiles] = useState(false);
 
   // Per-form refs so there are no shared IDs
   const createFileRef = useRef<HTMLInputElement>(null);
