@@ -53,6 +53,7 @@ const DashboardTopNav = () => {
     { to: "/courses", icon: BookOpen, label: "Courses" },
     { to: "/dashboard/projects", icon: FolderOpen, label: "Projects" },
     { to: "/dashboard/certificates", icon: Award, label: "Certificates" },
+    { to: "/dashboard/classmates", icon: Users, label: "Classmates" },
     { to: "/discussions", icon: MessageCircle, label: "Discussions", badge: unreadGroups },
     { to: "/dashboard/messages", icon: Mail, label: "Messages", badge: unreadMessages },
     { to: "/subscribe", icon: CreditCard, label: "Premium" },
