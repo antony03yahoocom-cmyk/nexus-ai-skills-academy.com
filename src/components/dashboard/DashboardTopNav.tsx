@@ -95,7 +95,7 @@ const DashboardTopNav = () => {
 
           <div className="hidden md:flex items-center gap-3">
             <Link
-              to="/notifications"
+              to="/dashboard/notifications"
               className="relative flex items-center px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
               title="Notifications"
             >
