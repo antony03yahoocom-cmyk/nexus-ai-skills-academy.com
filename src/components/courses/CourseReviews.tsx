@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,11 +85,12 @@ const CourseReviews = ({ courseId }: Props) => {
 
   const avg = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
 
-  // Pre-fill when editing
-  if (myReview && !content && rating === 5 && myReview.rating !== 5) {
-    setRating(myReview.rating);
-    setContent(myReview.content || "");
-  }
+  useEffect(() => {
+    if (myReview) {
+      setRating(myReview.rating);
+      setContent(myReview.content || "");
+    }
+  }, [myReview?.id]);
 
   return (
     <section className="py-12">
