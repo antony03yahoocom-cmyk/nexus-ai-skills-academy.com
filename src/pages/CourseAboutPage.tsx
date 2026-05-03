@@ -341,6 +341,11 @@ const CourseAboutPage = () => {
         </section>
       )}
 
+      {/* Reviews */}
+      <div className="bg-secondary/30">
+        <CourseReviews courseId={courseId!} />
+      </div>
+
       {/* CTA */}
       <section className="py-16 bg-gradient-to-b from-transparent to-primary/5">
         <div className="container mx-auto px-4 max-w-2xl text-center">
