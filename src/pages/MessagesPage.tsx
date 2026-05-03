@@ -190,11 +190,15 @@ const MessagesPage = () => {
       const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url");
       setAllUsers((data || []).filter((p) => p.user_id !== user?.id));
     } else {
+      // Students can message admins and fellow students
       const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
-      const adminIds = (adminRoles || []).map((r) => r.user_id);
-      if (adminIds.length === 0) { setAllUsers([]); return; }
-      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url").in("user_id", adminIds);
-      setAllUsers((data || []).map((u) => ({ ...u, is_admin: true })));
+      const adminIds = new Set((adminRoles || []).map((r) => r.user_id));
+      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url");
+      setAllUsers(
+        (data || [])
+          .filter((p) => p.user_id !== user?.id)
+          .map((p) => ({ ...p, is_admin: adminIds.has(p.user_id) }))
+      );
     }
   };
 
