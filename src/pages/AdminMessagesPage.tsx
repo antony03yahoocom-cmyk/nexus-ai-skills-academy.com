@@ -120,11 +120,11 @@ const AdminMessagesPage = () => {
   const filteredStudents = allStudents.filter((u) => u.full_name?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       <AdminSidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col h-screen min-w-0">
         <DashboardTopNav />
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Conversation list */}
           <div className={cn("w-full md:w-80 border-r flex flex-col shrink-0", selectedUser ? "hidden md:flex" : "flex")}>
             <div className="p-4 border-b flex items-center justify-between">
