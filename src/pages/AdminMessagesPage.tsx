@@ -180,7 +180,7 @@ const AdminMessagesPage = () => {
                   <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">{selectedUser.name[0]?.toUpperCase()}</div>
                   <div><p className="font-semibold text-sm">{selectedUser.name}</p><p className="text-xs text-muted-foreground">Private message</p></div>
                 </div>
-                <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+                <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3">
                   {messages.map((msg) => {
                     const isMine = msg.sender_id === user?.id;
                     return (
