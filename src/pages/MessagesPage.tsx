@@ -190,9 +190,13 @@ const MessagesPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [user, selectedUser, loadConversations]);
 
-  // Scroll to bottom on new messages
+  // Scroll only the message thread (not the page) to bottom on new messages
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const c = scrollRef.current;
+    if (!c) return;
+    requestAnimationFrame(() => {
+      c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
+    });
   }, [messages]);
 
   // Load users for "New Chat"
@@ -445,7 +449,7 @@ const MessagesPage = () => {
                 </div>
 
                 {/* Messages */}
-                <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+                <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3">
                   {messagesWithSeparators.map((item) => {
                     if ("type" in item && item.type === "separator") {
                       return (

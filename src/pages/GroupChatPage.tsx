@@ -22,6 +22,7 @@ const GroupChatPage = () => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch group info
   const { data: group } = useQuery({
@@ -79,9 +80,13 @@ const GroupChatPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [groupId, queryClient]);
 
-  // Auto-scroll
+  // Auto-scroll only the message container (not the page) when new messages arrive
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const c = scrollContainerRef.current;
+    if (!c) return;
+    requestAnimationFrame(() => {
+      c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
+    });
   }, [messages]);
 
   const myMembership = members.find((m: any) => m.user_id === user?.id);
@@ -245,7 +250,7 @@ const GroupChatPage = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-contain">
         <div className="max-w-4xl mx-auto px-4 py-4 space-y-3">
           {messages.length === 0 && (
             <div className="text-center py-12 text-muted-foreground text-sm">No messages yet. Start the conversation!</div>
