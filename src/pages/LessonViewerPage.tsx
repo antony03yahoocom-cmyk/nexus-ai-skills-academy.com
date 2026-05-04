@@ -11,8 +11,27 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
-const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_FILES = 10;
+
+const ALLOWED_MIME_PREFIXES = ["image/", "video/"];
+const ALLOWED_MIME_EXACT = new Set([
+  "application/pdf",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/octet-stream", // some browsers report zip as this
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+]);
+const ALLOWED_EXT = /\.(jpg|jpeg|png|gif|webp|heic|heif|mp4|mov|webm|mkv|avi|m4v|pdf|zip|doc|docx|txt)$/i;
+
+const isAllowedFile = (f: File) => {
+  if (ALLOWED_MIME_PREFIXES.some((p) => f.type.startsWith(p))) return true;
+  if (ALLOWED_MIME_EXACT.has(f.type)) return true;
+  return ALLOWED_EXT.test(f.name);
+};
 
 const sanitizeFileName = (name: string): string => {
   const ext = name.includes(".") ? name.split(".").pop()!.toLowerCase() : "";
