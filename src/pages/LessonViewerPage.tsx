@@ -559,74 +559,13 @@ const LessonViewerPage = () => {
                           <Label className="text-xs text-muted-foreground">
                             Add a written response or attach files (max {MAX_FILES} files, {MAX_FILE_SIZE_MB}MB each). At least one is required.
                           </Label>
-
-                          <input
-                            ref={(el) => { fileInputRefs.current[a.id] = el; }}
-                            type="file"
-                            multiple
-                            accept="image/*,video/*,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                            className="hidden"
-                            onChange={(e) => handleFileChange(a.id, e)}
+                          <FileDropzone
+                            files={assignFiles}
+                            onChange={(next) => setSelectedFiles((prev) => ({ ...prev, [a.id]: next }))}
+                            maxFiles={MAX_FILES}
+                            maxSizeMB={MAX_FILE_SIZE_MB}
+                            disabled={submitting}
                           />
-
-                          {assignPreviews.length > 0 && (
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium text-muted-foreground">Preview — check before submitting:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {assignFiles
-                                  .filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"))
-                                  .map((f, pIdx) => {
-                                    const url = assignPreviews[pIdx];
-                                    if (!url) return null;
-                                    return (
-                                      <div key={pIdx} className="relative group">
-                                        {f.type.startsWith("video/") ? (
-                                          <video src={url} className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-primary/40 shadow-sm bg-black" muted />
-                                        ) : (
-                                          <img src={url} alt={`Preview ${pIdx + 1}`} className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-primary/40 shadow-sm" />
-                                        )}
-                                        <span className="absolute bottom-1 right-1 bg-success rounded-full p-0.5 shadow">
-                                          <CheckCircle className="w-3 h-3 text-white" />
-                                        </span>
-                                      </div>
-                                    );
-                                  })}
-                              </div>
-                            </div>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => fileInputRefs.current[a.id]?.click()}
-                            disabled={submitting || assignFiles.length >= MAX_FILES}
-                            className="w-full flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-secondary/50 hover:bg-secondary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-                          >
-                            <div className="flex items-center gap-3">
-                              <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                              <Upload className="w-5 h-5 text-muted-foreground" />
-                            </div>
-                            <span className="text-sm font-medium text-muted-foreground">
-                              {assignFiles.length > 0 ? `Add more files (${assignFiles.length}/${MAX_FILES})` : "Tap to select files or photos"}
-                            </span>
-                            <span className="text-xs text-muted-foreground/70">Images, Videos, PDF, Word, ZIP</span>
-                          </button>
-
-                          {assignFiles.length > 0 && (
-                            <div className="space-y-2 mt-2">
-                              <p className="text-xs font-medium text-muted-foreground">{assignFiles.length} file{assignFiles.length > 1 ? "s" : ""} selected:</p>
-                              {assignFiles.map((file, idx) => (
-                                <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
-                                  <FileText className="w-4 h-4 text-primary shrink-0" />
-                                  <span className="text-xs flex-1 truncate">{file.name}</span>
-                                  <span className="text-xs text-muted-foreground shrink-0">{(file.size / (1024 * 1024)).toFixed(1)}MB</span>
-                                  <button type="button" onClick={() => removeFile(a.id, idx)} disabled={submitting}
-                                    className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors shrink-0">
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
 
                         {submitting && uploadProgress > 0 && (
