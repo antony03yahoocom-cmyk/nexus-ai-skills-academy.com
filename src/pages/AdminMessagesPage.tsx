@@ -100,7 +100,11 @@ const AdminMessagesPage = () => {
   }, [user, selectedUser, loadConversations]);
 
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const c = scrollRef.current;
+    if (!c) return;
+    requestAnimationFrame(() => {
+      c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
+    });
   }, [messages]);
 
   const loadStudents = async () => {
