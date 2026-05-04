@@ -55,7 +55,7 @@ const AdminSidebar = () => {
   ];
 
   return (
-    <aside className="w-64 min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col shrink-0 hidden lg:flex">
+    <aside className="w-64 h-screen sticky top-0 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0 hidden lg:flex">
       <div className="p-5 border-b border-sidebar-border">
         <Link to="/" className="flex items-center gap-2">
           <Cpu className="w-6 h-6 text-primary" />
