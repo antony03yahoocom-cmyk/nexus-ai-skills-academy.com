@@ -72,26 +72,29 @@ const ClassmatesPage = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
       <DashboardTopNav />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-10">
-        <div>
-          <h1 className="text-3xl font-display font-bold mb-1">Classmates</h1>
-          <p className="text-muted-foreground">Connect with your course mates and the wider NEXUS community.</p>
-        </div>
+      <div className="flex-1 overflow-hidden">
+        <div className="max-w-6xl mx-auto h-full px-4 sm:px-6 py-6 flex flex-col gap-6">
+          <div className="shrink-0">
+            <h1 className="text-3xl font-display font-bold mb-1">Classmates</h1>
+            <p className="text-muted-foreground">Connect with your course mates and the wider NEXUS community.</p>
+          </div>
 
-        <section>
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <section className="flex flex-col min-h-0">
+          <div className="flex items-center gap-2 mb-4 shrink-0">
             <BookOpen className="w-5 h-5 text-primary" />
             <h2 className="text-xl font-semibold">Course Mates</h2>
             <Badge variant="secondary">{(courseMates as any[]).length}</Badge>
           </div>
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
           {(courseMates as any[]).length === 0 ? (
             <div className="glass-card p-8 text-center text-muted-foreground">
               {myCourseIds.length === 0 ? "Enroll in a course to see your course mates." : "No one else is enrolled in your courses yet."}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(courseMates as any[]).map(({ profile, courses }) => (
                 <div key={profile.user_id} className="glass-card p-4 flex items-center gap-3">
                   <Avatar className="w-12 h-12">
