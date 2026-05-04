@@ -189,17 +189,35 @@ const LessonViewerPage = () => {
   });
 
   const handleFileChange = (assignmentId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const oversized = files.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+    const incoming = Array.from(e.target.files || []);
+    const existing = selectedFiles[assignmentId] || [];
+
+    const invalid = incoming.filter((f) => !isAllowedFile(f));
+    if (invalid.length > 0) {
+      toast.error(`Unsupported file type: ${invalid.map((f) => f.name).join(", ")}. Allowed: images, videos, PDF, ZIP, DOC.`);
+      e.target.value = "";
+      return;
+    }
+    const oversized = incoming.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
     if (oversized.length > 0) {
       toast.error(`File too large: ${oversized.map((f) => f.name).join(", ")}. Max ${MAX_FILE_SIZE_MB}MB each.`);
       e.target.value = "";
       return;
     }
+    const merged = [...existing, ...incoming];
+    if (merged.length > MAX_FILES) {
+      toast.error(`Maximum ${MAX_FILES} files per submission.`);
+      e.target.value = "";
+      return;
+    }
+
     previewUrls[assignmentId]?.forEach((u) => URL.revokeObjectURL(u));
-    const newPreviews = files.filter((f) => f.type.startsWith("image/")).map((f) => URL.createObjectURL(f));
+    const newPreviews = merged
+      .filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"))
+      .map((f) => URL.createObjectURL(f));
     setPreviewUrls((prev) => ({ ...prev, [assignmentId]: newPreviews }));
-    setSelectedFiles((prev) => ({ ...prev, [assignmentId]: files }));
+    setSelectedFiles((prev) => ({ ...prev, [assignmentId]: merged }));
+    e.target.value = "";
   };
 
   const removeFile = (assignmentId: string, index: number) => {
@@ -209,17 +227,24 @@ const LessonViewerPage = () => {
       fileInputRefs.current[assignmentId]!.value = "";
     }
     previewUrls[assignmentId]?.forEach((u) => URL.revokeObjectURL(u));
-    const newPreviews = updated.filter((f) => f.type.startsWith("image/")).map((f) => URL.createObjectURL(f));
+    const newPreviews = updated
+      .filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"))
+      .map((f) => URL.createObjectURL(f));
     setSelectedFiles((prev) => ({ ...prev, [assignmentId]: updated }));
     setPreviewUrls((prev) => ({ ...prev, [assignmentId]: newPreviews }));
   };
 
   const submitAssignment = async (assignmentId: string) => {
+    const filesToUpload = selectedFiles[assignmentId] || [];
+    const text = submissionText.trim();
+    if (!text && filesToUpload.length === 0) {
+      toast.error("Please add a written response or attach at least one file before submitting.");
+      return;
+    }
     setSubmitting(true);
     setUploadProgress(0);
     let fileUrls: string[] = [];
 
-    const filesToUpload = selectedFiles[assignmentId] || [];
     if (filesToUpload.length > 0) {
       for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i];
