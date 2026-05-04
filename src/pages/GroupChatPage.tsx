@@ -80,9 +80,13 @@ const GroupChatPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [groupId, queryClient]);
 
-  // Auto-scroll
+  // Auto-scroll only the message container (not the page) when new messages arrive
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const c = scrollContainerRef.current;
+    if (!c) return;
+    requestAnimationFrame(() => {
+      c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
+    });
   }, [messages]);
 
   const myMembership = members.find((m: any) => m.user_id === user?.id);
