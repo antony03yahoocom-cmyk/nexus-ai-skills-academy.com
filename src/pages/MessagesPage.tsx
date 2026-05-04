@@ -190,9 +190,13 @@ const MessagesPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [user, selectedUser, loadConversations]);
 
-  // Scroll to bottom on new messages
+  // Scroll only the message thread (not the page) to bottom on new messages
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const c = scrollRef.current;
+    if (!c) return;
+    requestAnimationFrame(() => {
+      c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
+    });
   }, [messages]);
 
   // Load users for "New Chat"
