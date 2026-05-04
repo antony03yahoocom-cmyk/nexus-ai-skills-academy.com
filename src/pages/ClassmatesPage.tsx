@@ -114,18 +114,20 @@ const ClassmatesPage = () => {
               ))}
             </div>
           )}
+          </div>
         </section>
 
-        <section>
-          <div className="flex items-center gap-2 mb-4">
+        <section className="flex flex-col min-h-0">
+          <div className="flex items-center gap-2 mb-4 shrink-0">
             <Users className="w-5 h-5 text-primary" />
             <h2 className="text-xl font-semibold">Academy Mates</h2>
             <Badge variant="secondary">{(academyMates as any[]).length}</Badge>
           </div>
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
           {(academyMates as any[]).length === 0 ? (
             <div className="glass-card p-8 text-center text-muted-foreground">No other learners yet — be the first to invite friends!</div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(academyMates as any[]).map((p: any) => (
                 <div key={p.user_id} className="glass-card p-4 flex items-center gap-3">
                   <Avatar className="w-12 h-12">
@@ -145,7 +147,10 @@ const ClassmatesPage = () => {
               ))}
             </div>
           )}
+          </div>
         </section>
+          </div>
+        </div>
       </div>
     </div>
   );
