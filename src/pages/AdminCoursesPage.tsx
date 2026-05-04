@@ -815,11 +815,12 @@ const AdminCoursesPage = () => {
                                           <Input placeholder="Task" value={assignForm.task} onChange={(e) => setAssignForm({ ...assignForm, task: e.target.value })} className="bg-secondary border-border text-xs h-8" />
                                           <Input placeholder="Deliverable" value={assignForm.deliverable} onChange={(e) => setAssignForm({ ...assignForm, deliverable: e.target.value })} className="bg-secondary border-border text-xs h-8" />
                                           <Textarea placeholder="Description" value={assignForm.description} onChange={(e) => setAssignForm({ ...assignForm, description: e.target.value })} className="bg-secondary border-border text-xs" rows={2} />
-                                          <div className="space-y-1">
+                                          <div className="space-y-2">
                                             <input
                                               type="file"
                                               multiple
                                               id={`assign-files-${lesson.id}`}
+                                              accept="image/*,video/*,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                                               className="hidden"
                                               onChange={async (e) => {
                                                 const files = Array.from(e.target.files ?? []);
@@ -838,19 +839,50 @@ const AdminCoursesPage = () => {
                                                 e.target.value = "";
                                               }}
                                             />
-                                            <Button type="button" size="sm" variant="outline" className="text-xs h-7" onClick={() => document.getElementById(`assign-files-${lesson.id}`)?.click()} disabled={uploadingAssignFiles}>
-                                              <Upload className="w-3 h-3 mr-1" /> {uploadingAssignFiles ? "Uploading…" : "Attach files"}
-                                            </Button>
+                                            <div
+                                              onDragOver={(e) => { e.preventDefault(); }}
+                                              onDrop={async (e) => {
+                                                e.preventDefault();
+                                                const files = Array.from(e.dataTransfer.files || []);
+                                                if (files.length === 0) return;
+                                                setUploadingAssignFiles(true);
+                                                const urls: string[] = [];
+                                                for (const f of files) {
+                                                  const url = await handleFileUpload(f, "file");
+                                                  if (url) urls.push(url);
+                                                }
+                                                setUploadingAssignFiles(false);
+                                                if (urls.length) {
+                                                  setAssignForm((prev) => ({ ...prev, attachment_files: [...prev.attachment_files, ...urls] }));
+                                                  toast.success(`${urls.length} file(s) attached`);
+                                                }
+                                              }}
+                                              onClick={() => document.getElementById(`assign-files-${lesson.id}`)?.click()}
+                                              className="rounded-lg border-2 border-dashed border-border hover:border-primary/50 bg-secondary/40 hover:bg-secondary p-3 cursor-pointer text-center transition"
+                                            >
+                                              <Upload className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
+                                              <p className="text-xs text-muted-foreground">
+                                                {uploadingAssignFiles ? "Uploading…" : "Drag & drop or tap — Images, Video, PDF, ZIP"}
+                                              </p>
+                                            </div>
                                             {assignForm.attachment_files.length > 0 && (
-                                              <div className="flex flex-wrap gap-1 pt-1">
-                                                {assignForm.attachment_files.map((url, i) => (
-                                                  <Badge key={i} variant="secondary" className="text-[10px] gap-1">
-                                                    File {i + 1}
-                                                    <button type="button" onClick={() => setAssignForm((p) => ({ ...p, attachment_files: p.attachment_files.filter((_, idx) => idx !== i) }))}>
-                                                      <X className="w-3 h-3" />
-                                                    </button>
-                                                  </Badge>
-                                                ))}
+                                              <div className="space-y-1">
+                                                {assignForm.attachment_files.map((url, i) => {
+                                                  const name = url.split("/").pop() || `File ${i + 1}`;
+                                                  const isImg = /\.(jpe?g|png|gif|webp|heic)$/i.test(name);
+                                                  const isVid = /\.(mp4|mov|webm|mkv|m4v)$/i.test(name);
+                                                  return (
+                                                    <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-primary/5 border border-primary/20">
+                                                      {isImg ? <img src={url} alt="" className="w-8 h-8 object-cover rounded" />
+                                                        : isVid ? <video src={url} className="w-8 h-8 object-cover rounded bg-black" muted />
+                                                        : <Paperclip className="w-3.5 h-3.5 text-primary" />}
+                                                      <a href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] flex-1 truncate text-primary hover:underline">{name}</a>
+                                                      <button type="button" onClick={() => setAssignForm((p) => ({ ...p, attachment_files: p.attachment_files.filter((_, idx) => idx !== i) }))}>
+                                                        <X className="w-3 h-3" />
+                                                      </button>
+                                                    </div>
+                                                  );
+                                                })}
                                               </div>
                                             )}
                                           </div>
