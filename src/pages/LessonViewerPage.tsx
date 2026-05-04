@@ -11,8 +11,27 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
-const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_FILES = 10;
+
+const ALLOWED_MIME_PREFIXES = ["image/", "video/"];
+const ALLOWED_MIME_EXACT = new Set([
+  "application/pdf",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/octet-stream", // some browsers report zip as this
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+]);
+const ALLOWED_EXT = /\.(jpg|jpeg|png|gif|webp|heic|heif|mp4|mov|webm|mkv|avi|m4v|pdf|zip|doc|docx|txt)$/i;
+
+const isAllowedFile = (f: File) => {
+  if (ALLOWED_MIME_PREFIXES.some((p) => f.type.startsWith(p))) return true;
+  if (ALLOWED_MIME_EXACT.has(f.type)) return true;
+  return ALLOWED_EXT.test(f.name);
+};
 
 const sanitizeFileName = (name: string): string => {
   const ext = name.includes(".") ? name.split(".").pop()!.toLowerCase() : "";
@@ -170,17 +189,35 @@ const LessonViewerPage = () => {
   });
 
   const handleFileChange = (assignmentId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const oversized = files.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+    const incoming = Array.from(e.target.files || []);
+    const existing = selectedFiles[assignmentId] || [];
+
+    const invalid = incoming.filter((f) => !isAllowedFile(f));
+    if (invalid.length > 0) {
+      toast.error(`Unsupported file type: ${invalid.map((f) => f.name).join(", ")}. Allowed: images, videos, PDF, ZIP, DOC.`);
+      e.target.value = "";
+      return;
+    }
+    const oversized = incoming.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
     if (oversized.length > 0) {
       toast.error(`File too large: ${oversized.map((f) => f.name).join(", ")}. Max ${MAX_FILE_SIZE_MB}MB each.`);
       e.target.value = "";
       return;
     }
+    const merged = [...existing, ...incoming];
+    if (merged.length > MAX_FILES) {
+      toast.error(`Maximum ${MAX_FILES} files per submission.`);
+      e.target.value = "";
+      return;
+    }
+
     previewUrls[assignmentId]?.forEach((u) => URL.revokeObjectURL(u));
-    const newPreviews = files.filter((f) => f.type.startsWith("image/")).map((f) => URL.createObjectURL(f));
+    const newPreviews = merged
+      .filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"))
+      .map((f) => URL.createObjectURL(f));
     setPreviewUrls((prev) => ({ ...prev, [assignmentId]: newPreviews }));
-    setSelectedFiles((prev) => ({ ...prev, [assignmentId]: files }));
+    setSelectedFiles((prev) => ({ ...prev, [assignmentId]: merged }));
+    e.target.value = "";
   };
 
   const removeFile = (assignmentId: string, index: number) => {
@@ -190,17 +227,24 @@ const LessonViewerPage = () => {
       fileInputRefs.current[assignmentId]!.value = "";
     }
     previewUrls[assignmentId]?.forEach((u) => URL.revokeObjectURL(u));
-    const newPreviews = updated.filter((f) => f.type.startsWith("image/")).map((f) => URL.createObjectURL(f));
+    const newPreviews = updated
+      .filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"))
+      .map((f) => URL.createObjectURL(f));
     setSelectedFiles((prev) => ({ ...prev, [assignmentId]: updated }));
     setPreviewUrls((prev) => ({ ...prev, [assignmentId]: newPreviews }));
   };
 
   const submitAssignment = async (assignmentId: string) => {
+    const filesToUpload = selectedFiles[assignmentId] || [];
+    const text = submissionText.trim();
+    if (!text && filesToUpload.length === 0) {
+      toast.error("Please add a written response or attach at least one file before submitting.");
+      return;
+    }
     setSubmitting(true);
     setUploadProgress(0);
     let fileUrls: string[] = [];
 
-    const filesToUpload = selectedFiles[assignmentId] || [];
     if (filesToUpload.length > 0) {
       for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i];
@@ -513,14 +557,14 @@ const LessonViewerPage = () => {
 
                         <div className="space-y-3">
                           <Label className="text-xs text-muted-foreground">
-                            Attach files (optional) — max {MAX_FILE_SIZE_MB}MB each
+                            Add a written response or attach files (max {MAX_FILES} files, {MAX_FILE_SIZE_MB}MB each). At least one is required.
                           </Label>
 
                           <input
                             ref={(el) => { fileInputRefs.current[a.id] = el; }}
                             type="file"
                             multiple
-                            accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/zip"
+                            accept="image/*,video/*,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                             className="hidden"
                             onChange={(e) => handleFileChange(a.id, e)}
                           />
@@ -529,26 +573,32 @@ const LessonViewerPage = () => {
                             <div className="space-y-2">
                               <p className="text-xs font-medium text-muted-foreground">Preview — check before submitting:</p>
                               <div className="flex flex-wrap gap-2">
-                                {assignPreviews.map((url, i) => (
-                                  <div key={i} className="relative group">
-                                    <img src={url} alt={`Preview ${i + 1}`} className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-primary/40 shadow-sm" />
-                                    <span className="absolute bottom-1 right-1 bg-success rounded-full p-0.5 shadow">
-                                      <CheckCircle className="w-3 h-3 text-white" />
-                                    </span>
-                                  </div>
-                                ))}
+                                {assignFiles
+                                  .filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"))
+                                  .map((f, pIdx) => {
+                                    const url = assignPreviews[pIdx];
+                                    if (!url) return null;
+                                    return (
+                                      <div key={pIdx} className="relative group">
+                                        {f.type.startsWith("video/") ? (
+                                          <video src={url} className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-primary/40 shadow-sm bg-black" muted />
+                                        ) : (
+                                          <img src={url} alt={`Preview ${pIdx + 1}`} className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border-2 border-primary/40 shadow-sm" />
+                                        )}
+                                        <span className="absolute bottom-1 right-1 bg-success rounded-full p-0.5 shadow">
+                                          <CheckCircle className="w-3 h-3 text-white" />
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
                               </div>
-                              <p className="text-xs text-success flex items-center gap-1">
-                                <CheckCircle className="w-3 h-3" />
-                                {assignPreviews.length} image{assignPreviews.length > 1 ? "s" : ""} ready — tap Submit when happy.
-                              </p>
                             </div>
                           )}
 
                           <button
                             type="button"
                             onClick={() => fileInputRefs.current[a.id]?.click()}
-                            disabled={submitting}
+                            disabled={submitting || assignFiles.length >= MAX_FILES}
                             className="w-full flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-secondary/50 hover:bg-secondary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                           >
                             <div className="flex items-center gap-3">
@@ -556,9 +606,9 @@ const LessonViewerPage = () => {
                               <Upload className="w-5 h-5 text-muted-foreground" />
                             </div>
                             <span className="text-sm font-medium text-muted-foreground">
-                              {assignFiles.length > 0 ? "Change / Add More Files" : "Tap to select files or photos"}
+                              {assignFiles.length > 0 ? `Add more files (${assignFiles.length}/${MAX_FILES})` : "Tap to select files or photos"}
                             </span>
-                            <span className="text-xs text-muted-foreground/70">Images, PDF, Word, ZIP</span>
+                            <span className="text-xs text-muted-foreground/70">Images, Videos, PDF, Word, ZIP</span>
                           </button>
 
                           {assignFiles.length > 0 && (
