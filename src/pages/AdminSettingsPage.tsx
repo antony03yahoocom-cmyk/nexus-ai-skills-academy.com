@@ -156,6 +156,43 @@ const AdminSettingsPage = () => {
               <p className="text-muted-foreground text-sm">Additional platform settings and configuration options will be available here soon.</p>
             </CardContent>
           </Card>
+
+          <Card className="glass-card mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><ShieldPlus className="w-5 h-5" /> Add Another Admin</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Promote an existing user to admin. The user must already have signed up with this email.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="email"
+                  placeholder="user@example.com"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                />
+                <Button onClick={handleAddAdmin} disabled={addingAdmin}>
+                  {addingAdmin ? "Adding..." : "Make Admin"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Send className="w-5 h-5" /> Student Re-engagement</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Send psychological-trigger follow-up messages to students who have stopped progressing
+                (Day 2, Day 4, Day 7, Day 14). Each student receives each nudge only once.
+              </p>
+              <Button onClick={handleSendNudges} disabled={sendingNudges} variant="hero">
+                {sendingNudges ? "Sending..." : "Send Follow-up Nudges Now"}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
