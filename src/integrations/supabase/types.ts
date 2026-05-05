@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_feedback: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           content: string
@@ -316,6 +343,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      followup_log: {
+        Row: {
+          id: string
+          nudge_key: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          nudge_key: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          nudge_key?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       group_members: {
         Row: {
