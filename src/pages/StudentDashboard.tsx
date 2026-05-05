@@ -298,7 +298,18 @@ const StudentDashboard = () => {
         </div>
 
         {/* ── Jump back in — next lesson CTA ── */}
-        {activeEnrollment && (
+        {activeEnrollment && (() => {
+          const completedIds = new Set(completions.map((c: any) => c.lesson_id));
+          const courseLessons = (allEnrolledLessons as any[])
+            .filter((l) => l.course_id === activeEnrollment.course_id)
+            .sort((a, b) => (a.module_sort - b.module_sort) || (a.sort_order - b.sort_order));
+          const remaining = courseLessons.filter((l) => !completedIds.has(l.id)).length;
+          const trigger = remaining <= 2 && remaining > 0
+            ? `You're ${remaining} lesson${remaining > 1 ? "s" : ""} away from your first paying client`
+            : (activeEnrollment.progress || 0) >= 50
+            ? "Don't waste what you started"
+            : "Most people quit here — don't be average";
+          return (
           <Link
             to={`/courses/${activeEnrollment.course_id}`}
             className="glass-card p-5 mb-6 flex items-center gap-4 hover:border-primary/30 transition-all duration-300 group block"
@@ -307,7 +318,7 @@ const StudentDashboard = () => {
               <Play className="w-6 h-6 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-primary mb-0.5">Continue Learning</p>
+              <p className="text-xs font-medium text-primary mb-0.5">{trigger}</p>
               <h3 className="font-semibold truncate">{activeEnrollment.courses?.title ?? "Course"}</h3>
               <div className="flex items-center gap-2 mt-1.5">
                 <Progress value={activeEnrollment.progress || 0} className="h-1.5 flex-1 max-w-xs bg-secondary" />
@@ -316,7 +327,8 @@ const StudentDashboard = () => {
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
           </Link>
-        )}
+          );
+        })()}
 
         {/* ── Overall Progress ── */}
         {enrollments.length > 0 && (
