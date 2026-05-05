@@ -158,6 +158,53 @@ const ProfileSettingsPage = () => {
             </Button>
           </CardContent>
         </Card>
+
+        <Card className="glass-card border-destructive/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" /> Danger Zone
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Permanently delete your account and all of your data. This action cannot be undone.
+            </p>
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <DialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="w-4 h-4 mr-2" /> Delete My Account
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete your account?</DialogTitle>
+                  <DialogDescription>
+                    Before you go, please tell us why you're leaving (at least 10 words). Your feedback helps us improve.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <Label htmlFor="reason">Reason for leaving</Label>
+                  <Textarea
+                    id="reason"
+                    rows={5}
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                    placeholder="Tell us why you're deleting your account..."
+                  />
+                  <p className={`text-xs ${reasonWordCount >= 10 ? "text-success" : "text-muted-foreground"}`}>
+                    {reasonWordCount} / 10 words minimum
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+                  <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleting || reasonWordCount < 10}>
+                    {deleting ? "Deleting..." : "Permanently Delete"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
