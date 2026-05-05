@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { useQuery } from "@tanstack/react-query";
@@ -6,6 +7,7 @@ import { Link } from "react-router-dom";
 import { Bell, CheckCircle, XCircle, Megaphone, Mail, Clock, ArrowRight, Inbox } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatDistanceToNow } from "date-fns";
 
 interface NotificationItem {
@@ -19,6 +21,7 @@ interface NotificationItem {
 
 const NotificationsPage = () => {
   const { user } = useAuth();
+  const [openNotif, setOpenNotif] = useState<NotificationItem | null>(null);
 
   // Submissions that have been reviewed (have feedback or non-pending status)
   const { data: reviewedSubmissions = [] } = useQuery({
@@ -195,40 +198,56 @@ const NotificationsPage = () => {
 
         {/* Notification list */}
         <div className="space-y-3">
-          {notifications.map((n) => {
-            const card = (
-              <div
-                key={n.id}
-                className={`glass-card p-4 sm:p-5 border ${bgFor(n.type)} flex items-start gap-4 transition-all hover:brightness-105`}
-              >
-                <div className="mt-0.5">{iconFor(n.type)}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 flex-wrap mb-1">
-                    <p className="font-semibold text-sm">{n.title}</p>
-                    <Badge className={`${badgeFor(n.type)} text-[10px] shrink-0`}>
-                      {labelFor(n.type)}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{n.body}</p>
-                  <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground/70">
-                    <Clock className="w-3 h-3" />
-                    {formatDistanceToNow(new Date(n.time), { addSuffix: true })}
-                    {n.link && <span className="ml-2 text-primary">· Tap to view →</span>}
-                  </div>
+          {notifications.map((n) => (
+            <button
+              key={n.id}
+              onClick={() => setOpenNotif(n)}
+              className={`w-full text-left glass-card p-4 sm:p-5 border ${bgFor(n.type)} flex items-start gap-4 transition-all hover:brightness-110`}
+            >
+              <div className="mt-0.5">{iconFor(n.type)}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2 flex-wrap mb-1">
+                  <p className="font-semibold text-sm">{n.title}</p>
+                  <Badge className={`${badgeFor(n.type)} text-[10px] shrink-0`}>{labelFor(n.type)}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{n.body}</p>
+                <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground/70">
+                  <Clock className="w-3 h-3" />
+                  {formatDistanceToNow(new Date(n.time), { addSuffix: true })}
+                  <span className="ml-2 text-primary">· Tap to view →</span>
                 </div>
               </div>
-            );
-
-            if (n.link) {
-              return (
-                <Link key={n.id} to={n.link} className="block">
-                  {card}
-                </Link>
-              );
-            }
-            return <div key={n.id}>{card}</div>;
-          })}
+            </button>
+          ))}
         </div>
+
+        <Dialog open={!!openNotif} onOpenChange={(o) => !o && setOpenNotif(null)}>
+          <DialogContent className="max-w-lg">
+            {openNotif && (
+              <>
+                <DialogHeader>
+                  <div className="flex items-center gap-2 mb-2">
+                    {iconFor(openNotif.type)}
+                    <Badge className={`${badgeFor(openNotif.type)} text-[10px]`}>{labelFor(openNotif.type)}</Badge>
+                  </div>
+                  <DialogTitle>{openNotif.title}</DialogTitle>
+                  <DialogDescription className="text-xs flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {formatDistanceToNow(new Date(openNotif.time), { addSuffix: true })}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="text-sm leading-relaxed whitespace-pre-wrap py-2">{openNotif.body}</div>
+                {openNotif.link && (
+                  <Button asChild variant="hero" className="w-full mt-2">
+                    <Link to={openNotif.link} onClick={() => setOpenNotif(null)}>
+                      Open <ArrowRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  </Button>
+                )}
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
 
       </main>
     </div>
