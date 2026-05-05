@@ -107,7 +107,7 @@ const NotificationsPage = () => {
       id: `msg-${msg.id}`,
       type: "message",
       title: `New message from ${(msg as any).sender_name}`,
-      body: msg.content.length > 100 ? msg.content.slice(0, 100) + "…" : msg.content,
+      body: msg.content,
       time: msg.created_at,
       link: "/dashboard/messages",
     });
@@ -118,7 +118,7 @@ const NotificationsPage = () => {
       id: `ann-${ann.id}`,
       type: "announcement",
       title: ann.title,
-      body: ann.content.length > 120 ? ann.content.slice(0, 120) + "…" : ann.content,
+      body: ann.content,
       time: ann.created_at,
     });
   }
