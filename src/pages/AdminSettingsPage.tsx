@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
-import { Camera, Save, Settings, User } from "lucide-react";
+import { Camera, Save, Settings, User, ShieldPlus, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -17,6 +17,36 @@ const AdminSettingsPage = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [addingAdmin, setAddingAdmin] = useState(false);
+  const [sendingNudges, setSendingNudges] = useState(false);
+
+  const handleAddAdmin = async () => {
+    if (!newAdminEmail.trim()) { toast.error("Enter an email"); return; }
+    setAddingAdmin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("add-admin", {
+        body: { email: newAdminEmail.trim() },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`${newAdminEmail.trim()} is now an admin`);
+      setNewAdminEmail("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add admin");
+    } finally { setAddingAdmin(false); }
+  };
+
+  const handleSendNudges = async () => {
+    setSendingNudges(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-followups", { body: {} });
+      if (error) throw error;
+      toast.success(`Follow-up nudges sent: ${(data as any)?.sent ?? 0}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send nudges");
+    } finally { setSendingNudges(false); }
+  };
 
   const currentAvatar = avatarUrl || (profile as any)?.avatar_url || null;
 
