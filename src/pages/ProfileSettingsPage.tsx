@@ -6,17 +6,45 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
-import { Camera, Save, User } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Camera, Save, User, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const ProfileSettingsPage = () => {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, signOut } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const reasonWordCount = deleteReason.trim().split(/\s+/).filter(Boolean).length;
+
+  const handleDeleteAccount = async () => {
+    if (reasonWordCount < 10) {
+      toast.error("Please share at least 10 words about why you're leaving.");
+      return;
+    }
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-account", {
+        body: { reason: deleteReason.trim() },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success("Your account has been deleted. We're sorry to see you go.");
+      await signOut();
+      window.location.href = "/";
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete account");
+      setDeleting(false);
+    }
+  };
 
   const currentAvatar = avatarUrl || (profile as any)?.avatar_url || null;
 
