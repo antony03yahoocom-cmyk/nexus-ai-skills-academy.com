@@ -23,11 +23,37 @@ const SYSTEM_PROMPT = `You are NEXUS AI ACADEMY's student assistant. You help st
 
 Keep responses concise, friendly, and encouraging. Use markdown formatting for clarity. You are part of NEXUS AI ACADEMY — a premium online learning platform.`;
 
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Auth gate: only signed-in users may use the chatbot
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { messages } = await req.json();
+    if (!Array.isArray(messages) || messages.length === 0 || messages.length > 30) {
+      return new Response(JSON.stringify({ error: "Invalid messages payload" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
