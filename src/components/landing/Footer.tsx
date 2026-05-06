@@ -74,6 +74,14 @@ const Footer = () => (
         </div>
       </div>
 
+      <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-[#25D366]/10 to-[#25D366]/5 border border-[#25D366]/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div>
+          <p className="font-semibold text-sm">Join our WhatsApp community</p>
+          <p className="text-xs text-muted-foreground">Connect with fellow learners, get help, and stay updated.</p>
+        </div>
+        <WhatsAppButton />
+      </div>
+
       <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} NEXUS AI Skills Academy. All rights reserved. · Made in Africa 🌍
