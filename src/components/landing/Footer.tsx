@@ -1,5 +1,6 @@
 import { Cpu, Twitter, Linkedin, Facebook, Youtube, Instagram } from "lucide-react";
 import { Link } from "react-router-dom";
+import WhatsAppButton from "@/components/shared/WhatsAppButton";
 
 const Footer = () => (
   <footer className="border-t border-border bg-background/50">
