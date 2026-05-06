@@ -56,6 +56,7 @@ const DashboardTopNav = () => {
     { to: "/dashboard/classmates", icon: Users, label: "Classmates" },
     { to: "/discussions", icon: MessageCircle, label: "Discussions", badge: unreadGroups },
     { to: "/dashboard/messages", icon: Mail, label: "Messages", badge: unreadMessages },
+    { to: "/dashboard/settings", icon: Settings, label: "Settings" },
     { to: "/subscribe", icon: CreditCard, label: "Premium" },
   ];
 
