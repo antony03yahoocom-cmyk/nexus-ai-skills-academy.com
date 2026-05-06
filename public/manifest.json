@@ -1,0 +1,20 @@
+{
+  "name": "NEXUS AI Skills Academy",
+  "short_name": "NEXUS Academy",
+  "description": "Learn AI, programming, design and digital skills. Earn certificates. Build a career.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "https://storage.googleapis.com/gpt-engineer-file-uploads/jqvAs5Z64NV4yrt8v2i26pKKQgi2/social-images/social-1773940870545-NEXUS_LOGO.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"]
+}
