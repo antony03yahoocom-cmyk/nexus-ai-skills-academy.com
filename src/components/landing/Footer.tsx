@@ -73,6 +73,7 @@ const Footer = () => (
         </div>
       </div>
 
+
       <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} NEXUS AI Skills Academy. All rights reserved. · Made in Africa 🌍
