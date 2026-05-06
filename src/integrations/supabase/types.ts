@@ -65,6 +65,24 @@ export type Database = {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       assignments: {
         Row: {
           attachment_files: Json
@@ -768,6 +786,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      promo_codes: {
+        Row: {
+          code: string
+          course_id: string | null
+          created_at: string
+          discount_percent: number
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          uses: number
+        }
+        Insert: {
+          code: string
+          course_id?: string | null
+          created_at?: string
+          discount_percent: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          uses?: number
+        }
+        Update: {
+          code?: string
+          course_id?: string | null
+          created_at?: string
+          discount_percent?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          uses?: number
+        }
+        Relationships: []
       }
       site_feedback: {
         Row: {
