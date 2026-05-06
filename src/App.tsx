@@ -88,7 +88,6 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           <StudentChatbot />
-          <WhatsAppButton variant="floating" />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
