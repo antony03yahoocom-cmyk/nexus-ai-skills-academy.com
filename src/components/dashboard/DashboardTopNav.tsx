@@ -99,7 +99,7 @@ const DashboardTopNav = () => {
           {/* Desktop right actions */}
           <div className="hidden md:flex items-center gap-2">
             {/* WhatsApp community */}
-            
+            <a
               href={WHATSAPP_URL}
               target="_blank"
               rel="noopener noreferrer"
@@ -202,7 +202,7 @@ const DashboardTopNav = () => {
                 </span>
               )}
             </Link>
-            
+            <a
               href={WHATSAPP_URL}
               target="_blank"
               rel="noopener noreferrer"
