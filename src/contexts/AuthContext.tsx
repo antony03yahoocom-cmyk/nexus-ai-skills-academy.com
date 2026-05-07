@@ -18,10 +18,6 @@ interface CoursePurchase {
   status: string;
 }
 
-interface EnrolledFreeCourse {
-  course_id: string;
-}
-
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -51,47 +47,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [freeCourseIds, setFreeCourseIds] = useState<string[]>([]);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-    if (data) {
-      setProfile({
-        id: data.id,
-        user_id: data.user_id,
-        full_name: data.full_name,
-        avatar_url: data.avatar_url ?? null,
-        subscription_status: data.subscription_status,
-        trial_start_date: data.trial_start_date,
-        trial_course_id: data.trial_course_id ?? null,
-        is_premium: data.is_premium ?? false,
-      });
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+      if (data) {
+        setProfile({
+          id: data.id,
+          user_id: data.user_id,
+          full_name: data.full_name,
+          avatar_url: data.avatar_url ?? null,
+          subscription_status: data.subscription_status,
+          trial_start_date: data.trial_start_date,
+          trial_course_id: data.trial_course_id ?? null,
+          is_premium: data.is_premium ?? false,
+        });
+      }
+
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      setIsAdmin(roles?.some((r) => r.role === "admin") ?? false);
+
+      const { data: purchaseData } = await supabase
+        .from("course_purchases")
+        .select("course_id, status")
+        .eq("user_id", userId)
+        .eq("status", "paid");
+      setPurchases(purchaseData ?? []);
+
+      // Fetch enrolled free courses (price = 0)
+      const { data: enrolledCourses } = await supabase
+        .from("enrollments")
+        .select("course_id, courses!inner(price)")
+        .eq("user_id", userId);
+      const freeIds = (enrolledCourses ?? [])
+        .filter((e: any) => (e.courses as any)?.price === 0)
+        .map((e: any) => e.course_id);
+      setFreeCourseIds(freeIds);
+    } catch (err) {
+      console.error("fetchProfile error:", err);
     }
-
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    setIsAdmin(roles?.some((r) => r.role === "admin") ?? false);
-
-    // Fetch course purchases
-    const { data: purchaseData } = await supabase
-      .from("course_purchases")
-      .select("course_id, status")
-      .eq("user_id", userId)
-      .eq("status", "paid");
-    setPurchases(purchaseData ?? []);
-
-    // Fetch enrolled free courses (price = 0)
-    const { data: enrolledCourses } = await supabase
-      .from("enrollments")
-      .select("course_id, courses!inner(price)")
-      .eq("user_id", userId);
-    const freeIds = (enrolledCourses ?? [])
-      .filter((e: any) => e.courses?.price === 0)
-      .map((e: any) => e.course_id);
-    setFreeCourseIds(freeIds);
   };
 
   const refreshProfile = async () => {
@@ -99,31 +99,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    let mounted = true;
+
+    // ✅ FIX: Use getSession first (synchronous path) and await fetchProfile
+    // before setting loading=false so AdminRoute never sees isAdmin=false prematurely
+    const initAuth = async () => {
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+
+        if (initialSession?.user) {
+          await fetchProfile(initialSession.user.id);
+        }
+      } catch (err) {
+        console.error("initAuth error:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    initAuth();
+
+    // ✅ FIX: onAuthStateChange also awaits fetchProfile before setting loading=false
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          setTimeout(() => fetchProfile(session.user.id), 0);
+      async (_event, newSession) => {
+        if (!mounted) return;
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        if (newSession?.user) {
+          await fetchProfile(newSession.user.id);
         } else {
           setProfile(null);
           setIsAdmin(false);
           setPurchases([]);
+          setFreeCourseIds([]);
         }
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const trialDaysLeft = profile
@@ -132,42 +154,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const trialActive = trialDaysLeft > 0;
 
-  // General access: premium, any paid course, or trial active
   const hasAccess = profile
     ? profile.is_premium || profile.subscription_status === "paid" || purchases.length > 0 || trialActive
     : false;
 
-  // Check if user has paid access to a specific course
   const hasCourseAccess = useCallback((courseId: string): boolean => {
     if (!profile) return false;
     if (isAdmin) return true;
     if (profile.is_premium) return true;
     if (purchases.some((p) => p.course_id === courseId)) return true;
-    // Free courses (price=0) — enrolled user has access
     if (freeCourseIds.includes(courseId)) return true;
-    // Trial: only the selected trial course (not for free courses)
     if (trialActive && profile.trial_course_id === courseId) return true;
     return false;
   }, [profile, isAdmin, purchases, freeCourseIds, trialActive]);
 
-  // Check if a specific lesson (by index in course) is accessible
   const canAccessLesson = useCallback((courseId: string, lessonIndex: number): boolean => {
     if (!profile) return false;
     if (isAdmin) return true;
     if (profile.is_premium) return true;
     if (purchases.some((p) => p.course_id === courseId)) return true;
-    // Free courses — all lessons accessible
     if (freeCourseIds.includes(courseId)) return true;
-    // Trial: first 7 lessons only, and only for the selected trial course
     if (trialActive && profile.trial_course_id === courseId && lessonIndex < 7) return true;
     return false;
   }, [profile, isAdmin, purchases, freeCourseIds, trialActive]);
 
   const selectTrialCourse = async (courseId: string) => {
     if (!user || !profile) return;
-    // Only allow selecting if no trial course yet
     if (profile.trial_course_id && profile.trial_course_id !== courseId) return;
-    // Don't set trial for free courses
     const { data: courseData } = await supabase.from("courses").select("price").eq("id", courseId).single();
     if (courseData?.price === 0) return;
     const { error } = await supabase
