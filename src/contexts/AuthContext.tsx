@@ -1,4 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -95,7 +102,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (rolesError) throw rolesError;
 
-      setIsAdmin(roles?.some((roleRow) => roleRow.role === "admin") ?? false);
+      setIsAdmin(
+        roles?.some((roleRow) => roleRow.role === "admin") ?? false,
+      );
 
       const { data: purchaseData, error: purchaseError } = await supabase
         .from("course_purchases")
@@ -122,12 +131,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setFreeCourseIds(freeIds);
     } catch (err) {
       console.error("fetchProfile error:", err);
-      resetUserScopedState(setProfile, setIsAdmin, setPurchases, setFreeCourseIds);
+
+      resetUserScopedState(
+        setProfile,
+        setIsAdmin,
+        setPurchases,
+        setFreeCourseIds,
+      );
     }
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (user) await fetchProfile(user.id);
+    if (user) {
+      await fetchProfile(user.id);
+    }
   }, [fetchProfile, user]);
 
   useEffect(() => {
@@ -137,13 +154,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const applySession = async (nextSession: Session | null) => {
       const currentRequest = ++requestId;
 
-      if (mounted) setLoading(true);
+      if (mounted) {
+        setLoading(true);
+      }
 
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
 
       if (!nextSession?.user) {
-        resetUserScopedState(setProfile, setIsAdmin, setPurchases, setFreeCourseIds);
+        resetUserScopedState(
+          setProfile,
+          setIsAdmin,
+          setPurchases,
+          setFreeCourseIds,
+        );
 
         if (mounted && currentRequest === requestId) {
           setLoading(false);
@@ -167,6 +191,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } = await supabase.auth.getSession();
 
         if (error) throw error;
+
         if (!mounted) return;
 
         await applySession(initialSession);
@@ -174,7 +199,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("initAuth error:", err);
 
         if (mounted) {
-          resetUserScopedState(setProfile, setIsAdmin, setPurchases, setFreeCourseIds);
+          resetUserScopedState(
+            setProfile,
+            setIsAdmin,
+            setPurchases,
+            setFreeCourseIds,
+          );
+
           setLoading(false);
         }
       }
@@ -186,6 +217,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!mounted) return;
+
       void applySession(nextSession);
     });
 
@@ -199,14 +231,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const trialDaysLeft = profile
     ? Math.max(
         0,
-        7 - Math.floor((Date.now() - new Date(profile.trial_start_date).getTime()) / (1000 * 60 * 60 * 24)),
+        7 -
+          Math.floor(
+            (Date.now() -
+              new Date(profile.trial_start_date).getTime()) /
+              (1000 * 60 * 60 * 24),
+          ),
       )
     : 0;
 
   const trialActive = trialDaysLeft > 0;
 
   const hasAccess = profile
-    ? profile.is_premium || profile.subscription_status === "paid" || purchases.length > 0 || trialActive
+    ? profile.is_premium ||
+      profile.subscription_status === "paid" ||
+      purchases.length > 0 ||
+      trialActive
     : false;
 
   const hasCourseAccess = useCallback(
@@ -214,9 +254,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!profile) return false;
       if (isAdmin) return true;
       if (profile.is_premium) return true;
-      if (purchases.some((purchase) => purchase.course_id === courseId)) return true;
-      if (freeCourseIds.includes(courseId)) return true;
-      if (trialActive && profile.trial_course_id === courseId) return true;
+
+      if (
+        purchases.some(
+          (purchase) => purchase.course_id === courseId,
+        )
+      ) {
+        return true;
+      }
+
+      if (freeCourseIds.includes(courseId)) {
+        return true;
+      }
+
+      if (trialActive && profile.trial_course_id === courseId) {
+        return true;
+      }
+
       return false;
     },
     [profile, isAdmin, purchases, freeCourseIds, trialActive],
@@ -227,9 +281,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!profile) return false;
       if (isAdmin) return true;
       if (profile.is_premium) return true;
-      if (purchases.some((purchase) => purchase.course_id === courseId)) return true;
-      if (freeCourseIds.includes(courseId)) return true;
-      if (trialActive && profile.trial_course_id === courseId && lessonIndex < 7) return true;
+
+      if (
+        purchases.some(
+          (purchase) => purchase.course_id === courseId,
+        )
+      ) {
+        return true;
+      }
+
+      if (freeCourseIds.includes(courseId)) {
+        return true;
+      }
+
+      // Trial users only access first 5 lessons
+      if (
+        trialActive &&
+        profile.trial_course_id === courseId &&
+        lessonIndex < 5
+      ) {
+        return true;
+      }
+
       return false;
     },
     [profile, isAdmin, purchases, freeCourseIds, trialActive],
@@ -237,7 +310,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const selectTrialCourse = async (courseId: string) => {
     if (!user || !profile) return;
-    if (profile.trial_course_id && profile.trial_course_id !== courseId) return;
+
+    if (
+      profile.trial_course_id &&
+      profile.trial_course_id !== courseId
+    ) {
+      return;
+    }
 
     const { data: courseData, error: courseError } = await supabase
       .from("courses")
@@ -246,6 +325,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .single();
 
     if (courseError) throw courseError;
+
     if (courseData?.price === 0) return;
 
     const { error } = await supabase
@@ -255,14 +335,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) throw error;
 
-    setProfile({ ...profile, trial_course_id: courseId });
+    setProfile({
+      ...profile,
+      trial_course_id: courseId,
+    });
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+
     setUser(null);
     setSession(null);
-    resetUserScopedState(setProfile, setIsAdmin, setPurchases, setFreeCourseIds);
+
+    resetUserScopedState(
+      setProfile,
+      setIsAdmin,
+      setPurchases,
+      setFreeCourseIds,
+    );
   };
 
   return (

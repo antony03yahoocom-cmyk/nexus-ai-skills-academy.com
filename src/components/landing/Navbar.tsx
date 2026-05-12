@@ -1,8 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Cpu, Menu, X, LayoutDashboard, ShieldCheck, LogOut } from "lucide-react";
+import { Cpu, Menu, X, LayoutDashboard, ShieldCheck, LogOut, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+
+const WHATSAPP_URL = "https://chat.whatsapp.com/GdHfJutCYlX7xitn3gC71o";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -61,6 +63,12 @@ const Navbar = () => {
 
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild className="text-[#25D366] hover:text-[#25D366]">
+              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
+                <MessageCircle className="w-4 h-4 mr-1" />
+                WhatsApp
+              </a>
+            </Button>
             {!loading && user ? (
               <>
                 {isAdmin && (
@@ -120,6 +128,12 @@ const Navbar = () => {
             </Link>
           ))}
           <div className="border-t border-border pt-3 mt-3 flex flex-col gap-2">
+            <Button variant="ghost" size="sm" asChild className="justify-start text-[#25D366] hover:text-[#25D366]">
+              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" onClick={() => setIsOpen(false)}>
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Join WhatsApp Community
+              </a>
+            </Button>
             {!loading && user ? (
               <>
                 {isAdmin && (
