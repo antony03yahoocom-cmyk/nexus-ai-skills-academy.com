@@ -118,7 +118,7 @@ useEffect(() => {
             </h1>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
               {trialActive
-                ? `Your trial has ${trialDaysLeft} days left (1 course, first 7 lessons).`
+                ? `Your trial has ${trialDaysLeft} days left (1 course, first 5 lessons).`
                 : "Unlock all courses with a single payment."}
             </p>
             <p className="text-sm text-muted-foreground mt-2">

@@ -28,6 +28,8 @@ import AdminCertificatesPage from "./pages/AdminCertificatesPage.tsx";
 import AdminEnrollmentsPage from "./pages/AdminEnrollmentsPage.tsx";
 import AdminTestimonialsPage from "./pages/AdminTestimonialsPage.tsx";
 import AdminFeedbackPage from "./pages/AdminFeedbackPage.tsx";
+import AdminDeletionFeedbackPage from "./pages/AdminDeletionFeedbackPage.tsx";
+import AdminBlogPage from "./pages/AdminBlogPage.tsx";
 import SubscribePage from "./pages/SubscribePage.tsx";
 import PortfolioPage from "./pages/PortfolioPage.tsx";
 import DiscussionGroupsPage from "./pages/DiscussionGroupsPage.tsx";
@@ -85,6 +87,8 @@ const App = () => (
             <Route path="/admin/messages" element={<AdminRoute><AdminMessagesPage /></AdminRoute>} />
             <Route path="/admin/testimonials" element={<AdminRoute><AdminTestimonialsPage /></AdminRoute>} />
             <Route path="/admin/feedback" element={<AdminRoute><AdminFeedbackPage /></AdminRoute>} />
+            <Route path="/admin/deletion-feedback" element={<AdminRoute><AdminDeletionFeedbackPage /></AdminRoute>} />
+            <Route path="/admin/blog" element={<AdminRoute><AdminBlogPage /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <StudentChatbot />
