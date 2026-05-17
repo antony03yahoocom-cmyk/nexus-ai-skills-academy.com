@@ -21,10 +21,9 @@ const GroupChatPage = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Fetch group info
   const { data: group } = useQuery({
     queryKey: ["group-detail", groupId],
     queryFn: async () => {
@@ -34,7 +33,6 @@ const GroupChatPage = () => {
     enabled: !!groupId,
   });
 
-  // Fetch members with profile names
   const { data: members = [] } = useQuery({
     queryKey: ["group-members", groupId],
     queryFn: async () => {
@@ -49,7 +47,6 @@ const GroupChatPage = () => {
     enabled: !!groupId,
   });
 
-  // Fetch messages
   const { data: messages = [] } = useQuery({
     queryKey: ["group-messages", groupId],
     queryFn: async () => {
@@ -80,13 +77,15 @@ const GroupChatPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [groupId, queryClient]);
 
-  // Auto-scroll only the message container (not the page) when new messages arrive
+  // ✅ FIX: Scroll the message container to bottom whenever messages change
   useEffect(() => {
-    const c = scrollContainerRef.current;
-    if (!c) return;
-    requestAnimationFrame(() => {
-      c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    // Use requestAnimationFrame to ensure DOM has updated before scrolling
+    const raf = requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
     });
+    return () => cancelAnimationFrame(raf);
   }, [messages]);
 
   const myMembership = members.find((m: any) => m.user_id === user?.id);
@@ -121,6 +120,8 @@ const GroupChatPage = () => {
       setMessage("");
       setSelectedFile(null);
       setUploading(false);
+      // ✅ FIXED: Add query invalidation so messages list refreshes immediately
+      queryClient.invalidateQueries({ queryKey: ["group-messages", groupId] });
     },
     onError: (e: any) => {
       toast.error(e.message || "Failed to send message");
@@ -195,11 +196,16 @@ const GroupChatPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <DashboardTopNav />
+    // ✅ FIX: Use h-screen + overflow-hidden so the message list is the only
+    // scrollable element — this is what makes scroll work on mobile and desktop
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Top nav — fixed height */}
+      <div className="shrink-0">
+        <DashboardTopNav />
+      </div>
 
-      {/* Header */}
-      <div className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-16 z-40">
+      {/* Group header — fixed height */}
+      <div className="shrink-0 border-b border-border/50 bg-background/80 backdrop-blur-sm z-30">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
             <Link to="/discussions"><ArrowLeft className="w-4 h-4" /></Link>
@@ -228,7 +234,11 @@ const GroupChatPage = () => {
                       </div>
                       <div>
                         <p className="text-sm font-medium">{m.full_name}</p>
-                        {m.role === "admin" && <Badge className="bg-primary/10 text-primary border-primary/20 text-[9px]"><Crown className="w-2.5 h-2.5 mr-0.5" />Admin</Badge>}
+                        {m.role === "admin" && (
+                          <Badge className="bg-primary/10 text-primary border-primary/20 text-[9px]">
+                            <Crown className="w-2.5 h-2.5 mr-0.5" />Admin
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     {isGroupAdmin && m.user_id !== user?.id && (
@@ -240,7 +250,11 @@ const GroupChatPage = () => {
                 ))}
               </div>
               {!isGroupAdmin && (
-                <Button variant="outline" size="sm" className="mt-4 text-destructive" onClick={() => { leaveGroup.mutate(); setMembersOpen(false); }}>
+                <Button
+                  variant="outline" size="sm"
+                  className="mt-4 text-destructive"
+                  onClick={() => { leaveGroup.mutate(); setMembersOpen(false); }}
+                >
                   Leave Group
                 </Button>
               )}
@@ -249,27 +263,47 @@ const GroupChatPage = () => {
         </div>
       </div>
 
-      {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-contain">
+      {/* ✅ Messages — flex-1 + overflow-y-auto makes this the ONLY scrollable zone */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto overscroll-contain"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
         <div className="max-w-4xl mx-auto px-4 py-4 space-y-3">
           {messages.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground text-sm">No messages yet. Start the conversation!</div>
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              No messages yet. Start the conversation!
+            </div>
           )}
-          {messages.map((msg: any) => {
+
+          {(messages as any[]).map((msg: any) => {
             const isOwn = msg.user_id === user?.id;
             return (
               <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[88%] sm:max-w-[65%] group relative ${isOwn ? "bg-primary text-primary-foreground" : "bg-secondary"} rounded-2xl px-4 py-2.5`}>
-                  {!isOwn && <p className="text-[10px] font-semibold opacity-70 mb-0.5">{msg.full_name}</p>}
-                  <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                {!isOwn && (
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0 mr-2 mt-1 self-end">
+                    {(msg.full_name || "S")[0].toUpperCase()}
+                  </div>
+                )}
+                <div
+                  className={`max-w-[82%] sm:max-w-[65%] group relative rounded-2xl px-4 py-2.5 ${
+                    isOwn
+                      ? "bg-primary text-primary-foreground rounded-br-md"
+                      : "bg-secondary rounded-bl-md"
+                  }`}
+                >
+                  {!isOwn && (
+                    <p className="text-[10px] font-semibold opacity-70 mb-0.5">{msg.full_name}</p>
+                  )}
+                  <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
                   {msg.file_url && renderFilePreview(msg.file_url)}
-                  <p className={`text-[10px] mt-1 ${isOwn ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                  <p className={`text-[10px] mt-1 text-right ${isOwn ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </p>
                   {(isOwn || isGroupAdmin) && (
                     <button
                       onClick={() => deleteMessage.mutate(msg.id)}
-                      className="absolute -top-2 -right-2 hidden group-hover:flex w-6 h-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
+                      className="absolute -top-2 -right-2 hidden group-hover:flex w-6 h-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -278,13 +312,14 @@ const GroupChatPage = () => {
               </div>
             );
           })}
-          <div ref={bottomRef} />
+          {/* Invisible anchor for scroll target */}
+          <div ref={bottomRef} className="h-1" />
         </div>
       </div>
 
-      {/* Selected file preview */}
+      {/* Selected file preview strip */}
       {selectedFile && (
-        <div className="border-t border-border/30 bg-secondary/30">
+        <div className="shrink-0 border-t border-border/30 bg-secondary/30">
           <div className="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
             {selectedFile.type.startsWith("image/") ? (
               <ImageIcon className="w-4 h-4 text-primary shrink-0" />
@@ -300,9 +335,12 @@ const GroupChatPage = () => {
         </div>
       )}
 
-      {/* Input */}
-      <div className="border-t border-border/50 bg-background/80 backdrop-blur-sm">
-        <form onSubmit={handleSend} className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex gap-2 items-end">
+      {/* Input bar — fixed at bottom */}
+      <div className="shrink-0 border-t border-border/50 bg-background/80 backdrop-blur-sm">
+        <form
+          onSubmit={handleSend}
+          className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex gap-2 items-end"
+        >
           <input
             type="file"
             ref={fileInputRef}
@@ -311,35 +349,36 @@ const GroupChatPage = () => {
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) {
-                if (file.size > 20 * 1024 * 1024) {
-                  toast.error("File too large (max 20MB)");
-                  return;
-                }
+                if (file.size > 20 * 1024 * 1024) { toast.error("File too large (max 20MB)"); return; }
                 setSelectedFile(file);
               }
               e.target.value = "";
             }}
           />
           <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 h-11 w-11"
+            type="button" variant="ghost" size="icon"
+            className="shrink-0 h-11 w-11 touch-manipulation"
             disabled={isSuspended}
             onClick={() => fileInputRef.current?.click()}
           >
             <Paperclip className="w-4 h-4" />
           </Button>
           <Textarea
-            placeholder={isSuspended ? "This group is suspended" : "Type a message..."}
+            placeholder={isSuspended ? "This group is suspended" : "Type a message…"}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(e); } }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(e as any); }
+            }}
             disabled={isSuspended}
             className="flex-1 min-h-[44px] max-h-32 resize-none text-base sm:text-sm"
             rows={1}
           />
-          <Button type="submit" size="icon" className="h-11 w-11 shrink-0" disabled={(!message.trim() && !selectedFile) || uploading || isSuspended}>
+          <Button
+            type="submit" size="icon"
+            className="h-11 w-11 shrink-0 touch-manipulation"
+            disabled={(!message.trim() && !selectedFile) || uploading || isSuspended}
+          >
             <Send className="w-4 h-4" />
           </Button>
         </form>
