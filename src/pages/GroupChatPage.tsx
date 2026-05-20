@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowLeft, Send, Users, Crown, Trash2, UserMinus, Paperclip, X, FileText, Image as ImageIcon } from "lucide-react";
@@ -259,7 +259,7 @@ const GroupChatPage = () => {
             const isOwn = msg.user_id === user?.id;
             return (
               <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] sm:max-w-[65%] group relative ${isOwn ? "bg-primary text-primary-foreground" : "bg-secondary"} rounded-2xl px-4 py-2.5`}>
+                <div className={`max-w-[88%] sm:max-w-[65%] group relative ${isOwn ? "bg-primary text-primary-foreground" : "bg-secondary"} rounded-2xl px-4 py-2.5`}>
                   {!isOwn && <p className="text-[10px] font-semibold opacity-70 mb-0.5">{msg.full_name}</p>}
                   <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                   {msg.file_url && renderFilePreview(msg.file_url)}
@@ -302,7 +302,7 @@ const GroupChatPage = () => {
 
       {/* Input */}
       <div className="border-t border-border/50 bg-background/80 backdrop-blur-sm">
-        <form onSubmit={handleSend} className="max-w-4xl mx-auto px-4 py-3 flex gap-2 items-center">
+        <form onSubmit={handleSend} className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex gap-2 items-end">
           <input
             type="file"
             ref={fileInputRef}
@@ -324,20 +324,22 @@ const GroupChatPage = () => {
             type="button"
             variant="ghost"
             size="icon"
-            className="shrink-0"
+            className="shrink-0 h-11 w-11"
             disabled={isSuspended}
             onClick={() => fileInputRef.current?.click()}
           >
             <Paperclip className="w-4 h-4" />
           </Button>
-          <Input
+          <Textarea
             placeholder={isSuspended ? "This group is suspended" : "Type a message..."}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(e); } }}
             disabled={isSuspended}
-            className="flex-1"
+            className="flex-1 min-h-[44px] max-h-32 resize-none text-base sm:text-sm"
+            rows={1}
           />
-          <Button type="submit" size="icon" disabled={(!message.trim() && !selectedFile) || uploading || isSuspended}>
+          <Button type="submit" size="icon" className="h-11 w-11 shrink-0" disabled={(!message.trim() && !selectedFile) || uploading || isSuspended}>
             <Send className="w-4 h-4" />
           </Button>
         </form>

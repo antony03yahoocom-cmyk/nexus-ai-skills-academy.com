@@ -270,7 +270,7 @@ const StudentDashboard = () => {
           <div className="glass-card p-4 mb-6 border-accent/30 bg-accent/5 flex items-center justify-between flex-wrap gap-4">
             <div>
               <span className="text-sm font-medium text-accent">Free Trial Active</span>
-              <p className="text-xs text-muted-foreground">{trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""} remaining · 1 course · First 7 lessons</p>
+              <p className="text-xs text-muted-foreground">{trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""} remaining · 1 course · First 5 lessons</p>
             </div>
             <Button variant="hero" size="sm" asChild><Link to="/subscribe">Upgrade to Premium</Link></Button>
           </div>

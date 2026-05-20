@@ -91,3 +91,14 @@
     box-shadow: var(--shadow-glow-accent);
   }
 }
+
+
+@layer base {
+  html, body, #root {
+    min-height: 100%;
+  }
+
+  html, body {
+    overflow-x: hidden;
+  }
+}

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, BookOpen, Bell, Settings, LogOut, Cpu, CreditCard, FolderOpen, Award, Mail } from "lucide-react";
+import { LayoutDashboard, BookOpen, Bell, Settings, LogOut, Cpu, CreditCard, FolderOpen, Award, Mail, BriefcaseBusiness } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,8 @@ const DashboardSidebar = () => {
     { to: "/courses", icon: BookOpen, label: "Browse Courses" },
     { to: "/dashboard/projects", icon: FolderOpen, label: "My Projects" },
     { to: "/dashboard/certificates", icon: Award, label: "Certificates" },
+    { to: "/dashboard/marketplace", icon: BriefcaseBusiness, label: "Marketplace Hub" },
+    { to: "/opportunities", icon: BriefcaseBusiness, label: "Opportunities" },
     { to: "/dashboard/messages", icon: Mail, label: "Messages", badge: unreadMessages },
     { to: "/dashboard/notifications", icon: Bell, label: "Notifications" },
     { to: "/subscribe", icon: CreditCard, label: "Subscription" },

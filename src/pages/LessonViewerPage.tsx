@@ -46,7 +46,7 @@ const sanitizeFileName = (name: string): string => {
 
 const LessonViewerPage = () => {
   const { lessonId } = useParams();
-  const { user, isAdmin, hasCourseAccess, canAccessLesson, trialActive } = useAuth();
+  const { user, isAdmin, profile, hasCourseAccess, canAccessLesson, trialActive } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [submissionText, setSubmissionText] = useState("");
@@ -342,11 +342,12 @@ const LessonViewerPage = () => {
     if (isAdmin) return true;
     if (!hasCourseAccess(courseId)) return false;
     if (!canAccessLesson(courseId, globalIndex)) return false;
+    if (trialActive && profile?.trial_course_id === courseId && globalIndex < 5) return true;
     if (globalIndex === 0) return true;
     const prevLesson = allCourseLessons[globalIndex - 1];
     if (!prevLesson) return false;
     return allCompletions.includes(prevLesson.id) && isLessonAssignmentApproved(prevLesson.id);
-  }, [courseId, user, isAdmin, hasCourseAccess, canAccessLesson, globalIndex, allCourseLessons, allCompletions, allAssignments, allSubmissions]);
+  }, [courseId, user, isAdmin, profile, trialActive, hasCourseAccess, canAccessLesson, globalIndex, allCourseLessons, allCompletions, allAssignments, allSubmissions]);
 
   const currentAssignmentsApproved = isLessonAssignmentApproved(lessonId!);
   const canComplete = !currentCompletion && currentAssignmentsApproved;
@@ -629,8 +630,9 @@ const LessonViewerPage = () => {
                 {modLessons.map((l: any) => {
                   const idx = allCourseLessons.findIndex((al: any) => al.id === l.id);
                   const completed = allCompletions.includes(l.id);
+                  const trialPreviewAccess = trialActive && profile?.trial_course_id === courseId && idx < 5;
                   const prevApproved = idx === 0 || (allCompletions.includes(allCourseLessons[idx - 1]?.id) && isLessonAssignmentApproved(allCourseLessons[idx - 1]?.id));
-                  const accessible = isAdmin || (hasCourseAccess(courseId) && canAccessLesson(courseId, idx) && prevApproved);
+                  const accessible = isAdmin || (hasCourseAccess(courseId) && canAccessLesson(courseId, idx) && (trialPreviewAccess || prevApproved));
                   return (
                     <div
                       key={l.id}
