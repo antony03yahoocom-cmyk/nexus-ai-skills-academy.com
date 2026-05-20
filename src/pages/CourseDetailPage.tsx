@@ -218,7 +218,7 @@ const CourseDetailPage = () => {
             {/* Trial banner - only for paid courses */}
             {user && trialActive && profile?.trial_course_id === courseId && !courseAccess && !isFree && (
               <div className="glass-card p-3 mb-4 border-accent/30 bg-accent/5 text-sm">
-                🕐 Trial: {trialDaysLeft} days left · First 7 lessons accessible
+                🕐 Trial: {trialDaysLeft} days left · First 5 lessons accessible
               </div>
             )}
 
@@ -280,15 +280,17 @@ const CourseDetailPage = () => {
                 const modLessons = lessons.filter((l: any) => l.module_id === mod.id);
                 return (
                   <div key={mod.id} className="glass-card overflow-hidden">
-                    <div className="p-5 border-b border-border">
+                    <div className="p-5 border-b border-border flex items-center justify-between gap-3 flex-wrap">
                       <h3 className="font-semibold">{mod.title}</h3>
+                      <span className="text-xs text-muted-foreground">{modLessons.length} lesson{modLessons.length !== 1 ? "s" : ""}</span>
                     </div>
                     <div className="divide-y divide-border">
                       {modLessons.map((lesson: any) => {
                         const globalIdx = allLessonsOrdered.findIndex((l) => l.id === lesson.id);
                         const isCompleted = completions.includes(lesson.id);
-                        const canAccess = enrollment && (isAdmin || (() => {
-                          // Sequential: previous must be completed (or it's the first)
+                        const trialPreviewAccess = trialActive && profile?.trial_course_id === courseId && !isFree && globalIdx < 5;
+                        const canAccess = enrollment && (isAdmin || trialPreviewAccess || (() => {
+                          // Sequential after trial preview: previous must be completed (or it's the first)
                           if (globalIdx === 0) return canAccessLesson(courseId!, globalIdx);
                           const prevCompleted = completions.includes(allLessonsOrdered[globalIdx - 1]?.id);
                           return prevCompleted && canAccessLesson(courseId!, globalIdx);
@@ -311,7 +313,7 @@ const CourseDetailPage = () => {
                               <CheckCircle className="w-5 h-5 text-muted-foreground shrink-0" />
                             )}
                             <span className="flex-1 text-sm">{lesson.title}</span>
-                            {trialActive && globalIdx >= 7 && profile?.trial_course_id === courseId && !isCompleted && !isFree && (
+                            {trialActive && globalIdx >= 5 && profile?.trial_course_id === courseId && !isCompleted && !isFree && (
                               <span className="text-xs text-muted-foreground">Trial limit</span>
                             )}
                             {isLocked && <Lock className="w-4 h-4 text-muted-foreground" />}

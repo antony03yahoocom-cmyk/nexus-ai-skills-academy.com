@@ -212,8 +212,16 @@ const CourseAboutPage = () => {
                   <Button variant="hero" size="lg" onClick={() => user ? enroll.mutate() : navigate("/login")}>
                     {user ? "Enroll Free" : "Sign In to Enroll"}
                   </Button>
+                ) : user && trialActive && !profile?.trial_course_id ? (
+                  <Button variant="hero" size="lg" onClick={() => enroll.mutate()} disabled={enroll.isPending}>
+                    {enroll.isPending ? "Starting trial…" : "Start 7-Day Trial"}
+                  </Button>
+                ) : !user ? (
+                  <Button variant="hero" size="lg" onClick={() => navigate("/login")}>
+                    Sign In to Start Trial
+                  </Button>
                 ) : (
-                  <Button variant="hero" size="lg" onClick={user ? handleBuy : () => navigate("/login")} disabled={payLoading}>
+                  <Button variant="hero" size="lg" onClick={handleBuy} disabled={payLoading}>
                     <CreditCard className="w-4 h-4 mr-2" />
                     {payLoading ? "Processing…" : `Enroll for ${priceFormatted}`}
                   </Button>
@@ -361,8 +369,16 @@ const CourseAboutPage = () => {
               <Button variant="hero" size="lg" onClick={() => user ? enroll.mutate() : navigate("/login")}>
                 {user ? "Enroll Free" : "Sign In to Enroll"}
               </Button>
+            ) : user && trialActive && !profile?.trial_course_id ? (
+              <Button variant="hero" size="lg" onClick={() => enroll.mutate()} disabled={enroll.isPending}>
+                {enroll.isPending ? "Starting trial…" : "Start 7-Day Trial"}
+              </Button>
+            ) : !user ? (
+              <Button variant="hero" size="lg" onClick={() => navigate("/login")}>
+                Sign In to Start Trial
+              </Button>
             ) : (
-              <Button variant="hero" size="lg" onClick={user ? handleBuy : () => navigate("/login")} disabled={payLoading}>
+              <Button variant="hero" size="lg" onClick={handleBuy} disabled={payLoading}>
                 <CreditCard className="w-4 h-4 mr-2" />
                 {payLoading ? "Processing…" : `Enroll for ${priceFormatted}`}
               </Button>

@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, ArrowLeft, Mail, Search, MessageCircle, HeadphonesIcon, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -234,7 +235,7 @@ const MessagesPage = () => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     setCharCount(e.target.value.length);
   };
@@ -472,7 +473,7 @@ const MessagesPage = () => {
                           </div>
                         )}
                         <div className={cn(
-                          "max-w-[72%] rounded-2xl px-4 py-2.5 shadow-sm",
+                          "max-w-[86%] sm:max-w-[72%] rounded-2xl px-4 py-2.5 shadow-sm",
                           isMine
                             ? "bg-primary text-primary-foreground rounded-br-md"
                             : "bg-muted rounded-bl-md border border-border/50"
@@ -493,17 +494,18 @@ const MessagesPage = () => {
                 </div>
 
                 {/* Input */}
-                <div className="border-t p-3 space-y-1 bg-card/30">
-                  <div className="flex gap-2">
-                    <Input
+                <div className="border-t p-2 sm:p-3 space-y-1 bg-card/30 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                  <div className="flex gap-2 items-end">
+                    <Textarea
                       value={input}
                       onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
                       placeholder={selectedUser.is_admin ? "Message your instructor..." : "Type a message..."}
-                      className="flex-1"
+                      className="flex-1 min-h-[44px] max-h-32 resize-none text-base sm:text-sm"
                       maxLength={2000}
+                      rows={1}
                     />
-                    <Button onClick={sendMessage} disabled={!input.trim()} size="icon" className="shrink-0">
+                    <Button onClick={sendMessage} disabled={!input.trim()} size="icon" className="shrink-0 h-11 w-11">
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>

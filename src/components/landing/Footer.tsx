@@ -1,5 +1,7 @@
-import { Cpu, Twitter, Linkedin, Facebook, Youtube, Instagram } from "lucide-react";
+import { Cpu, Twitter, Linkedin, Facebook, Youtube, Instagram, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+
+const WHATSAPP_URL = "https://chat.whatsapp.com/GdHfJutCYlX7xitn3gC71o";
 
 const Footer = () => (
   <footer className="border-t border-border bg-background/50">
@@ -36,6 +38,10 @@ const Footer = () => (
             <a href="https://www.instagram.com/nexusaiacademy" target="_blank" rel="noopener noreferrer" aria-label="Instagram"
               className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors">
               <Instagram className="w-4 h-4" />
+            </a>
+            <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp community"
+              className="w-8 h-8 rounded-lg bg-[#25D366]/10 flex items-center justify-center text-[#25D366] hover:bg-[#25D366]/20 transition-colors">
+              <MessageCircle className="w-4 h-4" />
             </a>
           </div>
         </div>
