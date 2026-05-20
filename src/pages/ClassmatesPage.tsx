@@ -72,10 +72,10 @@ const ClassmatesPage = () => {
   });
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <DashboardTopNav />
-      <div className="flex-1 overflow-hidden">
-        <div className="max-w-6xl mx-auto h-full px-4 sm:px-6 py-6 flex flex-col gap-6">
+      <div className="flex-1 min-h-0">
+        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 flex flex-col gap-6">
           <div className="shrink-0">
             <h1 className="text-3xl font-display font-bold mb-1">Classmates</h1>
             <p className="text-muted-foreground">Connect with your course mates and the wider NEXUS community.</p>

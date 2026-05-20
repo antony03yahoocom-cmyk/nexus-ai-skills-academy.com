@@ -27,7 +27,7 @@ const AdminDashboard = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("course_purchases")
-        .select("*, courses(title), profiles!course_purchases_user_id_fkey(full_name, email)")
+        .select("*, courses(title), profiles!course_purchases_user_id_fkey(full_name)")
         .eq("status", "paid")
         .order("purchased_at", { ascending: false });
       return data ?? [];
@@ -65,7 +65,7 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background flex">
       <AdminSidebar />
-      <main className="flex-1 p-6 lg:p-8 overflow-auto">
+      <main className="flex-1 min-w-0 p-6 lg:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold mb-1">Admin Dashboard</h1>
           <p className="text-muted-foreground mb-8">Overview of your academy.</p>
