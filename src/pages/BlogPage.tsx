@@ -2,6 +2,8 @@ import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { Link } from "react-router-dom";
 import { BookOpen, ExternalLink, Clock, ArrowRight, Cpu, Download } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -105,7 +107,54 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Design": "bg-purple-400/10 text-purple-400 border-purple-400/20",
 };
 
+type BlogArticle = {
+  id: string | number;
+  title: string;
+  excerpt: string;
+  category: string;
+  readTime: string;
+  date: string;
+  emoji: string;
+  externalUrl?: string | null;
+  source?: "admin" | "static";
+};
+
 const BlogPage = () => {
+  const { data: adminArticles = [] } = useQuery({
+    queryKey: ["published-blog-posts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("blog_posts" as any)
+        .select("id, title, excerpt, category, read_time, published_at, emoji, external_url")
+        .eq("is_published", true)
+        .order("published_at", { ascending: false });
+
+      if (error) {
+        console.error("blog_posts load error:", error);
+        return [];
+      }
+
+      return (data ?? []).map((post: any): BlogArticle => ({
+        id: post.id,
+        title: post.title,
+        excerpt: post.excerpt,
+        category: post.category,
+        readTime: post.read_time || "5 min read",
+        date: post.published_at
+          ? new Date(post.published_at).toLocaleDateString("en-KE", { month: "long", year: "numeric" })
+          : "Recently",
+        emoji: post.emoji || "📝",
+        externalUrl: post.external_url,
+        source: "admin",
+      }));
+    },
+  });
+
+  const articles: BlogArticle[] = [
+    ...adminArticles,
+    ...ARTICLES.map((article) => ({ ...article, source: "static" as const })),
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -132,9 +181,9 @@ const BlogPage = () => {
               <BookOpen className="w-6 h-6 text-primary" /> Latest Articles
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ARTICLES.map((article) => (
+              {articles.map((article) => (
                 <article
-                  key={article.id}
+                  key={`${article.source}-${article.id}`}
                   className="glass-card overflow-hidden hover:border-primary/30 transition-all duration-300 group flex flex-col"
                 >
                   <div className="h-32 bg-gradient-to-br from-primary/10 to-accent/5 flex items-center justify-center text-4xl">
@@ -142,7 +191,7 @@ const BlogPage = () => {
                   </div>
                   <div className="p-5 flex flex-col flex-1">
                     <div className="flex items-center gap-2 mb-3 flex-wrap">
-                      <Badge className={`${CATEGORY_COLORS[article.category]} text-[10px]`}>
+                      <Badge className={`${CATEGORY_COLORS[article.category] || "bg-secondary text-muted-foreground"} text-[10px]`}>
                         {article.category}
                       </Badge>
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -157,12 +206,23 @@ const BlogPage = () => {
                       {article.excerpt}
                     </p>
                     <div className="mt-4 pt-3 border-t border-border/50">
-                      <Link
-                        to="/courses"
-                        className="text-xs text-primary hover:underline flex items-center gap-1"
-                      >
-                        Explore related courses <ArrowRight className="w-3 h-3" />
-                      </Link>
+                      {article.externalUrl ? (
+                        <a
+                          href={article.externalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          Read full article <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <Link
+                          to="/courses"
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          Explore related courses <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </article>
