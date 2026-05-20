@@ -1,6 +1,6 @@
 # Welcome to project NEXUS AI ACADEMY
 
-# 🚀 NEXUS AI ACADEMY
+# 🚀 NEXUS AI SKILLS ACADEMY
 
 **NEXUS AI ACADEMY** is a modern, scalable online learning platform designed to deliver high-quality courses in AI, Web Development, Design, Data Analysis, and more.
 
