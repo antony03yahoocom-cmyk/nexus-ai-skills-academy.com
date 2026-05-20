@@ -42,6 +42,9 @@ import BlogPage from "./pages/BlogPage.tsx";
 import LeaderboardPage from "./pages/LeaderboardPage.tsx";
 import NotificationsPage from "./pages/NotificationsPage.tsx";
 import ClassmatesPage from "./pages/ClassmatesPage.tsx";
+import MarketplaceHubPage from "./pages/MarketplaceHubPage.tsx";
+import OpportunitiesBoardPage from "./pages/OpportunitiesBoardPage.tsx";
+import OpportunityDetailPage from "./pages/OpportunityDetailPage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -61,12 +64,15 @@ const App = () => (
             <Route path="/courses/:courseId/about" element={<CourseAboutPage />} />
             <Route path="/subscribe" element={<SubscribePage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/opportunities" element={<OpportunitiesBoardPage />} />
+            <Route path="/opportunities/:opportunityId" element={<OpportunityDetailPage />} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/lesson/:lessonId" element={<ProtectedRoute><LessonViewerPage /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/projects" element={<ProtectedRoute><StudentProjectsPage /></ProtectedRoute>} />
             <Route path="/dashboard/certificates" element={<ProtectedRoute><StudentCertificatesPage /></ProtectedRoute>} />
+            <Route path="/dashboard/marketplace" element={<ProtectedRoute><MarketplaceHubPage /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
             <Route path="/dashboard/classmates" element={<ProtectedRoute><ClassmatesPage /></ProtectedRoute>} />
             <Route path="/discussions" element={<ProtectedRoute><DiscussionGroupsPage /></ProtectedRoute>} />

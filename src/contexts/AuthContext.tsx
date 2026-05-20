@@ -6,6 +6,7 @@ import {
   useState,
   ReactNode,
 } from "react";
+
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -43,11 +44,16 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   hasCourseAccess: (courseId: string) => boolean;
-  canAccessLesson: (courseId: string, lessonIndex: number) => boolean;
+  canAccessLesson: (
+    courseId: string,
+    lessonIndex: number,
+  ) => boolean;
   selectTrialCourse: (courseId: string) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(
+  undefined,
+);
 
 const resetUserScopedState = (
   setProfile: (profile: Profile | null) => void,
@@ -61,18 +67,37 @@ const resetUserScopedState = (
   setFreeCourseIds([]);
 };
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
   const [user, setUser] = useState<User | null>(null);
+
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+
+  const [profile, setProfile] = useState<Profile | null>(
+    null,
+  );
+
   const [isAdmin, setIsAdmin] = useState(false);
+
   const [loading, setLoading] = useState(true);
-  const [purchases, setPurchases] = useState<CoursePurchase[]>([]);
-  const [freeCourseIds, setFreeCourseIds] = useState<string[]>([]);
+
+  const [purchases, setPurchases] = useState<
+    CoursePurchase[]
+  >([]);
+
+  const [freeCourseIds, setFreeCourseIds] = useState<
+    string[]
+  >([]);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      const { data: profileData, error: profileError } = await supabase
+      const {
+        data: profileData,
+        error: profileError,
+      } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
@@ -86,16 +111,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           user_id: profileData.user_id,
           full_name: profileData.full_name,
           avatar_url: profileData.avatar_url ?? null,
-          subscription_status: profileData.subscription_status,
-          trial_start_date: profileData.trial_start_date,
-          trial_course_id: profileData.trial_course_id ?? null,
-          is_premium: profileData.is_premium ?? false,
+          subscription_status:
+            profileData.subscription_status,
+          trial_start_date:
+            profileData.trial_start_date,
+          trial_course_id:
+            profileData.trial_course_id ?? null,
+          is_premium:
+            profileData.is_premium ?? false,
         });
       } else {
         setProfile(null);
       }
 
-      const { data: roles, error: rolesError } = await supabase
+      const {
+        data: roles,
+        error: rolesError,
+      } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId);
@@ -103,10 +135,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (rolesError) throw rolesError;
 
       setIsAdmin(
-        roles?.some((roleRow) => roleRow.role === "admin") ?? false,
+        roles?.some(
+          (roleRow) => roleRow.role === "admin",
+        ) ?? false,
       );
 
-      const { data: purchaseData, error: purchaseError } = await supabase
+      const {
+        data: purchaseData,
+        error: purchaseError,
+      } = await supabase
         .from("course_purchases")
         .select("course_id, status")
         .eq("user_id", userId)
@@ -116,7 +153,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setPurchases(purchaseData ?? []);
 
-      const { data: enrolledCourses, error: enrolledError } = await supabase
+      const {
+        data: enrolledCourses,
+        error: enrolledError,
+      } = await supabase
         .from("enrollments")
         .select("course_id, courses!inner(price)")
         .eq("user_id", userId)
@@ -125,8 +165,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (enrolledError) throw enrolledError;
 
       const freeIds = (enrolledCourses ?? [])
-        .filter((enrollment) => enrollment.courses?.price === 0)
-        .map((enrollment) => enrollment.course_id);
+        .filter(
+          (enrollment) =>
+            enrollment.courses?.price === 0,
+        )
+        .map(
+          (enrollment) => enrollment.course_id,
+        );
 
       setFreeCourseIds(freeIds);
     } catch (err) {
@@ -149,9 +194,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
+
     let requestId = 0;
 
-    const applySession = async (nextSession: Session | null) => {
+    const applySession = async (
+      nextSession: Session | null,
+    ) => {
       const currentRequest = ++requestId;
 
       if (mounted) {
@@ -159,6 +207,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setSession(nextSession);
+
       setUser(nextSession?.user ?? null);
 
       if (!nextSession?.user) {
@@ -169,7 +218,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setFreeCourseIds,
         );
 
-        if (mounted && currentRequest === requestId) {
+        if (
+          mounted &&
+          currentRequest === requestId
+        ) {
           setLoading(false);
         }
 
@@ -178,7 +230,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       await fetchProfile(nextSession.user.id);
 
-      if (mounted && currentRequest === requestId) {
+      if (
+        mounted &&
+        currentRequest === requestId
+      ) {
         setLoading(false);
       }
     };
@@ -186,7 +241,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const initAuth = async () => {
       try {
         const {
-          data: { session: initialSession },
+          data: {
+            session: initialSession,
+          },
           error,
         } = await supabase.auth.getSession();
 
@@ -215,15 +272,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!mounted) return;
+    } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => {
+        if (!mounted) return;
 
-      void applySession(nextSession);
-    });
+        void applySession(nextSession);
+      },
+    );
 
     return () => {
       mounted = false;
       requestId += 1;
+
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
@@ -234,7 +294,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         7 -
           Math.floor(
             (Date.now() -
-              new Date(profile.trial_start_date).getTime()) /
+              new Date(
+                profile.trial_start_date,
+              ).getTime()) /
               (1000 * 60 * 60 * 24),
           ),
       )
@@ -252,12 +314,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const hasCourseAccess = useCallback(
     (courseId: string): boolean => {
       if (!profile) return false;
+
       if (isAdmin) return true;
+
       if (profile.is_premium) return true;
 
       if (
         purchases.some(
-          (purchase) => purchase.course_id === courseId,
+          (purchase) =>
+            purchase.course_id === courseId,
         )
       ) {
         return true;
@@ -267,24 +332,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return true;
       }
 
-      if (trialActive && profile.trial_course_id === courseId) {
+      if (
+        trialActive &&
+        profile.trial_course_id === courseId
+      ) {
         return true;
       }
 
       return false;
     },
-    [profile, isAdmin, purchases, freeCourseIds, trialActive],
+    [
+      profile,
+      isAdmin,
+      purchases,
+      freeCourseIds,
+      trialActive,
+    ],
   );
 
   const canAccessLesson = useCallback(
-    (courseId: string, lessonIndex: number): boolean => {
+    (
+      courseId: string,
+      lessonIndex: number,
+    ): boolean => {
       if (!profile) return false;
+
       if (isAdmin) return true;
+
       if (profile.is_premium) return true;
 
       if (
         purchases.some(
-          (purchase) => purchase.course_id === courseId,
+          (purchase) =>
+            purchase.course_id === courseId,
         )
       ) {
         return true;
@@ -305,10 +385,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       return false;
     },
-    [profile, isAdmin, purchases, freeCourseIds, trialActive],
+    [
+      profile,
+      isAdmin,
+      purchases,
+      freeCourseIds,
+      trialActive,
+    ],
   );
 
-  const selectTrialCourse = async (courseId: string) => {
+  const selectTrialCourse = async (
+    courseId: string,
+  ) => {
     if (!user || !profile) return;
 
     if (
@@ -318,7 +406,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const { data: courseData, error: courseError } = await supabase
+    const {
+      data: courseData,
+      error: courseError,
+    } = await supabase
       .from("courses")
       .select("price")
       .eq("id", courseId)
@@ -330,7 +421,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { error } = await supabase
       .from("profiles")
-      .update({ trial_course_id: courseId })
+      .update({
+        trial_course_id: courseId,
+      })
       .eq("user_id", user.id);
 
     if (error) throw error;
@@ -345,6 +438,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
 
     setUser(null);
+
     setSession(null);
 
     resetUserScopedState(
@@ -383,7 +477,9 @@ export const useAuth = () => {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
+    throw new Error(
+      "useAuth must be used within AuthProvider",
+    );
   }
 
   return context;
