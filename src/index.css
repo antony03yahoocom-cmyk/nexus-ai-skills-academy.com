@@ -64,6 +64,19 @@
     @apply bg-background text-foreground font-body antialiased;
   }
 
+  html {
+    /* ✅ FIX: Prevent layout shifts on iOS Safari when address bar collapses/expands */
+    height: 100%;
+    height: 100dvh;
+  }
+
+  body {
+    /* ✅ FIX: Ensure body fills viewport without overflowing */
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-display;
   }
@@ -89,6 +102,48 @@
 
   .glow-accent {
     box-shadow: var(--shadow-glow-accent);
+  }
+
+  /* ✅ FIX: Scroll container — properly handle overflow without creating gaps */
+  .scroll-container {
+    @apply overflow-y-auto overflow-x-hidden;
+    -webkit-overflow-scrolling: touch; /* Smooth momentum scrolling on iOS */
+    overscroll-behavior: contain; /* Prevent rubber-band bounce on iOS */
+  }
+
+  /* ✅ FIX: Sticky header — prevent gap when scrolling on iOS Safari */
+  .sticky-header {
+    @apply sticky top-0 z-40;
+    position: sticky;
+    top: 0;
+    /* Ensure no gap between header and content */
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  /* ✅ FIX: Fixed header — prevent jitter and gaps on mobile */
+  .fixed-header {
+    @apply fixed top-0 left-0 right-0 z-50;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    /* Prevent flicker on iOS Safari address bar change */
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  /* ✅ FIX: Main content area offset for fixed headers */
+  .main-with-fixed-header {
+    @apply pt-14 lg:pt-0;
+    /* Use safe-area-inset for notches/home indicators */
+    padding-top: max(3.5rem, env(safe-area-inset-top));
+  }
+
+  /* ✅ FIX: Bottom spacing for fixed bottom bars */
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
 
