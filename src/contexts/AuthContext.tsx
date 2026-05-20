@@ -6,7 +6,6 @@ import {
   useState,
   ReactNode,
 } from "react";
-
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -48,18 +47,26 @@ interface AuthContextType {
     courseId: string,
     lessonIndex: number,
   ) => boolean;
-  selectTrialCourse: (courseId: string) => Promise<void>;
+  selectTrialCourse: (
+    courseId: string,
+  ) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(
-  undefined,
-);
+const AuthContext = createContext<
+  AuthContextType | undefined
+>(undefined);
 
 const resetUserScopedState = (
-  setProfile: (profile: Profile | null) => void,
+  setProfile: (
+    profile: Profile | null,
+  ) => void,
   setIsAdmin: (isAdmin: boolean) => void,
-  setPurchases: (purchases: CoursePurchase[]) => void,
-  setFreeCourseIds: (courseIds: string[]) => void,
+  setPurchases: (
+    purchases: CoursePurchase[],
+  ) => void,
+  setFreeCourseIds: (
+    courseIds: string[],
+  ) => void,
 ) => {
   setProfile(null);
   setIsAdmin(false);
@@ -72,129 +79,154 @@ export const AuthProvider = ({
 }: {
   children: ReactNode;
 }) => {
-  const [user, setUser] = useState<User | null>(null);
-
-  const [session, setSession] = useState<Session | null>(null);
-
-  const [profile, setProfile] = useState<Profile | null>(
+  const [user, setUser] = useState<User | null>(
     null,
   );
 
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [session, setSession] =
+    useState<Session | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] =
+    useState<Profile | null>(null);
 
-  const [purchases, setPurchases] = useState<
-    CoursePurchase[]
-  >([]);
+  const [isAdmin, setIsAdmin] =
+    useState(false);
 
-  const [freeCourseIds, setFreeCourseIds] = useState<
-    string[]
-  >([]);
+  const [loading, setLoading] =
+    useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    try {
-      const {
-        data: profileData,
-        error: profileError,
-      } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
+  const [purchases, setPurchases] =
+    useState<CoursePurchase[]>([]);
 
-      if (profileError) throw profileError;
+  const [freeCourseIds, setFreeCourseIds] =
+    useState<string[]>([]);
 
-      if (profileData) {
-        setProfile({
-          id: profileData.id,
-          user_id: profileData.user_id,
-          full_name: profileData.full_name,
-          avatar_url: profileData.avatar_url ?? null,
-          subscription_status:
-            profileData.subscription_status,
-          trial_start_date:
-            profileData.trial_start_date,
-          trial_course_id:
-            profileData.trial_course_id ?? null,
-          is_premium:
-            profileData.is_premium ?? false,
-        });
-      } else {
-        setProfile(null);
-      }
+  const fetchProfile = useCallback(
+    async (userId: string) => {
+      try {
+        const {
+          data: profileData,
+          error: profileError,
+        } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
 
-      const {
-        data: roles,
-        error: rolesError,
-      } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
+        if (profileError)
+          throw profileError;
 
-      if (rolesError) throw rolesError;
+        if (profileData) {
+          setProfile({
+            id: profileData.id,
+            user_id: profileData.user_id,
+            full_name:
+              profileData.full_name,
+            avatar_url:
+              profileData.avatar_url ??
+              null,
+            subscription_status:
+              profileData.subscription_status,
+            trial_start_date:
+              profileData.trial_start_date,
+            trial_course_id:
+              profileData.trial_course_id ??
+              null,
+            is_premium:
+              profileData.is_premium ??
+              false,
+          });
+        } else {
+          setProfile(null);
+        }
 
-      setIsAdmin(
-        roles?.some(
-          (roleRow) => roleRow.role === "admin",
-        ) ?? false,
-      );
+        const {
+          data: roles,
+          error: rolesError,
+        } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId);
 
-      const {
-        data: purchaseData,
-        error: purchaseError,
-      } = await supabase
-        .from("course_purchases")
-        .select("course_id, status")
-        .eq("user_id", userId)
-        .eq("status", "paid");
+        if (rolesError) throw rolesError;
 
-      if (purchaseError) throw purchaseError;
-
-      setPurchases(purchaseData ?? []);
-
-      const {
-        data: enrolledCourses,
-        error: enrolledError,
-      } = await supabase
-        .from("enrollments")
-        .select("course_id, courses!inner(price)")
-        .eq("user_id", userId)
-        .returns<FreeCourseEnrollment[]>();
-
-      if (enrolledError) throw enrolledError;
-
-      const freeIds = (enrolledCourses ?? [])
-        .filter(
-          (enrollment) =>
-            enrollment.courses?.price === 0,
-        )
-        .map(
-          (enrollment) => enrollment.course_id,
+        setIsAdmin(
+          roles?.some(
+            (roleRow) =>
+              roleRow.role === "admin",
+          ) ?? false,
         );
 
-      setFreeCourseIds(freeIds);
-    } catch (err) {
-      console.error("fetchProfile error:", err);
+        const {
+          data: purchaseData,
+          error: purchaseError,
+        } = await supabase
+          .from("course_purchases")
+          .select("course_id, status")
+          .eq("user_id", userId)
+          .eq("status", "paid");
 
-      resetUserScopedState(
-        setProfile,
-        setIsAdmin,
-        setPurchases,
-        setFreeCourseIds,
-      );
-    }
-  }, []);
+        if (purchaseError)
+          throw purchaseError;
 
-  const refreshProfile = useCallback(async () => {
-    if (user) {
-      await fetchProfile(user.id);
-    }
-  }, [fetchProfile, user]);
+        setPurchases(purchaseData ?? []);
+
+        const {
+          data: enrolledCourses,
+          error: enrolledError,
+        } = await supabase
+          .from("enrollments")
+          .select(
+            "course_id, courses!inner(price)",
+          )
+          .eq("user_id", userId)
+          .returns<FreeCourseEnrollment[]>();
+
+        if (enrolledError)
+          throw enrolledError;
+
+        const freeIds = (
+          enrolledCourses ?? []
+        )
+          .filter(
+            (enrollment) =>
+              enrollment.courses
+                ?.price === 0,
+          )
+          .map(
+            (enrollment) =>
+              enrollment.course_id,
+          );
+
+        setFreeCourseIds(freeIds);
+      } catch (err) {
+        console.error(
+          "fetchProfile error:",
+          err,
+        );
+
+        resetUserScopedState(
+          setProfile,
+          setIsAdmin,
+          setPurchases,
+          setFreeCourseIds,
+        );
+      }
+    },
+    [],
+  );
+
+  const refreshProfile = useCallback(
+    async () => {
+      if (user) {
+        await fetchProfile(user.id);
+      }
+    },
+    [fetchProfile, user],
+  );
 
   useEffect(() => {
     let mounted = true;
-
     let requestId = 0;
 
     const applySession = async (
@@ -253,7 +285,10 @@ export const AuthProvider = ({
 
         await applySession(initialSession);
       } catch (err) {
-        console.error("initAuth error:", err);
+        console.error(
+          "initAuth error:",
+          err,
+        );
 
         if (mounted) {
           resetUserScopedState(
@@ -297,7 +332,10 @@ export const AuthProvider = ({
               new Date(
                 profile.trial_start_date,
               ).getTime()) /
-              (1000 * 60 * 60 * 24),
+              (1000 *
+                60 *
+                60 *
+                24),
           ),
       )
     : 0;
@@ -306,7 +344,8 @@ export const AuthProvider = ({
 
   const hasAccess = profile
     ? profile.is_premium ||
-      profile.subscription_status === "paid" ||
+      profile.subscription_status ===
+        "paid" ||
       purchases.length > 0 ||
       trialActive
     : false;
@@ -317,24 +356,29 @@ export const AuthProvider = ({
 
       if (isAdmin) return true;
 
-      if (profile.is_premium) return true;
+      if (profile.is_premium)
+        return true;
 
       if (
         purchases.some(
           (purchase) =>
-            purchase.course_id === courseId,
+            purchase.course_id ===
+            courseId,
         )
       ) {
         return true;
       }
 
-      if (freeCourseIds.includes(courseId)) {
+      if (
+        freeCourseIds.includes(courseId)
+      ) {
         return true;
       }
 
       if (
         trialActive &&
-        profile.trial_course_id === courseId
+        profile.trial_course_id ===
+          courseId
       ) {
         return true;
       }
@@ -359,25 +403,30 @@ export const AuthProvider = ({
 
       if (isAdmin) return true;
 
-      if (profile.is_premium) return true;
+      if (profile.is_premium)
+        return true;
 
       if (
         purchases.some(
           (purchase) =>
-            purchase.course_id === courseId,
+            purchase.course_id ===
+            courseId,
         )
       ) {
         return true;
       }
 
-      if (freeCourseIds.includes(courseId)) {
+      if (
+        freeCourseIds.includes(courseId)
+      ) {
         return true;
       }
 
       // Trial users only access first 5 lessons
       if (
         trialActive &&
-        profile.trial_course_id === courseId &&
+        profile.trial_course_id ===
+          courseId &&
         lessonIndex < 5
       ) {
         return true;
@@ -401,7 +450,8 @@ export const AuthProvider = ({
 
     if (
       profile.trial_course_id &&
-      profile.trial_course_id !== courseId
+      profile.trial_course_id !==
+        courseId
     ) {
       return;
     }
@@ -415,9 +465,11 @@ export const AuthProvider = ({
       .eq("id", courseId)
       .single();
 
-    if (courseError) throw courseError;
+    if (courseError)
+      throw courseError;
 
-    if (courseData?.price === 0) return;
+    if (courseData?.price === 0)
+      return;
 
     const { error } = await supabase
       .from("profiles")
@@ -474,7 +526,8 @@ export const AuthProvider = ({
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context =
+    useContext(AuthContext);
 
   if (!context) {
     throw new Error(

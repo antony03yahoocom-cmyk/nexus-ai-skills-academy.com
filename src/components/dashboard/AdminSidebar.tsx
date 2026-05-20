@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+
 import {
   LayoutDashboard,
   BookOpen,
   Users,
- Settings,
+  Settings,
   LogOut,
   Cpu,
   Megaphone,
@@ -24,10 +25,13 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
+
 import { useQuery } from "@tanstack/react-query";
+
 import { supabase } from "@/integrations/supabase/client";
 
-const WHATSAPP_URL = "https://chat.whatsapp.com/GdHfJutCYlX7xitn3gC71o";
+const WHATSAPP_URL =
+  "https://chat.whatsapp.com/GdHfJutCYlX7xitn3gC71o";
 
 const WaIcon = () => (
   <svg
@@ -39,107 +43,191 @@ const WaIcon = () => (
   </svg>
 );
 
-// Shared nav links + badge data — used by both desktop sidebar and mobile drawer
+// Shared nav links + badge data
 const useAdminNav = () => {
   const { user } = useAuth();
 
-  const { data: unreadMessages = 0 } = useQuery({
-    queryKey: ["admin-unread-messages", user?.id],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("private_messages")
-        .select("*", { count: "exact", head: true })
-        .eq("receiver_id", user!.id)
-        .eq("is_read", false);
+  const { data: unreadMessages = 0 } =
+    useQuery({
+      queryKey: [
+        "admin-unread-messages",
+        user?.id,
+      ],
 
-      return count ?? 0;
-    },
-    enabled: !!user,
-    refetchInterval: 30000,
-  });
+      queryFn: async () => {
+        const { count } = await supabase
+          .from("private_messages")
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .eq("receiver_id", user!.id)
+          .eq("is_read", false);
 
-  const { data: unreadGroups = 0 } = useQuery({
-    queryKey: ["admin-unread-groups", user?.id],
-    queryFn: async () => {
-      const since = new Date(
-        Date.now() - 24 * 60 * 60 * 1000
-      ).toISOString();
+        return count ?? 0;
+      },
 
-      const { count } = await supabase
-        .from("group_messages")
-        .select("*", { count: "exact", head: true })
-        .neq("user_id", user!.id)
-        .gte("created_at", since);
+      enabled: !!user,
 
-      return count ?? 0;
-    },
-    enabled: !!user,
-    refetchInterval: 30000,
-  });
+      refetchInterval: 30000,
+    });
 
-  const { data: unreadFeedback = 0 } = useQuery({
-    queryKey: ["admin-unread-feedback"],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("site_feedback" as any)
-        .select("*", { count: "exact", head: true })
-        .eq("is_read", false);
+  const { data: unreadGroups = 0 } =
+    useQuery({
+      queryKey: [
+        "admin-unread-groups",
+        user?.id,
+      ],
 
-      return count ?? 0;
-    },
-    refetchInterval: 60000,
-  });
+      queryFn: async () => {
+        const since = new Date(
+          Date.now() -
+            24 * 60 * 60 * 1000,
+        ).toISOString();
+
+        const { count } = await supabase
+          .from("group_messages")
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .neq("user_id", user!.id)
+          .gte("created_at", since);
+
+        return count ?? 0;
+      },
+
+      enabled: !!user,
+
+      refetchInterval: 30000,
+    });
+
+  const { data: unreadFeedback = 0 } =
+    useQuery({
+      queryKey: [
+        "admin-unread-feedback",
+      ],
+
+      queryFn: async () => {
+        const { count } = await supabase
+          .from("site_feedback" as any)
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .eq("is_read", false);
+
+        return count ?? 0;
+      },
+
+      refetchInterval: 60000,
+    });
 
   const links = [
-    { to: "/admin", icon: LayoutDashboard, label: "Overview" },
-    { to: "/admin/courses", icon: BookOpen, label: "Manage Courses" },
-    { to: "/admin/students", icon: Users, label: "Students" },
-    { to: "/admin/enrollments", icon: GraduationCap, label: "Enrollments" },
+    {
+      to: "/admin",
+      icon: LayoutDashboard,
+      label: "Overview",
+    },
+
+    {
+      to: "/admin/courses",
+      icon: BookOpen,
+      label: "Manage Courses",
+    },
+
+    {
+      to: "/admin/students",
+      icon: Users,
+      label: "Students",
+    },
+
+    {
+      to: "/admin/enrollments",
+      icon: GraduationCap,
+      label: "Enrollments",
+    },
+
     {
       to: "/admin/subscriptions",
       icon: CreditCard,
       label: "Subscriptions",
     },
-    { to: "/admin/submissions", icon: FileText, label: "Submissions" },
-    { to: "/admin/projects", icon: FolderOpen, label: "Projects" },
-    { to: "/admin/certificates", icon: Award, label: "Certificates" },
+
+    {
+      to: "/admin/submissions",
+      icon: FileText,
+      label: "Submissions",
+    },
+
+    {
+      to: "/admin/projects",
+      icon: FolderOpen,
+      label: "Projects",
+    },
+
+    {
+      to: "/admin/certificates",
+      icon: Award,
+      label: "Certificates",
+    },
+
     {
       to: "/admin/announcements",
       icon: Megaphone,
       label: "Announcements",
     },
-    { to: "/admin/testimonials", icon: Star, label: "Testimonials" },
-    { to: "/admin/blog", icon: Newspaper, label: "Blog" },
+
+    {
+      to: "/admin/testimonials",
+      icon: Star,
+      label: "Testimonials",
+    },
+
+    {
+      to: "/admin/blog",
+      icon: Newspaper,
+      label: "Blog",
+    },
+
     {
       to: "/admin/feedback",
       icon: MessageSquare,
       label: "Feedback",
       badge: unreadFeedback,
     },
+
     {
       to: "/admin/deletion-feedback",
       icon: UserX,
       label: "Deletion Feedback",
     },
+
     {
       to: "/admin/groups",
       icon: MessageCircle,
       label: "Groups",
       badge: unreadGroups,
     },
+
     {
       to: "/admin/messages",
       icon: Mail,
       label: "Messages",
       badge: unreadMessages,
     },
-    { to: "/admin/settings", icon: Settings, label: "Settings" },
+
+    {
+      to: "/admin/settings",
+      icon: Settings,
+      label: "Settings",
+    },
   ];
 
   return links;
 };
 
-// Single link row — used in both sidebar and drawer
+// Shared link component
 const NavLink = ({
   link,
   isActive,
@@ -163,11 +251,16 @@ const NavLink = ({
     >
       <Icon className="w-4 h-4 shrink-0" />
 
-      <span className="flex-1">{link.label}</span>
+      <span className="flex-1">
+        {link.label}
+      </span>
 
-      {link.badge && link.badge > 0 ? (
+      {link.badge &&
+      link.badge > 0 ? (
         <span className="h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
-          {link.badge > 9 ? "9+" : link.badge}
+          {link.badge > 9
+            ? "9+"
+            : link.badge}
         </span>
       ) : null}
     </Link>
@@ -176,16 +269,22 @@ const NavLink = ({
 
 const AdminSidebar = () => {
   const location = useLocation();
+
   const { signOut } = useAuth();
 
   const adminLinks = useAdminNav();
 
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] =
+    useState(false);
 
   const brandBar = (
     <div className="p-5 border-b border-sidebar-border shrink-0">
-      <Link to="/" className="flex items-center gap-2">
+      <Link
+        to="/"
+        className="flex items-center gap-2"
+      >
         <Cpu className="w-6 h-6 text-primary" />
+
         <span className="font-display font-bold">
           NEXUS AI ACADEMY
         </span>
@@ -197,14 +296,19 @@ const AdminSidebar = () => {
     </div>
   );
 
-  const navContent = (onLinkClick?: () => void) => (
+  const navContent = (
+    onLinkClick?: () => void,
+  ) => (
     <>
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {adminLinks.map((link) => (
           <NavLink
             key={link.to}
             link={link}
-            isActive={location.pathname === link.to}
+            isActive={
+              location.pathname ===
+              link.to
+            }
             onClick={onLinkClick}
           />
         ))}
@@ -220,7 +324,10 @@ const AdminSidebar = () => {
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#25D366] hover:bg-[#25D366]/10 transition-colors w-full"
         >
           <WaIcon />
-          <span className="flex-1">WhatsApp Community</span>
+
+          <span className="flex-1">
+            WhatsApp Community
+          </span>
         </a>
       </div>
 
@@ -229,11 +336,13 @@ const AdminSidebar = () => {
         <button
           onClick={() => {
             signOut();
+
             onLinkClick?.();
           }}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors w-full"
         >
           <LogOut className="w-4 h-4" />
+
           Logout
         </button>
       </div>
@@ -245,20 +354,27 @@ const AdminSidebar = () => {
       {/* Desktop sidebar */}
       <aside className="w-64 h-screen sticky top-0 bg-sidebar border-r border-sidebar-border flex-col shrink-0 hidden lg:flex">
         {brandBar}
+
         {navContent()}
       </aside>
 
       {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border flex items-center justify-between px-4 h-14 shadow-sm">
-        <Link to="/" className="flex items-center gap-2">
+        <Link
+          to="/"
+          className="flex items-center gap-2"
+        >
           <Cpu className="w-5 h-5 text-primary" />
+
           <span className="font-display font-bold text-sm">
             NEXUS ADMIN
           </span>
         </Link>
 
         <button
-          onClick={() => setMobileOpen(true)}
+          onClick={() =>
+            setMobileOpen(true)
+          }
           aria-label="Open menu"
           className="p-2 rounded-lg hover:bg-sidebar-accent/50 text-sidebar-foreground"
         >
@@ -272,7 +388,9 @@ const AdminSidebar = () => {
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
+            onClick={() =>
+              setMobileOpen(false)
+            }
           />
 
           {/* Drawer panel */}
@@ -280,13 +398,16 @@ const AdminSidebar = () => {
             <div className="flex items-center justify-between p-4 border-b border-sidebar-border shrink-0">
               <div className="flex items-center gap-2">
                 <Cpu className="w-5 h-5 text-primary" />
+
                 <span className="font-display font-bold text-sm">
                   NEXUS AI ACADEMY
                 </span>
               </div>
 
               <button
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(false)
+                }
                 className="p-1.5 rounded-lg hover:bg-sidebar-accent/50 text-sidebar-foreground"
                 aria-label="Close menu"
               >
@@ -298,7 +419,9 @@ const AdminSidebar = () => {
               Admin Panel
             </span>
 
-            {navContent(() => setMobileOpen(false))}
+            {navContent(() =>
+              setMobileOpen(false),
+            )}
           </div>
         </div>
       )}

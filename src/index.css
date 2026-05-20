@@ -146,3 +146,14 @@
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
+
+
+@layer base {
+  html, body, #root {
+    min-height: 100%;
+  }
+
+  html, body {
+    overflow-x: hidden;
+  }
+}
