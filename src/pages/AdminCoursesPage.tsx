@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Edit, ChevronDown, ChevronRight, Save, Paperclip,
-  Video, FileText, Image as ImageIcon, Link as LinkIcon, BookOpen, Upload, X, Check,
+  Video, FileText, Image as ImageIcon, Link as LinkIcon, BookOpen, Upload, X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -68,8 +68,6 @@ const AdminCoursesPage = () => {
   });
   const [moduleForm, setModuleForm] = useState({ title: "", course_id: "" });
   const [showModuleForm, setShowModuleForm] = useState<string | null>(null);
-  const [editingModule, setEditingModule] = useState<any>(null);
-  const [moduleEditTitle, setModuleEditTitle] = useState("");
   const [lessonForm, setLessonForm] = useState({ title: "", content_type: "video", content_text: "", content_url: "", module_id: "", week_number: "", day_number: "" });
   const [showLessonForm, setShowLessonForm] = useState<string | null>(null);
   const [editingLesson, setEditingLesson] = useState<any>(null);
@@ -167,15 +165,6 @@ const AdminCoursesPage = () => {
       if (error) throw error;
     },
     onSuccess: () => { invalidateAll(); toast.success("Module created!"); setShowModuleForm(null); setModuleForm({ title: "", course_id: "" }); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const updateModule = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("modules").update({ title: moduleEditTitle }).eq("id", editingModule.id);
-      if (error) throw error;
-    },
-    onSuccess: () => { invalidateAll(); toast.success("Module updated!"); setEditingModule(null); setModuleEditTitle(""); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -344,11 +333,6 @@ const AdminCoursesPage = () => {
       day_number: lesson.day_number ? String(lesson.day_number) : "",
     });
     setEditFileName("");
-  };
-
-  const startEditModule = (module: any) => {
-    setEditingModule(module);
-    setModuleEditTitle(module.title);
   };
 
   const getTypeInfo = (val: string) => CONTENT_TYPES.find((t) => t.value === val) || CONTENT_TYPES[0];
@@ -760,67 +744,18 @@ const AdminCoursesPage = () => {
                       {courseModules.map((mod: any) => {
                         const modLessons = lessons.filter((l: any) => l.module_id === mod.id);
                         const isModExpanded = expandedModule === mod.id;
-                        const isEditingThisModule = editingModule?.id === mod.id;
 
                         return (
                           <div key={mod.id} className="bg-secondary/50 rounded-lg overflow-hidden">
-                            <div className="p-3 flex items-center justify-between cursor-pointer" onClick={() => !isEditingThisModule && setExpandedModule(isModExpanded ? null : mod.id)}>
-                              {isEditingThisModule ? (
-                                // ✅ Module edit mode
-                                <div className="flex items-center gap-2 flex-1">
-                                  <Input
-                                    autoFocus
-                                    value={moduleEditTitle}
-                                    onChange={(e) => setModuleEditTitle(e.target.value)}
-                                    className="bg-background border-border text-sm flex-1"
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                  <Button
-                                    size="sm"
-                                    variant="hero"
-                                    className="h-7"
-                                    onClick={(e) => { e.stopPropagation(); updateModule.mutate(); }}
-                                    disabled={!moduleEditTitle}
-                                  >
-                                    <Check className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-7"
-                                    onClick={(e) => { e.stopPropagation(); setEditingModule(null); }}
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                // ✅ Module display mode
-                                <>
-                                  <div className="flex items-center gap-2">
-                                    {isModExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                                    <span className="text-sm font-medium">{mod.title}</span>
-                                    <span className="text-xs text-muted-foreground">({modLessons.length} lesson{modLessons.length !== 1 ? "s" : ""})</span>
-                                  </div>
-                                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-7 w-7"
-                                      onClick={() => startEditModule(mod)}
-                                    >
-                                      <Edit className="w-3 h-3" />
-                                    </Button>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-7 w-7"
-                                      onClick={() => deleteModule.mutate(mod.id)}
-                                    >
-                                      <Trash2 className="w-3 h-3 text-destructive" />
-                                    </Button>
-                                  </div>
-                                </>
-                              )}
+                            <div className="p-3 flex items-center justify-between cursor-pointer" onClick={() => setExpandedModule(isModExpanded ? null : mod.id)}>
+                              <div className="flex items-center gap-2">
+                                {isModExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                <span className="text-sm font-medium">{mod.title}</span>
+                                <span className="text-xs text-muted-foreground">({modLessons.length} lesson{modLessons.length !== 1 ? "s" : ""})</span>
+                              </div>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); deleteModule.mutate(mod.id); }}>
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </Button>
                             </div>
 
                             {isModExpanded && (
@@ -876,54 +811,10 @@ const AdminCoursesPage = () => {
                                       {showAssignmentForm === lesson.id ? (
                                         <div className="pl-4 space-y-2 pt-2 border-t border-border/30">
                                           <Input placeholder="Assignment title *" value={assignForm.title} onChange={(e) => setAssignForm({ ...assignForm, title: e.target.value, lesson_id: lesson.id })} className="bg-secondary border-border text-xs h-8" />
-                                          
-                                          {/* ✅ IMPROVED: Objective now uses Textarea */}
-                                          <div className="space-y-1">
-                                            <Label className="text-xs">Objective</Label>
-                                            <Textarea
-                                              placeholder="What should students learn from this assignment?"
-                                              value={assignForm.objective}
-                                              onChange={(e) => setAssignForm({ ...assignForm, objective: e.target.value })}
-                                              className="bg-secondary border-border text-xs"
-                                              rows={2}
-                                            />
-                                          </div>
-
-                                          {/* ✅ IMPROVED: Task now uses Textarea */}
-                                          <div className="space-y-1">
-                                            <Label className="text-xs">Task</Label>
-                                            <Textarea
-                                              placeholder="Describe the task students need to complete..."
-                                              value={assignForm.task}
-                                              onChange={(e) => setAssignForm({ ...assignForm, task: e.target.value })}
-                                              className="bg-secondary border-border text-xs"
-                                              rows={2}
-                                            />
-                                          </div>
-
-                                          {/* ✅ IMPROVED: Deliverable now uses Textarea */}
-                                          <div className="space-y-1">
-                                            <Label className="text-xs">Deliverable</Label>
-                                            <Textarea
-                                              placeholder="What should students submit as proof of completion?"
-                                              value={assignForm.deliverable}
-                                              onChange={(e) => setAssignForm({ ...assignForm, deliverable: e.target.value })}
-                                              className="bg-secondary border-border text-xs"
-                                              rows={2}
-                                            />
-                                          </div>
-
-                                          <div className="space-y-1">
-                                            <Label className="text-xs">Description</Label>
-                                            <Textarea
-                                              placeholder="Additional context or notes…"
-                                              value={assignForm.description}
-                                              onChange={(e) => setAssignForm({ ...assignForm, description: e.target.value })}
-                                              className="bg-secondary border-border text-xs"
-                                              rows={2}
-                                            />
-                                          </div>
-
+                                          <Input placeholder="Objective" value={assignForm.objective} onChange={(e) => setAssignForm({ ...assignForm, objective: e.target.value })} className="bg-secondary border-border text-xs h-8" />
+                                          <Input placeholder="Task" value={assignForm.task} onChange={(e) => setAssignForm({ ...assignForm, task: e.target.value })} className="bg-secondary border-border text-xs h-8" />
+                                          <Input placeholder="Deliverable" value={assignForm.deliverable} onChange={(e) => setAssignForm({ ...assignForm, deliverable: e.target.value })} className="bg-secondary border-border text-xs h-8" />
+                                          <Textarea placeholder="Description" value={assignForm.description} onChange={(e) => setAssignForm({ ...assignForm, description: e.target.value })} className="bg-secondary border-border text-xs" rows={2} />
                                           <div className="space-y-2">
                                             <input
                                               type="file"
