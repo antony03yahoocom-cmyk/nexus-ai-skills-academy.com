@@ -1,539 +1,521 @@
+// GroupChatPage.tsx
+
 import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
   useState,
-  ReactNode,
+  useEffect,
+  useRef,
 } from "react";
+
+import {
+  useParams,
+  useNavigate,
+  Link,
+} from "react-router-dom";
+
+import { useAuth } from "@/contexts/AuthContext";
+
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+
 import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
 
-interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  subscription_status: string;
-  trial_start_date: string;
-  trial_course_id: string | null;
-  is_premium: boolean;
-}
+import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 
-interface CoursePurchase {
-  course_id: string;
-  status: string;
-}
+import { Button } from "@/components/ui/button";
 
-interface FreeCourseEnrollment {
-  course_id: string;
-  courses: { price: number | null } | null;
-}
+import { Textarea } from "@/components/ui/textarea";
 
-interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  profile: Profile | null;
-  isAdmin: boolean;
-  loading: boolean;
-  hasAccess: boolean;
-  trialDaysLeft: number;
-  trialActive: boolean;
-  purchases: CoursePurchase[];
-  signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
-  hasCourseAccess: (courseId: string) => boolean;
-  canAccessLesson: (
-    courseId: string,
-    lessonIndex: number,
-  ) => boolean;
-  selectTrialCourse: (
-    courseId: string,
-  ) => Promise<void>;
-}
+import { Badge } from "@/components/ui/badge";
 
-const AuthContext = createContext<
-  AuthContextType | undefined
->(undefined);
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-const resetUserScopedState = (
-  setProfile: (
-    profile: Profile | null,
-  ) => void,
-  setIsAdmin: (isAdmin: boolean) => void,
-  setPurchases: (
-    purchases: CoursePurchase[],
-  ) => void,
-  setFreeCourseIds: (
-    courseIds: string[],
-  ) => void,
-) => {
-  setProfile(null);
-  setIsAdmin(false);
-  setPurchases([]);
-  setFreeCourseIds([]);
-};
+import {
+  ArrowLeft,
+  Send,
+  Users,
+  Crown,
+  Trash2,
+  UserMinus,
+  Paperclip,
+  X,
+  FileText,
+  Image as ImageIcon,
+} from "lucide-react";
 
-export const AuthProvider = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
-  const [user, setUser] = useState<User | null>(
-    null,
-  );
+import { toast } from "sonner";
 
-  const [session, setSession] =
-    useState<Session | null>(null);
+const GroupChatPage = () => {
+  const { groupId } = useParams<{
+    groupId: string;
+  }>();
 
-  const [profile, setProfile] =
-    useState<Profile | null>(null);
+  const { user } = useAuth();
 
-  const [isAdmin, setIsAdmin] =
+  const navigate = useNavigate();
+
+  const queryClient = useQueryClient();
+
+  const [message, setMessage] =
+    useState("");
+
+  const [membersOpen, setMembersOpen] =
     useState(false);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(null);
 
-  const [purchases, setPurchases] =
-    useState<CoursePurchase[]>([]);
+  const [uploading, setUploading] =
+    useState(false);
 
-  const [freeCourseIds, setFreeCourseIds] =
-    useState<string[]>([]);
+  const fileInputRef =
+    useRef<HTMLInputElement>(null);
 
-  const fetchProfile = useCallback(
-    async (userId: string) => {
-      try {
-        const {
-          data: profileData,
-          error: profileError,
-        } = await supabase
-          .from("profiles")
+  const scrollContainerRef =
+    useRef<HTMLDivElement>(null);
+
+  const bottomRef =
+    useRef<HTMLDivElement>(null);
+
+  const { data: group } = useQuery({
+    queryKey: ["group-detail", groupId],
+
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("discussion_groups")
+        .select("*")
+        .eq("id", groupId!)
+        .single();
+
+      return data;
+    },
+
+    enabled: !!groupId,
+  });
+
+  const { data: members = [] } =
+    useQuery({
+      queryKey: [
+        "group-members",
+        groupId,
+      ],
+
+      queryFn: async () => {
+        const { data } = await supabase
+          .from("group_members")
           .select("*")
-          .eq("user_id", userId)
-          .maybeSingle();
+          .eq("group_id", groupId!);
 
-        if (profileError)
-          throw profileError;
+        if (!data) return [];
 
-        if (profileData) {
-          setProfile({
-            id: profileData.id,
-            user_id: profileData.user_id,
+        const userIds = data.map(
+          (member: any) =>
+            member.user_id,
+        );
+
+        const { data: profiles } =
+          await supabase
+            .from("profiles")
+            .select(
+              "user_id, full_name",
+            )
+            .in("user_id", userIds);
+
+        const nameMap: Record<
+          string,
+          string
+        > = {};
+
+        (profiles ?? []).forEach(
+          (profile: any) => {
+            nameMap[
+              profile.user_id
+            ] =
+              profile.full_name ||
+              "Student";
+          },
+        );
+
+        return data.map(
+          (member: any) => ({
+            ...member,
+
             full_name:
-              profileData.full_name,
-            avatar_url:
-              profileData.avatar_url ??
-              null,
-            subscription_status:
-              profileData.subscription_status,
-            trial_start_date:
-              profileData.trial_start_date,
-            trial_course_id:
-              profileData.trial_course_id ??
-              null,
-            is_premium:
-              profileData.is_premium ??
-              false,
+              nameMap[
+                member.user_id
+              ] || "Student",
+          }),
+        );
+      },
+
+      enabled: !!groupId,
+    });
+
+  const { data: messages = [] } =
+    useQuery({
+      queryKey: [
+        "group-messages",
+        groupId,
+      ],
+
+      queryFn: async () => {
+        const { data } = await supabase
+          .from("group_messages")
+          .select("*")
+          .eq("group_id", groupId!)
+          .order("created_at", {
+            ascending: true,
           });
-        } else {
-          setProfile(null);
-        }
 
-        const {
-          data: roles,
-          error: rolesError,
-        } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId);
+        if (!data) return [];
 
-        if (rolesError) throw rolesError;
+        const userIds = [
+          ...new Set(
+            data.map(
+              (message: any) =>
+                message.user_id,
+            ),
+          ),
+        ];
 
-        setIsAdmin(
-          roles?.some(
-            (roleRow) =>
-              roleRow.role === "admin",
-          ) ?? false,
+        const { data: profiles } =
+          await supabase
+            .from("profiles")
+            .select(
+              "user_id, full_name",
+            )
+            .in("user_id", userIds);
+
+        const nameMap: Record<
+          string,
+          string
+        > = {};
+
+        (profiles ?? []).forEach(
+          (profile: any) => {
+            nameMap[
+              profile.user_id
+            ] =
+              profile.full_name ||
+              "Student";
+          },
         );
 
-        const {
-          data: purchaseData,
-          error: purchaseError,
-        } = await supabase
-          .from("course_purchases")
-          .select("course_id, status")
-          .eq("user_id", userId)
-          .eq("status", "paid");
+        return data.map(
+          (message: any) => ({
+            ...message,
 
-        if (purchaseError)
-          throw purchaseError;
-
-        setPurchases(purchaseData ?? []);
-
-        const {
-          data: enrolledCourses,
-          error: enrolledError,
-        } = await supabase
-          .from("enrollments")
-          .select(
-            "course_id, courses!inner(price)",
-          )
-          .eq("user_id", userId)
-          .returns<FreeCourseEnrollment[]>();
-
-        if (enrolledError)
-          throw enrolledError;
-
-        const freeIds = (
-          enrolledCourses ?? []
-        )
-          .filter(
-            (enrollment) =>
-              enrollment.courses
-                ?.price === 0,
-          )
-          .map(
-            (enrollment) =>
-              enrollment.course_id,
-          );
-
-        setFreeCourseIds(freeIds);
-      } catch (err) {
-        console.error(
-          "fetchProfile error:",
-          err,
+            full_name:
+              nameMap[
+                message.user_id
+              ] || "Student",
+          }),
         );
+      },
 
-        resetUserScopedState(
-          setProfile,
-          setIsAdmin,
-          setPurchases,
-          setFreeCourseIds,
-        );
-      }
-    },
-    [],
-  );
-
-  const refreshProfile = useCallback(
-    async () => {
-      if (user) {
-        await fetchProfile(user.id);
-      }
-    },
-    [fetchProfile, user],
-  );
+      enabled: !!groupId,
+    });
 
   useEffect(() => {
-    let mounted = true;
-    let requestId = 0;
+    if (!groupId) return;
 
-    const applySession = async (
-      nextSession: Session | null,
-    ) => {
-      const currentRequest = ++requestId;
+    const channel = supabase
+      .channel(
+        `group-messages-${groupId}`,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
 
-      if (mounted) {
-        setLoading(true);
-      }
+          schema: "public",
 
-      setSession(nextSession);
+          table: "group_messages",
 
-      setUser(nextSession?.user ?? null);
-
-      if (!nextSession?.user) {
-        resetUserScopedState(
-          setProfile,
-          setIsAdmin,
-          setPurchases,
-          setFreeCourseIds,
-        );
-
-        if (
-          mounted &&
-          currentRequest === requestId
-        ) {
-          setLoading(false);
-        }
-
-        return;
-      }
-
-      await fetchProfile(nextSession.user.id);
-
-      if (
-        mounted &&
-        currentRequest === requestId
-      ) {
-        setLoading(false);
-      }
-    };
-
-    const initAuth = async () => {
-      try {
-        const {
-          data: {
-            session: initialSession,
-          },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (error) throw error;
-
-        if (!mounted) return;
-
-        await applySession(initialSession);
-      } catch (err) {
-        console.error(
-          "initAuth error:",
-          err,
-        );
-
-        if (mounted) {
-          resetUserScopedState(
-            setProfile,
-            setIsAdmin,
-            setPurchases,
-            setFreeCourseIds,
+          filter: `group_id=eq.${groupId}`,
+        },
+        () => {
+          queryClient.invalidateQueries(
+            {
+              queryKey: [
+                "group-messages",
+                groupId,
+              ],
+            },
           );
-
-          setLoading(false);
-        }
-      }
-    };
-
-    initAuth();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        if (!mounted) return;
-
-        void applySession(nextSession);
-      },
-    );
+        },
+      )
+      .subscribe();
 
     return () => {
-      mounted = false;
-      requestId += 1;
-
-      subscription.unsubscribe();
+      supabase.removeChannel(
+        channel,
+      );
     };
-  }, [fetchProfile]);
+  }, [groupId, queryClient]);
 
-  const trialDaysLeft = profile
-    ? Math.max(
-        0,
-        7 -
-          Math.floor(
-            (Date.now() -
-              new Date(
-                profile.trial_start_date,
-              ).getTime()) /
-              (1000 *
-                60 *
-                60 *
-                24),
-          ),
-      )
-    : 0;
+  useEffect(() => {
+    const container =
+      scrollContainerRef.current;
 
-  const trialActive = trialDaysLeft > 0;
+    if (!container) return;
 
-  const hasAccess = profile
-    ? profile.is_premium ||
-      profile.subscription_status ===
-        "paid" ||
-      purchases.length > 0 ||
-      trialActive
-    : false;
+    const raf =
+      requestAnimationFrame(() => {
+        container.scrollTop =
+          container.scrollHeight;
+      });
 
-  const hasCourseAccess = useCallback(
-    (courseId: string): boolean => {
-      if (!profile) return false;
+    return () =>
+      cancelAnimationFrame(raf);
+  }, [messages]);
 
-      if (isAdmin) return true;
-
-      if (profile.is_premium)
-        return true;
-
-      if (
-        purchases.some(
-          (purchase) =>
-            purchase.course_id ===
-            courseId,
-        )
-      ) {
-        return true;
-      }
-
-      if (
-        freeCourseIds.includes(courseId)
-      ) {
-        return true;
-      }
-
-      if (
-        trialActive &&
-        profile.trial_course_id ===
-          courseId
-      ) {
-        return true;
-      }
-
-      return false;
-    },
-    [
-      profile,
-      isAdmin,
-      purchases,
-      freeCourseIds,
-      trialActive,
-    ],
+  const myMembership = members.find(
+    (member: any) =>
+      member.user_id === user?.id,
   );
 
-  const canAccessLesson = useCallback(
-    (
-      courseId: string,
-      lessonIndex: number,
-    ): boolean => {
-      if (!profile) return false;
+  const isGroupAdmin =
+    myMembership?.role === "admin";
 
-      if (isAdmin) return true;
+  const isSuspended =
+    group?.status === "suspended";
 
-      if (profile.is_premium)
-        return true;
+  const sendMessage = useMutation({
+    mutationFn: async () => {
+      setUploading(true);
 
-      if (
-        purchases.some(
-          (purchase) =>
-            purchase.course_id ===
-            courseId,
-        )
-      ) {
-        return true;
+      let fileUrl: string | null =
+        null;
+
+      if (selectedFile) {
+        const path = `${groupId}/${
+          user!.id
+        }/${Date.now()}_${
+          selectedFile.name
+        }`;
+
+        const {
+          error: uploadError,
+        } = await supabase.storage
+          .from("group-files")
+          .upload(path, selectedFile);
+
+        if (uploadError)
+          throw uploadError;
+
+        const { data } =
+          supabase.storage
+            .from("group-files")
+            .getPublicUrl(path);
+
+        fileUrl =
+          data?.publicUrl || null;
       }
 
-      if (
-        freeCourseIds.includes(courseId)
-      ) {
-        return true;
+      const content =
+        message.trim() ||
+        (selectedFile
+          ? `📎 ${selectedFile.name}`
+          : "");
+
+      if (!content && !fileUrl) {
+        throw new Error(
+          "Empty message",
+        );
       }
 
-      // Trial users only access first 5 lessons
-      if (
-        trialActive &&
-        profile.trial_course_id ===
-          courseId &&
-        lessonIndex < 5
-      ) {
-        return true;
-      }
+      const { error } = await supabase
+        .from("group_messages")
+        .insert({
+          group_id: groupId!,
 
-      return false;
+          user_id: user!.id,
+
+          content,
+
+          file_url: fileUrl,
+        });
+
+      if (error) throw error;
     },
-    [
-      profile,
-      isAdmin,
-      purchases,
-      freeCourseIds,
-      trialActive,
-    ],
-  );
 
-  const selectTrialCourse = async (
-    courseId: string,
+    onSuccess: () => {
+      setMessage("");
+
+      setSelectedFile(null);
+
+      setUploading(false);
+
+      queryClient.invalidateQueries(
+        {
+          queryKey: [
+            "group-messages",
+            groupId,
+          ],
+        },
+      );
+    },
+
+    onError: (error: any) => {
+      toast.error(
+        error.message ||
+          "Failed to send message",
+      );
+
+      setUploading(false);
+    },
+  });
+
+  const deleteMessage =
+    useMutation({
+      mutationFn: async (
+        messageId: string,
+      ) => {
+        await supabase
+          .from("group_messages")
+          .delete()
+          .eq("id", messageId);
+      },
+
+      onSuccess: () =>
+        queryClient.invalidateQueries(
+          {
+            queryKey: [
+              "group-messages",
+              groupId,
+            ],
+          },
+        ),
+    });
+
+  const removeMember =
+    useMutation({
+      mutationFn: async (
+        memberId: string,
+      ) => {
+        await supabase
+          .from("group_members")
+          .delete()
+          .eq("id", memberId);
+      },
+
+      onSuccess: () => {
+        toast.success(
+          "Member removed",
+        );
+
+        queryClient.invalidateQueries(
+          {
+            queryKey: [
+              "group-members",
+              groupId,
+            ],
+          },
+        );
+      },
+    });
+
+  const leaveGroup = useMutation({
+    mutationFn: async () => {
+      await supabase
+        .from("group_members")
+        .delete()
+        .eq("group_id", groupId!)
+        .eq("user_id", user!.id);
+    },
+
+    onSuccess: () => {
+      toast.success("Left group");
+
+      navigate("/discussions");
+    },
+  });
+
+  const handleSend = (
+    e: React.FormEvent,
   ) => {
-    if (!user || !profile) return;
+    e.preventDefault();
 
     if (
-      profile.trial_course_id &&
-      profile.trial_course_id !==
-        courseId
+      (!message.trim() &&
+        !selectedFile) ||
+      isSuspended
     ) {
       return;
     }
 
-    const {
-      data: courseData,
-      error: courseError,
-    } = await supabase
-      .from("courses")
-      .select("price")
-      .eq("id", courseId)
-      .single();
-
-    if (courseError)
-      throw courseError;
-
-    if (courseData?.price === 0)
-      return;
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        trial_course_id: courseId,
-      })
-      .eq("user_id", user.id);
-
-    if (error) throw error;
-
-    setProfile({
-      ...profile,
-      trial_course_id: courseId,
-    });
+    sendMessage.mutate();
   };
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const renderFilePreview = (
+    fileUrl: string,
+  ) => {
+    const isImage =
+      /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(
+        fileUrl,
+      );
 
-    setUser(null);
+    const fileName =
+      decodeURIComponent(
+        fileUrl
+          .split("/")
+          .pop()
+          ?.replace(
+            /^\d+_/,
+            "",
+          ) || "File",
+      );
 
-    setSession(null);
+    if (isImage) {
+      return (
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="block mt-1.5"
+        >
+          <img
+            src={fileUrl}
+            alt={fileName}
+            className="max-w-[240px] max-h-[200px] rounded-lg object-cover border border-border/30"
+          />
+        </a>
+      );
+    }
 
-    resetUserScopedState(
-      setProfile,
-      setIsAdmin,
-      setPurchases,
-      setFreeCourseIds,
+    const isPdf =
+      /\.pdf$/i.test(fileUrl);
+
+    return (
+      <a
+        href={fileUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="flex items-center gap-2 mt-1.5 p-2 rounded-lg bg-background/30 border border-border/20 hover:bg-background/50 transition text-xs"
+      >
+        {isPdf ? (
+          <FileText className="w-4 h-4 shrink-0" />
+        ) : (
+          <Paperclip className="w-4 h-4 shrink-0" />
+        )}
+
+        <span className="truncate">
+          {fileName}
+        </span>
+      </a>
     );
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        isAdmin,
-        loading,
-        hasAccess,
-        trialDaysLeft,
-        trialActive,
-        purchases,
-        signOut,
-        refreshProfile,
-        hasCourseAccess,
-        canAccessLesson,
-        selectTrialCourse,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <div>REPLACE REMAINING CONTENT FROM YOUR FILE AFTER MERGE</div>;
 };
 
-export const useAuth = () => {
-  const context =
-    useContext(AuthContext);
-
-  if (!context) {
-    throw new Error(
-      "useAuth must be used within AuthProvider",
-    );
-  }
-
-  return context;
-};
+export default GroupChatPage;

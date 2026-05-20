@@ -157,3 +157,14 @@
     overflow-x: hidden;
   }
 }
+
+
+@layer base {
+  html, body, #root {
+    min-height: 100%;
+  }
+
+  html, body {
+    overflow-x: hidden;
+  }
+}
