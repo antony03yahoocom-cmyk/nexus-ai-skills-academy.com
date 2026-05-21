@@ -37,32 +37,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAdminRole, setIsAdminRole] = useState(false);
-
 
   const loadAdminRole = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
 
-    if (error && error.code !== "PGRST116") throw error;
-    setIsAdminRole(!!data);
+      if (error && error.code !== "PGRST116") throw error;
+      return !!data;
+    } catch (error) {
+      console.error("[AuthContext] Failed to load admin role:", error);
+      return false;
+    }
   }, []);
 
   const loadProfile = useCallback(async (userId: string) => {
-    const [{ data: prof, error: profError }, { data: paid, error: paidError }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
-      supabase.from("course_purchases").select("*").eq("user_id", userId).eq("status", "paid"),
-    ]);
+    try {
+      const [{ data: prof, error: profError }, { data: paid, error: paidError }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
+        supabase.from("course_purchases").select("*").eq("user_id", userId).eq("status", "paid"),
+      ]);
 
-    if (profError && profError.code !== "PGRST116") throw profError;
-    if (paidError) throw paidError;
+      if (profError && profError.code !== "PGRST116") throw profError;
+      if (paidError) throw paidError;
 
-    setProfile((prof as Profile | null) ?? null);
-    setPurchases(paid ?? []);
+      setProfile((prof as Profile | null) ?? null);
+      setPurchases(paid ?? []);
+    } catch (error) {
+      console.error("[AuthContext] Failed to load profile/purchases:", error);
+      setProfile(null);
+      setPurchases([]);
+    }
   }, []);
 
   useEffect(() => {
@@ -79,7 +88,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           setProfile(null);
           setPurchases([]);
-          setIsAdminRole(false);
         }
       } catch (error) {
         console.error("[AuthContext] Failed to load profile/purchases:", error);
@@ -117,7 +125,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await supabase.auth.signOut();
   }, []);
 
-  const isAdmin = isAdminRole || (profile?.role ?? "").toLowerCase() === "admin";
+  const isAdmin = useMemo(async () => {
+    if (!user) return false;
+    const isAdminRole = await loadAdminRole(user.id);
+    return isAdminRole || (profile?.role ?? "").toLowerCase() === "admin";
+  }, [user, profile?.role, loadAdminRole]);
 
   const trialDaysLeft = useMemo(() => {
     if (!profile?.trial_started_at) return 0;
@@ -161,7 +173,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, profile, loading, isAdmin, purchases, trialActive, trialDaysLeft, refreshProfile, signOut, hasCourseAccess, canAccessLesson, selectTrialCourse }}
+      value={{
+        user,
+        session,
+        profile,
+        loading,
+        isAdmin,
+        purchases,
+        trialActive,
+        trialDaysLeft,
+        refreshProfile,
+        signOut,
+        hasCourseAccess,
+        canAccessLesson,
+        selectTrialCourse,
+      }}
     >
       {children}
     </AuthContext.Provider>
