@@ -39,16 +39,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const loadProfile = useCallback(async (userId: string) => {
-    const [{ data: prof, error: profError }, { data: paid, error: paidError }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
-      supabase.from("course_purchases").select("*").eq("user_id", userId).eq("status", "paid"),
-    ]);
+    try {
+      const [{ data: prof, error: profError }, { data: paid, error: paidError }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
+        supabase.from("course_purchases").select("*").eq("user_id", userId).eq("status", "paid"),
+      ]);
 
-    if (profError && profError.code !== "PGRST116") throw profError;
-    if (paidError) throw paidError;
+      if (profError && profError.code !== "PGRST116") throw profError;
+      if (paidError) throw paidError;
 
-    setProfile((prof as Profile | null) ?? null);
-    setPurchases(paid ?? []);
+      setProfile((prof as Profile | null) ?? null);
+      setPurchases(paid ?? []);
+    } catch (error) {
+      console.error("[AuthContext] Failed to load profile/purchases:", error);
+      setProfile(null);
+      setPurchases([]);
+    }
   }, []);
 
   useEffect(() => {
@@ -146,7 +152,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, profile, loading, isAdmin, purchases, trialActive, trialDaysLeft, refreshProfile, signOut, hasCourseAccess, canAccessLesson, selectTrialCourse }}
+      value={{
+        user,
+        session,
+        profile,
+        loading,
+        isAdmin,
+        purchases,
+        trialActive,
+        trialDaysLeft,
+        refreshProfile,
+        signOut,
+        hasCourseAccess,
+        canAccessLesson,
+        selectTrialCourse,
+      }}
     >
       {children}
     </AuthContext.Provider>
