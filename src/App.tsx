@@ -18,6 +18,7 @@ import StudentDashboard from "./pages/StudentDashboard.tsx";
 import StudentProjectsPage from "./pages/StudentProjectsPage.tsx";
 import StudentCertificatesPage from "./pages/StudentCertificatesPage.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
+import AdminSubscriptionsPage from "./pages/AdminSubscriptionsPage.tsx";
 import AdminCoursesPage from "./pages/AdminCoursesPage.tsx";
 import AdminStudentsPage from "./pages/AdminStudentsPage.tsx";
 import AdminSubmissionsPage from "./pages/AdminSubmissionsPage.tsx";
@@ -84,6 +85,7 @@ const App = () => (
             <Route path="/admin/courses" element={<AdminRoute><AdminCoursesPage /></AdminRoute>} />
             <Route path="/admin/students" element={<AdminRoute><AdminStudentsPage /></AdminRoute>} />
             <Route path="/admin/enrollments" element={<AdminRoute><AdminEnrollmentsPage /></AdminRoute>} />
+            <Route path="/admin/subscriptions" element={<AdminRoute><AdminSubscriptionsPage /></AdminRoute>} />
             <Route path="/admin/submissions" element={<AdminRoute><AdminSubmissionsPage /></AdminRoute>} />
             <Route path="/admin/announcements" element={<AdminRoute><AdminAnnouncementsPage /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
