@@ -39,34 +39,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const loadProfile = useCallback(async (userId: string) => {
-    const [{ data: prof }, { data: paid }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
-      supabase.from("course_purchases").select("*").eq("user_id", userId).eq("status", "paid"),
-    ]);
-    setProfile((prof as Profile | null) ?? null);
-    setPurchases(paid ?? []);
+    try {
+      const [{ data: prof, error: profError }, { data: paid, error: paidError }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
+        supabase.from("course_purchases").select("*").eq("user_id", userId).eq("status", "paid"),
+      ]);
+
+      if (profError && profError.code !== "PGRST116") throw profError;
+      if (paidError) throw paidError;
+
+      setProfile((prof as Profile | null) ?? null);
+      setPurchases(paid ?? []);
+    } catch (error) {
+      console.error("[AuthContext] Failed to load profile/purchases:", error);
+      setProfile(null);
+      setPurchases([]);
+    }
   }, []);
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) await loadProfile(session.user.id);
-      setLoading(false);
-    });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+    const syncSession = async (nextSession: Session | null) => {
+      if (!mounted) return;
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
-      if (nextSession?.user) {
-        await loadProfile(nextSession.user.id);
-      } else {
+
+      try {
+        if (nextSession?.user) {
+          await loadProfile(nextSession.user.id);
+        } else {
+          setProfile(null);
+          setPurchases([]);
+        }
+      } catch (error) {
+        console.error("[AuthContext] Failed to load profile/purchases:", error);
         setProfile(null);
         setPurchases([]);
+      } finally {
+        if (mounted) setLoading(false);
       }
-      setLoading(false);
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      void syncSession(session);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      void syncSession(nextSession);
     });
 
     return () => {
@@ -77,7 +97,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
-    await loadProfile(user.id);
+    try {
+      await loadProfile(user.id);
+    } catch (error) {
+      console.error("[AuthContext] Failed to refresh profile:", error);
+    }
   }, [user, loadProfile]);
 
   const signOut = useCallback(async () => {
