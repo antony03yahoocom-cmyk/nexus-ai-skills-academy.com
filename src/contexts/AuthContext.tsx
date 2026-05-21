@@ -38,6 +38,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [purchases, setPurchases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const loadAdminRole = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (error && error.code !== "PGRST116") throw error;
+      return !!data;
+    } catch (error) {
+      console.error("[AuthContext] Failed to load admin role:", error);
+      return false;
+    }
+  }, []);
+
   const loadProfile = useCallback(async (userId: string) => {
     try {
       const [{ data: prof, error: profError }, { data: paid, error: paidError }] = await Promise.all([
@@ -67,7 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         if (nextSession?.user) {
-          await loadProfile(nextSession.user.id);
+          await Promise.all([loadProfile(nextSession.user.id), loadAdminRole(nextSession.user.id)]);
         } else {
           setProfile(null);
           setPurchases([]);
@@ -93,7 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, [loadProfile]);
+  }, [loadProfile, loadAdminRole]);
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
@@ -108,7 +125,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await supabase.auth.signOut();
   }, []);
 
-  const isAdmin = (profile?.role ?? "").toLowerCase() === "admin";
+  const isAdmin = useMemo(async () => {
+    if (!user) return false;
+    const isAdminRole = await loadAdminRole(user.id);
+    return isAdminRole || (profile?.role ?? "").toLowerCase() === "admin";
+  }, [user, profile?.role, loadAdminRole]);
 
   const trialDaysLeft = useMemo(() => {
     if (!profile?.trial_started_at) return 0;
