@@ -71,10 +71,10 @@
   }
 
   body {
-    /* ✅ FIX: Ensure body fills viewport without overflowing */
-    height: 100%;
-    height: 100dvh;
-    overflow: hidden;
+    /* allow full-page scrolling */
+    min-height: 100%;
+    min-height: 100dvh;
+    overflow-y: auto;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -144,17 +144,6 @@
   /* ✅ FIX: Bottom spacing for fixed bottom bars */
   .pb-safe {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  }
-}
-
-
-@layer base {
-  html, body, #root {
-    min-height: 100%;
-  }
-
-  html, body {
-    overflow-x: hidden;
   }
 }
 
