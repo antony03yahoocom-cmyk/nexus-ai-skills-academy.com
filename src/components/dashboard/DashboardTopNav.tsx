@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell, Users } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell, Users, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -52,6 +52,7 @@ const DashboardTopNav = () => {
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/courses", icon: BookOpen, label: "Courses" },
     { to: "/dashboard/projects", icon: FolderOpen, label: "Projects" },
+    { to: "/community", icon: Sparkles, label: "Community" },
     { to: "/dashboard/certificates", icon: Award, label: "Certificates" },
     { to: "/dashboard/classmates", icon: Users, label: "Classmates" },
     { to: "/discussions", icon: MessageCircle, label: "Discussions", badge: unreadGroups },

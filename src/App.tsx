@@ -33,6 +33,7 @@ import AdminDeletionFeedbackPage from "./pages/AdminDeletionFeedbackPage.tsx";
 import AdminBlogPage from "./pages/AdminBlogPage.tsx";
 import SubscribePage from "./pages/SubscribePage.tsx";
 import PortfolioPage from "./pages/PortfolioPage.tsx";
+import CommunityPage from "./pages/CommunityPage.tsx";
 import DiscussionGroupsPage from "./pages/DiscussionGroupsPage.tsx";
 import GroupChatPage from "./pages/GroupChatPage.tsx";
 import AdminGroupsPage from "./pages/AdminGroupsPage.tsx";
@@ -67,6 +68,7 @@ const App = () => (
             <Route path="/courses/:courseId/about" element={<CourseAboutPage />} />
             <Route path="/subscribe" element={<SubscribePage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
             <Route path="/opportunities" element={<OpportunitiesBoardPage />} />
             <Route path="/dashboard/opportunities" element={<ProtectedRoute><OpportunitiesBoardPage /></ProtectedRoute>} />
             <Route path="/dashboard/marketing" element={<ProtectedRoute><MarketplaceHubPage /></ProtectedRoute>} />

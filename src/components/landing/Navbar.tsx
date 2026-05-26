@@ -29,6 +29,7 @@ const Navbar = () => {
     { label: "Blog", to: "/blog" },
     { label: "Leaderboard", to: "/leaderboard" },
     { label: "Portfolio", to: "/portfolio" },
+    { label: "Community", to: "/community" },
     { label: "Pricing", to: "/subscribe" },
   ];
 
