@@ -18,6 +18,14 @@ export default {
         body: ["Inter", "sans-serif"],
       },
       colors: {
+        midnight: "hsl(220 70% 10%)",
+        electric: "hsl(183 100% 58%)",
+        soft: "hsl(210 16% 96%)",
+        slate: {
+          DEFAULT: "hsl(214 13% 45%)",
+          foreground: "hsl(210 16% 96%)",
+          muted: "hsl(214 15% 63%)",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

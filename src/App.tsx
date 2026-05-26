@@ -46,6 +46,8 @@ import ClassmatesPage from "./pages/ClassmatesPage.tsx";
 import MarketplaceHubPage from "./pages/MarketplaceHubPage.tsx";
 import OpportunitiesBoardPage from "./pages/OpportunitiesBoardPage.tsx";
 import OpportunityDetailPage from "./pages/OpportunityDetailPage.tsx";
+import EmployerSignupPage from "./pages/EmployerSignupPage.tsx";
+import EmployerDashboard from "./pages/EmployerDashboard.tsx";
 
 const queryClient = new QueryClient();
 
@@ -66,7 +68,11 @@ const App = () => (
             <Route path="/subscribe" element={<SubscribePage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/opportunities" element={<OpportunitiesBoardPage />} />
+            <Route path="/dashboard/opportunities" element={<ProtectedRoute><OpportunitiesBoardPage /></ProtectedRoute>} />
+            <Route path="/dashboard/marketing" element={<ProtectedRoute><MarketplaceHubPage /></ProtectedRoute>} />
             <Route path="/opportunities/:opportunityId" element={<OpportunityDetailPage />} />
+            <Route path="/employer/signup" element={<EmployerSignupPage />} />
+            <Route path="/employer/dashboard" element={<ProtectedRoute><EmployerDashboard /></ProtectedRoute>} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/lesson/:lessonId" element={<ProtectedRoute><LessonViewerPage /></ProtectedRoute>} />

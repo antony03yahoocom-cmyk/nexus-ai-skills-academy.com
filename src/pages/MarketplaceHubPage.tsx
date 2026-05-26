@@ -53,7 +53,7 @@ const MarketplaceHubPage = () => {
         <DashboardTopNav />
         <main className="p-4 md:p-8 space-y-6">
           <Card>
-            <CardHeader><CardTitle>Student Marketplace Dashboard</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Student Marketplace & Marketing Dashboard</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">Build your profile, showcase projects, and get hired.</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -93,9 +93,34 @@ const MarketplaceHubPage = () => {
           </Card>
 
           <Card>
+            <CardHeader><CardTitle>Marketing & Visibility</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">Showcase your skills, track profile interest, and share your portfolio with employers.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="glass-card p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">Profile Views</p>
+                  <p className="text-3xl font-bold">{studentProfile?.profile_views ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Total views in the last 30 days</p>
+                </div>
+                <div className="glass-card p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">Share your profile</p>
+                  <div className="rounded-xl border border-border p-3 bg-secondary text-xs break-all">
+                    {typeof window !== "undefined" ? `${window.location.origin}/portfolio` : "/portfolio"}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Copy this link and share it with employers.</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild><a href="/portfolio">View Portfolio</a></Button>
+                <Button variant="outline" asChild><a href="/dashboard/messages">Message Employers</a></Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-              <Button asChild><a href="/opportunities">Browse Opportunities</a></Button>
+              <Button asChild><a href="/dashboard/opportunities">Browse Opportunities</a></Button>
               <Button variant="outline" asChild><a href="/dashboard/messages">Message Students/Clients</a></Button>
               <Button variant="outline" asChild><a href="/portfolio">Public Portfolio</a></Button>
             </CardContent>

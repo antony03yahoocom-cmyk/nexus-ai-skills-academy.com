@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ const ProfileSettingsPage = () => {
   const { user, profile, refreshProfile, signOut } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState(profile?.full_name || "");
+  const [phone, setPhone] = useState(user?.phone || "");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -73,6 +74,10 @@ const ProfileSettingsPage = () => {
     if (!user) return;
     setSaving(true);
     try {
+      if (phone && phone !== user.phone) {
+        const { error: phoneError } = await supabase.auth.updateUser({ phone });
+        if (phoneError) throw phoneError;
+      }
       const { error } = await supabase
         .from("profiles")
         .update({ full_name: fullName })
@@ -86,6 +91,12 @@ const ProfileSettingsPage = () => {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (user?.phone) {
+      setPhone(user.phone);
+    }
+  }, [user?.phone]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -140,6 +151,19 @@ const ProfileSettingsPage = () => {
               <Label>Email</Label>
               <Input value={user?.email || ""} disabled className="opacity-60" />
               <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+            </div>
+
+            {/* Phone number */}
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone number</Label>
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+254712345678"
+                className="bg-secondary border-border"
+              />
+              <p className="text-xs text-muted-foreground">Add your phone number to complete your profile and receive important updates.</p>
             </div>
 
             {/* Account info */}

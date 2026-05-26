@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,9 +20,16 @@ const OpportunitiesBoardPage = () => {
     },
   });
 
+  const nav = useNavigate();
+
   return <main className="min-h-screen bg-background p-4 md:p-8 space-y-6">
     <div className="max-w-6xl mx-auto space-y-4">
-      <h1 className="text-3xl font-bold">Opportunities Hub</h1>
+      <div className="flex items-center gap-3">
+        <button onClick={() => nav(-1)} className="text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="text-3xl font-bold">Opportunities Hub</h1>
+      </div>
       <Input placeholder="Search jobs, gigs, internships..." value={search} onChange={(e) => setSearch(e.target.value)} />
       {isLoading ? <p>Loading opportunities...</p> : (
         <div className="grid gap-4">

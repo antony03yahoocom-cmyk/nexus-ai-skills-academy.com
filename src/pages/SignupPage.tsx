@@ -14,8 +14,6 @@ const SignupPage = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,7 +27,7 @@ const SignupPage = () => {
       email,
       password,
       options: {
-        data: { full_name: name },
+        data: { full_name: name, phone },
         emailRedirectTo: window.location.origin,
       },
     });
@@ -40,17 +38,6 @@ const SignupPage = () => {
       toast.success("Account created! Check your email to confirm, or log in directly.");
       navigate("/dashboard");
     }
-  };
-
-  const handlePhoneOtp = async () => {
-    if (!phone.startsWith("+")) return toast.error("Use international format e.g. +254...");
-    const { error } = await supabase.auth.signInWithOtp({ phone, options: { data: { full_name: name } } });
-    if (error) toast.error(error.message); else { setOtpSent(true); toast.success("OTP sent to phone"); }
-  };
-
-  const verifyPhoneOtp = async () => {
-    const { error } = await supabase.auth.verifyOtp({ phone, token: otp, type: "sms" });
-    if (error) toast.error(error.message); else { toast.success("Phone signup successful"); navigate("/dashboard"); }
   };
 
   const handleGoogleSignIn = async () => {
@@ -99,6 +86,16 @@ const SignupPage = () => {
               <Label htmlFor="name">Full Name</Label>
               <Input id="name" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} className="bg-secondary border-border" required />
             </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="phone">Phone number</Label>
+                <span className="text-xs text-muted-foreground">Optional</span>
+              </div>
+              <Input id="phone" placeholder="+2547..." value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-secondary border-border" />
+              <p className="text-xs text-muted-foreground">Your phone number helps us keep your account secure and makes it easier for the academy to contact you.</p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-secondary border-border" required />
@@ -112,14 +109,6 @@ const SignupPage = () => {
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </form>
-          <div className="my-6 border-t pt-4 space-y-2">
-            <Label>Phone number sign up</Label>
-            <div className="flex gap-2">
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+2547..." />
-              <Button variant="outline" onClick={handlePhoneOtp}>Send OTP</Button>
-            </div>
-            {otpSent && <div className="flex gap-2"><Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter OTP" /><Button onClick={verifyPhoneOtp}>Verify</Button></div>}
-          </div>
           <p className="text-center text-sm text-muted-foreground mt-6">
             Already have an account?{" "}
             <Link to="/login" className="text-primary hover:underline">Sign in</Link>

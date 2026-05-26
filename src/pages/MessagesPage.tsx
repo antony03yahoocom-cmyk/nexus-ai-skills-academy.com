@@ -155,7 +155,8 @@ const MessagesPage = () => {
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${selectedUser.id}),and(sender_id.eq.${selectedUser.id},receiver_id.eq.${user.id})`)
       .order("created_at", { ascending: true });
 
-    setMessages((data as Message[]) || []);
+    const msgs = (data as Message[]) || [];
+    setMessages(msgs);
 
     // Mark received messages as read
     await supabase
@@ -165,7 +166,16 @@ const MessagesPage = () => {
       .eq("receiver_id", user.id)
       .eq("is_read", false);
 
-    loadConversations();
+    // ensure conversations list updates
+    await loadConversations();
+
+    // Scroll the thread to the latest message after messages are rendered
+    requestAnimationFrame(() => {
+      const c = scrollRef.current;
+      if (!c) return;
+      // jump immediately to bottom when opening a conversation
+      c.scrollTo({ top: c.scrollHeight, behavior: "auto" });
+    });
   }, [user, selectedUser, loadConversations]);
 
   useEffect(() => { loadMessages(); }, [loadMessages]);

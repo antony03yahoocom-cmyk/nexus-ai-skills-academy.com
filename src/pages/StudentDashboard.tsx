@@ -145,6 +145,28 @@ const StudentDashboard = () => {
     enabled: !!user,
   });
 
+  // Marketplace / Opportunities counts for quick links
+  const { data: openOpportunitiesCount = 0 } = useQuery({
+    queryKey: ["open-opps-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("marketplace_opportunities")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "open");
+      return count ?? 0;
+    },
+    enabled: !!user,
+  });
+
+  const { data: myMarketplaceProfile } = useQuery({
+    queryKey: ["my-marketplace-profile", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("marketplace_student_profiles").select("*").eq("user_id", user!.id).maybeSingle();
+      return data;
+    },
+    enabled: !!user,
+  });
+
   // Unread messages count for notification badge
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["dash-unread", user?.id],
@@ -660,6 +682,28 @@ const StudentDashboard = () => {
                   )}
                 </Link>
               ))}
+            </div>
+
+            {/* Marketplace / Opportunities quick panel */}
+            <div className="glass-card p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Opportunities & Marketplace</h4>
+              <p className="text-xs text-muted-foreground">Browse gigs, internships, and manage your marketplace profile.</p>
+              <div className="grid grid-cols-1 gap-2">
+                <Link to="/dashboard/opportunities" className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-accent/10 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <FolderOpen className="w-4 h-4" />
+                    <span className="text-sm">Opportunities</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{openOpportunitiesCount}</span>
+                </Link>
+                <Link to="/dashboard/marketing" className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-accent/10 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="text-sm">Marketing Hub</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{myMarketplaceProfile ? "Edit" : "Create"}</span>
+                </Link>
+              </div>
             </div>
 
           </div>
