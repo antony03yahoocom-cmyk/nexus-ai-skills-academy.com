@@ -632,6 +632,245 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_applications: {
+        Row: {
+          attachment_urls: string[]
+          cover_message: string | null
+          created_at: string
+          employer_rating: number | null
+          id: string
+          opportunity_id: string
+          portfolio_links: string[]
+          proposal: string
+          status: string
+          student_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_urls?: string[]
+          cover_message?: string | null
+          created_at?: string
+          employer_rating?: number | null
+          id?: string
+          opportunity_id: string
+          portfolio_links?: string[]
+          proposal: string
+          status?: string
+          student_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_urls?: string[]
+          cover_message?: string | null
+          created_at?: string
+          employer_rating?: number | null
+          id?: string
+          opportunity_id?: string
+          portfolio_links?: string[]
+          proposal?: string
+          status?: string
+          student_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_applications_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_opportunities: {
+        Row: {
+          applicants_count: number
+          attachments: string[]
+          budget_max: number | null
+          budget_min: number | null
+          category: string
+          created_at: string
+          currency: string
+          deadline: string | null
+          description: string
+          duration: string | null
+          employer_user_id: string
+          experience_level: string
+          id: string
+          location_type: string
+          opportunity_type: string
+          required_skills: string[]
+          status: string
+          title: string
+          updated_at: string
+          views_count: number
+        }
+        Insert: {
+          applicants_count?: number
+          attachments?: string[]
+          budget_max?: number | null
+          budget_min?: number | null
+          category: string
+          created_at?: string
+          currency?: string
+          deadline?: string | null
+          description: string
+          duration?: string | null
+          employer_user_id: string
+          experience_level?: string
+          id?: string
+          location_type?: string
+          opportunity_type: string
+          required_skills?: string[]
+          status?: string
+          title: string
+          updated_at?: string
+          views_count?: number
+        }
+        Update: {
+          applicants_count?: number
+          attachments?: string[]
+          budget_max?: number | null
+          budget_min?: number | null
+          category?: string
+          created_at?: string
+          currency?: string
+          deadline?: string | null
+          description?: string
+          duration?: string | null
+          employer_user_id?: string
+          experience_level?: string
+          id?: string
+          location_type?: string
+          opportunity_type?: string
+          required_skills?: string[]
+          status?: string
+          title?: string
+          updated_at?: string
+          views_count?: number
+        }
+        Relationships: []
+      }
+      marketplace_projects: {
+        Row: {
+          behance_url: string | null
+          comments_count: number
+          completion_date: string | null
+          created_at: string
+          description: string | null
+          dribbble_url: string | null
+          featured: boolean
+          github_url: string | null
+          id: string
+          likes_count: number
+          live_demo_url: string | null
+          media_urls: string[]
+          student_user_id: string
+          title: string
+          tools_used: string[]
+          updated_at: string
+          views_count: number
+        }
+        Insert: {
+          behance_url?: string | null
+          comments_count?: number
+          completion_date?: string | null
+          created_at?: string
+          description?: string | null
+          dribbble_url?: string | null
+          featured?: boolean
+          github_url?: string | null
+          id?: string
+          likes_count?: number
+          live_demo_url?: string | null
+          media_urls?: string[]
+          student_user_id: string
+          title: string
+          tools_used?: string[]
+          updated_at?: string
+          views_count?: number
+        }
+        Update: {
+          behance_url?: string | null
+          comments_count?: number
+          completion_date?: string | null
+          created_at?: string
+          description?: string | null
+          dribbble_url?: string | null
+          featured?: boolean
+          github_url?: string | null
+          id?: string
+          likes_count?: number
+          live_demo_url?: string | null
+          media_urls?: string[]
+          student_user_id?: string
+          title?: string
+          tools_used?: string[]
+          updated_at?: string
+          views_count?: number
+        }
+        Relationships: []
+      }
+      marketplace_student_profiles: {
+        Row: {
+          availability_status: string
+          bio: string | null
+          certificates: string[]
+          completed_courses: string[]
+          created_at: string
+          earnings_total: number
+          headline: string | null
+          id: string
+          level: number
+          profile_views: number
+          rank_title: string
+          skills: string[]
+          social_links: Json
+          updated_at: string
+          user_id: string
+          whatsapp_number: string | null
+          xp_points: number
+        }
+        Insert: {
+          availability_status?: string
+          bio?: string | null
+          certificates?: string[]
+          completed_courses?: string[]
+          created_at?: string
+          earnings_total?: number
+          headline?: string | null
+          id?: string
+          level?: number
+          profile_views?: number
+          rank_title?: string
+          skills?: string[]
+          social_links?: Json
+          updated_at?: string
+          user_id: string
+          whatsapp_number?: string | null
+          xp_points?: number
+        }
+        Update: {
+          availability_status?: string
+          bio?: string | null
+          certificates?: string[]
+          completed_courses?: string[]
+          created_at?: string
+          earnings_total?: number
+          headline?: string | null
+          id?: string
+          level?: number
+          profile_views?: number
+          rank_title?: string
+          skills?: string[]
+          social_links?: Json
+          updated_at?: string
+          user_id?: string
+          whatsapp_number?: string | null
+          xp_points?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

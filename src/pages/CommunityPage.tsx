@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -247,6 +247,27 @@ const CommunityPage = () => {
       projectLikes.filter((like: any) => like.project_id === a.id).length
     )
     .slice(0, 3);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel("community-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "community_posts" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["community-posts"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "community_post_comments" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["community-comments"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "community_post_likes" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["community-likes"] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
 
   return (
     <div className="min-h-screen bg-background">
