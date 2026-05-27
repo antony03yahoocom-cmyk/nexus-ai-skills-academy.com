@@ -28,6 +28,8 @@ const AVAILABILITY_OPTIONS = [
 
 const availabilityLabel = (value: string) => AVAILABILITY_OPTIONS.find((option) => option.value === value)?.label ?? "Not Available";
 const availabilityClass = (value: string) => AVAILABILITY_OPTIONS.find((option) => option.value === value)?.color ?? "bg-muted/10 text-muted-foreground";
+const isMissingMarketplaceTableError = (error: any) =>
+  typeof error?.message === "string" && /Could not find the table 'public\.marketplace_/i.test(error.message);
 
 const profileCompletion = (profile: any, hasAvatar: boolean) => {
   const checks = [
@@ -165,7 +167,10 @@ const MarketplaceHubPage = () => {
       const { error } = await supabase
         .from("marketplace_student_profiles")
         .upsert({ user_id: user!.id, ...payload }, { onConflict: "user_id" });
-      if (error) throw error;
+      if (error) {
+        if (isMissingMarketplaceTableError(error)) return;
+        throw error;
+      }
     },
     onSuccess: async () => {
       toast.success("Marketplace profile updated");
@@ -177,7 +182,10 @@ const MarketplaceHubPage = () => {
   const saveProject = useMutation({
     mutationFn: async (payload: any) => {
       const { error } = await supabase.from("marketplace_projects").insert({ student_user_id: user!.id, ...payload });
-      if (error) throw error;
+      if (error) {
+        if (isMissingMarketplaceTableError(error)) return;
+        throw error;
+      }
     },
     onSuccess: async () => {
       toast.success("Project added to your portfolio");

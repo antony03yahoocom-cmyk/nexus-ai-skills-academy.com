@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Bookmark, BookmarkCheck } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const OpportunitiesBoardPage = () => {
   const [search, setSearch] = useState("");
+  const { user } = useAuth();
+  const qc = useQueryClient();
   const { data = [], isLoading } = useQuery({
     queryKey: ["opportunities-board", search],
     queryFn: async () => {
@@ -18,6 +22,35 @@ const OpportunitiesBoardPage = () => {
       if (error) throw error;
       return data ?? [];
     },
+  });
+  const { data: savedRows = [] } = useQuery({
+    queryKey: ["saved-opportunities", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("marketplace_saved_opportunities" as any).select("opportunity_id").eq("student_user_id", user!.id);
+      if (error) {
+        if (/Could not find the table/.test(error.message)) return [];
+        throw error;
+      }
+      return data ?? [];
+    },
+  });
+  const savedIds = new Set(savedRows.map((r: any) => r.opportunity_id));
+  const toggleSave = useMutation({
+    mutationFn: async ({ opportunityId, saved }: { opportunityId: string; saved: boolean }) => {
+      if (!user) throw new Error("Sign in to save opportunities");
+      if (saved) {
+        const { error } = await supabase.from("marketplace_saved_opportunities" as any).delete().eq("student_user_id", user.id).eq("opportunity_id", opportunityId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("marketplace_saved_opportunities" as any).insert({ student_user_id: user.id, opportunity_id: opportunityId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["saved-opportunities", user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Unable to update saved opportunities"),
   });
 
   const nav = useNavigate();
@@ -40,7 +73,18 @@ const OpportunitiesBoardPage = () => {
                 <p className="text-muted-foreground line-clamp-2">{op.description}</p>
                 <div className="flex flex-wrap gap-2">{(op.required_skills || []).map((s: string) => <Badge key={s} variant="secondary">{s}</Badge>)}</div>
                 <div className="text-sm">Budget: {op.currency} {op.budget_min ?? 0} - {op.budget_max ?? 0}</div>
-                <Button asChild><a href={`/opportunities/${op.id}`}>View & Apply</a></Button>
+                <div className="flex items-center gap-2">
+                  <Button asChild><a href={`/opportunities/${op.id}`}>View & Apply</a></Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!user || toggleSave.isPending}
+                    onClick={() => toggleSave.mutate({ opportunityId: op.id, saved: savedIds.has(op.id) })}
+                  >
+                    {savedIds.has(op.id) ? <BookmarkCheck className="w-4 h-4 mr-1" /> : <Bookmark className="w-4 h-4 mr-1" />}
+                    {savedIds.has(op.id) ? "Saved" : "Save"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

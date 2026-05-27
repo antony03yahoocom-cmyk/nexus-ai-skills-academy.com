@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 
 export default function OpportunityDetailPage() {
   const { opportunityId } = useParams();
@@ -32,6 +33,39 @@ export default function OpportunityDetailPage() {
     },
     enabled: !!user && !!opportunityId,
   });
+  const { data: isSaved = false } = useQuery({
+    queryKey: ["opportunity-saved", opportunityId, user?.id],
+    enabled: !!user && !!opportunityId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("marketplace_saved_opportunities" as any)
+        .select("id")
+        .eq("student_user_id", user!.id)
+        .eq("opportunity_id", opportunityId)
+        .maybeSingle();
+      if (error) {
+        if (/Could not find the table/.test(error.message)) return false;
+        throw error;
+      }
+      return !!data;
+    },
+  });
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!user || !opportunityId) throw new Error("Sign in required");
+      if (isSaved) {
+        const { error } = await supabase.from("marketplace_saved_opportunities" as any).delete().eq("student_user_id", user.id).eq("opportunity_id", opportunityId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("marketplace_saved_opportunities" as any).insert({ student_user_id: user.id, opportunity_id: opportunityId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["opportunity-saved", opportunityId, user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Unable to update save status"),
+  });
 
   const applyMutation = useMutation({
     mutationFn: async () => {
@@ -52,6 +86,10 @@ export default function OpportunityDetailPage() {
       <Card><CardHeader><CardTitle>{op.title}</CardTitle></CardHeader><CardContent className="space-y-3">
         <p>{op.description}</p>
         <p className="text-sm text-muted-foreground">{op.opportunity_type} • {op.location_type} • {op.experience_level}</p>
+        <Button variant="outline" disabled={!user || saveMutation.isPending} onClick={() => saveMutation.mutate()}>
+          {isSaved ? <BookmarkCheck className="w-4 h-4 mr-2" /> : <Bookmark className="w-4 h-4 mr-2" />}
+          {isSaved ? "Saved opportunity" : "Save opportunity"}
+        </Button>
       </CardContent></Card>
       <Card><CardHeader><CardTitle>Apply</CardTitle></CardHeader><CardContent className="space-y-3">
         {myApplication ? <p>Your status: <strong>{myApplication.status}</strong></p> : <>
