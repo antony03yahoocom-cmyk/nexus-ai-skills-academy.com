@@ -8,6 +8,9 @@ import {
   CreditCard,
   Crown,
   Search,
+  Briefcase,
+  Activity,
+  Flag,
 } from "lucide-react";
 
 import { useMemo, useState } from "react";
@@ -166,6 +169,54 @@ const AdminDashboard = () => {
     });
 
   const {
+    data: employers = [],
+  } = useQuery({
+    queryKey: ["admin-employers-count"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketplace_employer_profiles")
+        .select("id");
+      return data ?? [];
+    },
+  });
+
+  const {
+    data: opportunities = [],
+  } = useQuery({
+    queryKey: ["admin-opportunities-count"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketplace_opportunities")
+        .select("id, status, required_skills");
+      return data ?? [];
+    },
+  });
+
+  const {
+    data: applications = [],
+  } = useQuery({
+    queryKey: ["admin-applications-count"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketplace_applications")
+        .select("id, status");
+      return data ?? [];
+    },
+  });
+
+  const {
+    data: reports = [],
+  } = useQuery({
+    queryKey: ["admin-reports-count"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("content_reports")
+        .select("id, status");
+      return data ?? [];
+    },
+  });
+
+  const {
     data: submissions = [],
   } = useQuery({
     queryKey: [
@@ -202,6 +253,29 @@ const AdminDashboard = () => {
         "Submitted",
     ).length;
 
+  const openOpportunities =
+    opportunities.filter(
+      (opportunity: any) =>
+        opportunity.status ===
+        "open",
+    ).length;
+
+  const applicationCount = applications.length;
+
+  const acceptedApplications =
+    applications.filter(
+      (application: any) =>
+        application.status ===
+        "accepted",
+    ).length;
+
+  const pendingReports =
+    reports.filter(
+      (report: any) =>
+        report.status ===
+        "pending",
+    ).length;
+
   const totalRevenue = useMemo(
     () =>
       purchases.reduce(
@@ -215,6 +289,26 @@ const AdminDashboard = () => {
       ),
     [purchases],
   );
+
+  const engagementRate = useMemo(() => {
+    if (!profiles.length) return 0;
+    const engagementEvents = purchases.length + applications.length + enrollments.length;
+    return Math.round((engagementEvents / Math.max(profiles.length, 1)) * 100);
+  }, [purchases.length, applications.length, enrollments.length, profiles.length]);
+
+  const topSkills = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (opportunities as any[]).forEach((opportunity: any) => {
+      (opportunity.required_skills || []).forEach((skill: string) => {
+        if (!skill) return;
+        counts[skill] = (counts[skill] || 0) + 1;
+      });
+    });
+    return Object.entries(counts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([skill]) => skill);
+  }, [opportunities]);
 
   // Premium-only users
   const purchasedUserIds = new Set(
@@ -300,39 +394,51 @@ const AdminDashboard = () => {
     },
 
     {
-      label: "Premium Users",
-      value: String(premiumCount),
-      icon: Crown,
-      color: "text-success",
-      bg: "bg-success/10",
-    },
-
-    {
-      label: "Enrollments",
-      value: String(
-        enrollments.length,
-      ),
-      icon: TrendingUp,
+      label: "Active Employers",
+      value: String(employers.length),
+      icon: Briefcase,
       color: "text-primary",
       bg: "bg-primary/10",
     },
 
     {
-      label: "Certificates",
-      value: String(
-        certificates.length,
-      ),
-      icon: Award,
+      label: "Open Opportunities",
+      value: String(openOpportunities),
+      icon: FolderOpen,
+      color: "text-success",
+      bg: "bg-success/10",
+    },
+
+    {
+      label: "Applications",
+      value: String(applications.length),
+      icon: FileText,
       color: "text-accent",
       bg: "bg-accent/10",
     },
 
     {
-      label: "Total Revenue",
-      value: fmtKES(totalRevenue),
-      icon: CreditCard,
+      label: "Hires",
+      value: String(acceptedApplications),
+      icon: TrendingUp,
       color: "text-success",
       bg: "bg-success/10",
+    },
+
+    {
+      label: "Pending Reports",
+      value: String(pendingReports),
+      icon: Flag,
+      color: "text-destructive",
+      bg: "bg-destructive/10",
+    },
+
+    {
+      label: "Engagement Rate",
+      value: `${engagementRate}%`,
+      icon: Activity,
+      color: "text-primary",
+      bg: "bg-primary/10",
     },
   ];
 
@@ -375,6 +481,29 @@ const AdminDashboard = () => {
                 </p>
               </div>
             ))}
+          </div>
+
+          <div className="glass-card p-5 mb-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-bold">Marketplace activity</h2>
+                <p className="text-sm text-muted-foreground">Review top skills and traffic signals across the opportunity hub.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-primary/10 text-primary border-primary/20">{opportunities.length} roles</Badge>
+                <Badge className="bg-success/10 text-success border-success/20">{applicationCount} applications</Badge>
+                <Badge className="bg-destructive/10 text-destructive border-destructive/20">{pendingReports} reports</Badge>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {topSkills.length > 0 ? (
+                topSkills.map((skill) => (
+                  <Badge key={skill} className="bg-secondary/10 text-muted-foreground border-border">{skill}</Badge>
+                ))
+              ) : (
+                <span className="text-sm text-muted-foreground">No marketplace skills tracked yet.</span>
+              )}
+            </div>
           </div>
 
           {/* Action items */}

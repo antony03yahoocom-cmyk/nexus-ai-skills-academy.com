@@ -31,6 +31,10 @@ import AdminTestimonialsPage from "./pages/AdminTestimonialsPage.tsx";
 import AdminFeedbackPage from "./pages/AdminFeedbackPage.tsx";
 import AdminDeletionFeedbackPage from "./pages/AdminDeletionFeedbackPage.tsx";
 import AdminBlogPage from "./pages/AdminBlogPage.tsx";
+import AdminEmployersPage from "./pages/AdminEmployersPage.tsx";
+import AdminOpportunitiesPage from "./pages/AdminOpportunitiesPage.tsx";
+import AdminReportsPage from "./pages/AdminReportsPage.tsx";
+import BannedPage from "./pages/BannedPage.tsx";
 import SubscribePage from "./pages/SubscribePage.tsx";
 import PortfolioPage from "./pages/PortfolioPage.tsx";
 import CommunityPage from "./pages/CommunityPage.tsx";
@@ -97,6 +101,9 @@ const App = () => (
             <Route path="/admin/submissions" element={<AdminRoute><AdminSubmissionsPage /></AdminRoute>} />
             <Route path="/admin/announcements" element={<AdminRoute><AdminAnnouncementsPage /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
+            <Route path="/admin/employers" element={<AdminRoute><AdminEmployersPage /></AdminRoute>} />
+            <Route path="/admin/opportunities" element={<AdminRoute><AdminOpportunitiesPage /></AdminRoute>} />
+            <Route path="/admin/reports" element={<AdminRoute><AdminReportsPage /></AdminRoute>} />
             <Route path="/admin/projects" element={<AdminRoute><AdminProjectsPage /></AdminRoute>} />
             <Route path="/admin/certificates" element={<AdminRoute><AdminCertificatesPage /></AdminRoute>} />
             <Route path="/admin/groups" element={<AdminRoute><AdminGroupsPage /></AdminRoute>} />
@@ -105,6 +112,7 @@ const App = () => (
             <Route path="/admin/feedback" element={<AdminRoute><AdminFeedbackPage /></AdminRoute>} />
             <Route path="/admin/deletion-feedback" element={<AdminRoute><AdminDeletionFeedbackPage /></AdminRoute>} />
             <Route path="/admin/blog" element={<AdminRoute><AdminBlogPage /></AdminRoute>} />
+            <Route path="/banned" element={<BannedPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <StudentChatbot />

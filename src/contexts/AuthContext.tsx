@@ -11,6 +11,7 @@ type Profile = {
   trial_started_at?: string | null;
   trial_days?: number | null;
   trial_course_id?: string | null;
+  is_banned?: boolean | null;
 };
 
 type AuthContextType = {
@@ -19,6 +20,7 @@ type AuthContextType = {
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
+  isBanned: boolean;
   purchases: any[];
   trialActive: boolean;
   trialDaysLeft: number;
@@ -37,6 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const loadAdminRole = useCallback(async (userId: string) => {
     try {
@@ -67,10 +70,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       setProfile((prof as Profile | null) ?? null);
       setPurchases(paid ?? []);
+      return prof as Profile | null;
     } catch (error) {
       console.error("[AuthContext] Failed to load profile/purchases:", error);
       setProfile(null);
       setPurchases([]);
+      return null;
     }
   }, []);
 
@@ -84,15 +89,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         if (nextSession?.user) {
-          await Promise.all([loadProfile(nextSession.user.id), loadAdminRole(nextSession.user.id)]);
+          const [profileResult, adminResult] = await Promise.all([
+            loadProfile(nextSession.user.id),
+            loadAdminRole(nextSession.user.id),
+          ]);
+          setIsAdmin(adminResult);
+          if (!profileResult) {
+            setIsAdmin(false);
+          }
         } else {
           setProfile(null);
           setPurchases([]);
+          setIsAdmin(false);
         }
       } catch (error) {
         console.error("[AuthContext] Failed to load profile/purchases:", error);
         setProfile(null);
         setPurchases([]);
+        setIsAdmin(false);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -124,12 +138,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
-
-  const isAdmin = useMemo(async () => {
-    if (!user) return false;
-    const isAdminRole = await loadAdminRole(user.id);
-    return isAdminRole || (profile?.role ?? "").toLowerCase() === "admin";
-  }, [user, profile?.role, loadAdminRole]);
 
   const trialDaysLeft = useMemo(() => {
     if (!profile?.trial_started_at) return 0;
@@ -179,6 +187,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profile,
         loading,
         isAdmin,
+        isBanned: !!profile?.is_banned,
         purchases,
         trialActive,
         trialDaysLeft,

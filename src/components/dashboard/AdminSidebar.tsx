@@ -22,6 +22,8 @@ import {
   Menu,
   X,
   CreditCard,
+  Briefcase,
+  Flag,
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -140,6 +142,24 @@ const useAdminNav = () => {
       to: "/admin/students",
       icon: Users,
       label: "Students",
+    },
+
+    {
+      to: "/admin/employers",
+      icon: Briefcase,
+      label: "Employers",
+    },
+
+    {
+      to: "/admin/opportunities",
+      icon: FolderOpen,
+      label: "Opportunities",
+    },
+
+    {
+      to: "/admin/reports",
+      icon: Flag,
+      label: "Reports",
     },
 
     {
@@ -381,6 +401,7 @@ const AdminSidebar = () => {
           <Menu className="w-5 h-5" />
         </button>
       </div>
+      <div className="lg:hidden h-14" />
 
       {/* Mobile drawer */}
       {mobileOpen && (
