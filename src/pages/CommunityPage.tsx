@@ -46,6 +46,9 @@ const formatMediaLabel = (url: string) => {
   }
 };
 
+const isMissingCommunityDescriptionError = (error: any) =>
+  typeof error?.message === "string" && /Could not find the 'description' column of 'community_posts'/i.test(error.message);
+
 const CommunityPage = () => {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
@@ -72,7 +75,7 @@ const CommunityPage = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("community_posts")
-        .select("*")
+        .select("id, user_id, title, category, media_urls, is_public, created_at, updated_at")
         .order("created_at", { ascending: false });
       return data ?? [];
     },
@@ -171,14 +174,27 @@ const CommunityPage = () => {
       if (!user) throw new Error("Sign in to share a community post.");
       if (!postTitle.trim()) throw new Error("Give your post a title.");
       const urls = parseMediaUrls(mediaUrls);
-      const { error } = await supabase.from("community_posts").insert({
+      const payload = {
         user_id: user.id,
         title: postTitle.trim(),
         description: postDescription.trim(),
         category: postCategory,
         media_urls: urls,
-      });
-      if (error) throw error;
+      };
+      const { error } = await supabase.from("community_posts").insert(payload as any);
+      if (error) {
+        if (isMissingCommunityDescriptionError(error)) {
+          const { error: retryError } = await supabase.from("community_posts").insert({
+            user_id: user.id,
+            title: postTitle.trim(),
+            category: postCategory,
+            media_urls: urls,
+          } as any);
+          if (retryError) throw retryError;
+          return;
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success("Your post is live in the community feed.");

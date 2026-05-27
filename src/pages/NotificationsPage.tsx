@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { Bell, CheckCircle, XCircle, Megaphone, Mail, Clock, ArrowRight, Inbox } from "lucide-react";
@@ -12,15 +12,17 @@ import { formatDistanceToNow } from "date-fns";
 
 interface NotificationItem {
   id: string;
-  type: "approved" | "rejected" | "announcement" | "message";
+  type: "approved" | "rejected" | "announcement" | "message" | "opportunity" | "application" | "shortlisted" | "hired" | "profile" | "social";
   title: string;
   body: string;
   time: string;
   link?: string;
+  isRead?: boolean;
 }
 
 const NotificationsPage = () => {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [openNotif, setOpenNotif] = useState<NotificationItem | null>(null);
 
   // Submissions that have been reviewed (have feedback or non-pending status)
@@ -80,9 +82,25 @@ const NotificationsPage = () => {
     enabled: !!user,
   });
 
-  // Build unified notification feed sorted newest first
-  const notifications: NotificationItem[] = [];
+  const { data: systemNotifications = [] } = useQuery({
+    queryKey: ["system-notifications", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications" as any)
+        .select("id, event_type, title, message, metadata, created_at, is_read")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) {
+        if (/Could not find the table/.test(error.message)) return [];
+        throw error;
+      }
+      return data ?? [];
+    },
+  });
 
+  const notifications: NotificationItem[] = [];
   for (const sub of reviewedSubmissions) {
     const assignment = (sub as any).assignments;
     const lessonId = assignment?.lesson_id;
@@ -99,6 +117,26 @@ const NotificationsPage = () => {
           : `Your submission for "${assignment?.title ?? "an assignment"}" needs revision.`,
       time: sub.submitted_at,
       link: lessonId ? `/lesson/${lessonId}` : undefined,
+    });
+  }
+  for (const n of systemNotifications as any[]) {
+    const mappedType: NotificationItem["type"] =
+      n.event_type === "new_opportunity" ? "opportunity" :
+      n.event_type === "application_update" ? "application" :
+      n.event_type === "shortlisted" ? "shortlisted" :
+      n.event_type === "hired" ? "hired" :
+      n.event_type === "profile_view" ? "profile" :
+      n.event_type === "comment" || n.event_type === "like" ? "social" :
+      n.event_type === "new_message" ? "message" :
+      "announcement";
+    notifications.push({
+      id: `sys-${n.id}`,
+      type: mappedType,
+      title: n.title,
+      body: n.message ?? "You have a new update.",
+      time: n.created_at,
+      link: n.metadata?.link ?? undefined,
+      isRead: n.is_read,
     });
   }
 
@@ -126,12 +164,29 @@ const NotificationsPage = () => {
   // Sort all by time descending
   notifications.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
-  const totalUnread = unreadMessages.length;
+  const totalUnread = useMemo(
+    () => notifications.filter((n) => !n.isRead && n.id.startsWith("sys-")).length + unreadMessages.length,
+    [notifications, unreadMessages.length]
+  );
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("notifications-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => {
+        qc.invalidateQueries({ queryKey: ["system-notifications", user.id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, qc]);
 
   const iconFor = (type: NotificationItem["type"]) => {
     if (type === "approved") return <CheckCircle className="w-5 h-5 text-success shrink-0" />;
     if (type === "rejected") return <XCircle className="w-5 h-5 text-destructive shrink-0" />;
     if (type === "announcement") return <Megaphone className="w-5 h-5 text-primary shrink-0" />;
+    if (type === "opportunity") return <Bell className="w-5 h-5 text-primary shrink-0" />;
+    if (type === "application" || type === "shortlisted") return <CheckCircle className="w-5 h-5 text-success shrink-0" />;
+    if (type === "hired") return <CheckCircle className="w-5 h-5 text-success shrink-0" />;
+    if (type === "profile" || type === "social") return <Mail className="w-5 h-5 text-accent shrink-0" />;
     return <Mail className="w-5 h-5 text-accent shrink-0" />;
   };
 
