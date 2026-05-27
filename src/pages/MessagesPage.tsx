@@ -352,7 +352,7 @@ const MessagesPage = () => {
                     className="pl-8 h-8 text-sm"
                   />
                 </div>
-                <div className="max-h-44 overflow-y-auto space-y-0.5">
+                <div className="max-h-44 overflow-y-auto space-y-0.5 scroll-container" style={{ touchAction: "pan-y" }}>
                   {filteredUsers.map((u) => (
                     <button
                       key={u.user_id}
@@ -379,7 +379,7 @@ const MessagesPage = () => {
             )}
 
             {/* Conversations list */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto scroll-container" style={{ touchAction: "pan-y" }}>
               {conversations.map((conv) => (
                 <button
                   key={conv.user_id}
@@ -460,7 +460,11 @@ const MessagesPage = () => {
                 </div>
 
                 {/* Messages */}
-                <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3">
+                <div
+                  ref={scrollRef}
+                  className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3 scroll-container"
+                  style={{ touchAction: "pan-y" }}
+                >
                   {messagesWithSeparators.map((item) => {
                     if ("type" in item && item.type === "separator") {
                       return (
