@@ -64,7 +64,7 @@ const MarketplaceHubPage = () => {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("marketplace_student_profiles")
+        .from("marketplace_student_profiles" as any)
         .select("*")
         .eq("user_id", user!.id)
         .maybeSingle();
@@ -81,7 +81,7 @@ const MarketplaceHubPage = () => {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("marketplace_projects")
+        .from("marketplace_projects" as any)
         .select("*")
         .eq("student_user_id", user!.id)
         .order("created_at", { ascending: false })
@@ -99,7 +99,7 @@ const MarketplaceHubPage = () => {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("marketplace_applications")
+        .from("marketplace_applications" as any)
         .select("*, marketplace_opportunities(title)")
         .eq("student_user_id", user!.id)
         .order("created_at", { ascending: false });
@@ -125,6 +125,22 @@ const MarketplaceHubPage = () => {
         throw error;
       }
       return data ?? [];
+    },
+  });
+
+  const { data: savedOpportunitiesCount = null } = useQuery({
+    queryKey: ["saved-marketplace-opportunities-count", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("marketplace_saved_opportunities" as any)
+        .select("*", { count: "exact", head: true })
+        .eq("student_user_id", user!.id);
+      if (error) {
+        if (/Could not find the table/.test(error.message)) return null;
+        throw error;
+      }
+      return count ?? 0;
     },
   });
 
@@ -193,7 +209,6 @@ const MarketplaceHubPage = () => {
   const reviewData = applications.filter((app: any) => typeof app.employer_rating === "number");
   const reviewCount = reviewData.length;
   const reviewAverage = reviewCount > 0 ? (reviewData.reduce((sum: number, app: any) => sum + (app.employer_rating ?? 0), 0) / reviewCount).toFixed(1) : "0.0";
-  const savedOpportunitiesCount = 0;
   const whatsappLink = studentProfile?.whatsapp_number ? `https://wa.me/${studentProfile.whatsapp_number.replace(/[^0-9]/g, "")}` : null;
 
   if (isLoading) return <div className="p-8">Loading marketplace hub...</div>;
@@ -253,7 +268,7 @@ const MarketplaceHubPage = () => {
               </div>
               <div className="rounded-3xl border border-white/10 bg-white/10 p-5">
                 <p className="text-xs uppercase tracking-[0.3em] text-white/70">Saved opportunities</p>
-                <p className="mt-3 text-3xl font-semibold">{savedOpportunitiesCount}</p>
+                <p className="mt-3 text-3xl font-semibold">{savedOpportunitiesCount ?? "—"}</p>
                 <p className="text-sm text-white/80 mt-2">Save job posts and gigs for later in the marketplace.</p>
               </div>
             </div>
@@ -301,7 +316,7 @@ const MarketplaceHubPage = () => {
               </div>
               <div className="rounded-3xl border border-border bg-card p-5 space-y-3">
                 <Button className="w-full" asChild>
-                  <Link to="/dashboard/messages">Message Student</Link>
+                  <Link to={user?.id ? `/dashboard/messages?to=${user.id}` : "/dashboard/messages"}>Message Student</Link>
                 </Button>
                 <Button variant="hero" className="w-full" onClick={() => {
                   navigator.clipboard.writeText(profileUrl);
@@ -568,7 +583,7 @@ const MarketplaceHubPage = () => {
                     </Avatar>
                     <div>
                       <p className="font-semibold">Use your account avatar as your marketplace photo.</p>
-                      <Link to="/settings" className="text-sm text-primary hover:underline">Update photo in settings</Link>
+                      <Link to="/dashboard/settings" className="text-sm text-primary hover:underline">Update photo in settings</Link>
                     </div>
                   </div>
                 </div>
