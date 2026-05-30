@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, ArrowLeft, Mail, Search, MessageCircle, HeadphonesIcon, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday } from "date-fns";
@@ -32,6 +31,13 @@ interface Message {
   created_at: string;
 }
 
+interface ProfileSummary {
+  user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  is_admin?: boolean;
+}
+
 // Format timestamp relative to today
 const formatMsgTime = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -56,11 +62,68 @@ const MessagesPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
-  const [allUsers, setAllUsers] = useState<{ user_id: string; full_name: string; avatar_url: string | null; is_admin?: boolean }[]>([]);
+  const [allUsers, setAllUsers] = useState<ProfileSummary[]>([]);
   const [showNewChat, setShowNewChat] = useState(false);
   const [charCount, setCharCount] = useState(0);
   const [adminContact, setAdminContact] = useState<{ user_id: string; full_name: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dragScrollState = useRef({
+    isDragging: false,
+    hasMoved: false,
+    pointerId: -1,
+    startY: 0,
+    scrollTop: 0,
+  });
+
+  const canStartDragScroll = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return true;
+
+    return !target.closest(
+      'button, a, input, textarea, select, [role="button"], [data-no-drag-scroll="true"]'
+    );
+  };
+
+  const handleDragScrollStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!canStartDragScroll(event.target)) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    const container = event.currentTarget;
+    dragScrollState.current = {
+      isDragging: true,
+      hasMoved: false,
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      scrollTop: container.scrollTop,
+    };
+    container.setPointerCapture(event.pointerId);
+  };
+
+  const handleDragScrollMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const state = dragScrollState.current;
+    if (!state.isDragging || state.pointerId !== event.pointerId) return;
+
+    const deltaY = event.clientY - state.startY;
+    if (Math.abs(deltaY) > 3) state.hasMoved = true;
+    if (state.hasMoved) event.preventDefault();
+
+    event.currentTarget.scrollTop = state.scrollTop - deltaY;
+  };
+
+  const handleDragScrollEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    const state = dragScrollState.current;
+    if (!state.isDragging || state.pointerId !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragScrollState.current = {
+      isDragging: false,
+      hasMoved: false,
+      pointerId: -1,
+      startY: 0,
+      scrollTop: 0,
+    };
+  };
 
   // Auto-open chat with ?to=USER_ID
   useEffect(() => {
@@ -88,7 +151,12 @@ const MessagesPage = () => {
           .select("user_id, full_name")
           .eq("user_id", roleData.user_id)
           .single();
-        if (profile) setAdminContact(profile as any);
+        if (profile) {
+          setAdminContact({
+            user_id: profile.user_id,
+            full_name: profile.full_name || "NEXUS Instructor",
+          });
+        }
       });
   }, [user, isAdmin]);
 
@@ -124,7 +192,7 @@ const MessagesPage = () => {
 
     // Get admin IDs to badge them
     const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
-    const adminIdSet = new Set((adminRoles || []).map((r: any) => r.user_id));
+    const adminIdSet = new Set((adminRoles || []).map((r) => r.user_id));
 
     const convs: Conversation[] = userIds.map((uid) => {
       const entry = convMap.get(uid)!;
@@ -250,7 +318,7 @@ const MessagesPage = () => {
     setCharCount(e.target.value.length);
   };
 
-  const startChat = (u: { user_id: string; full_name: string; is_admin?: boolean }) => {
+  const startChat = (u: { user_id: string; full_name: string | null; is_admin?: boolean }) => {
     setSelectedUser({ id: u.user_id, name: u.full_name || "NEXUS Support", is_admin: u.is_admin });
     setShowNewChat(false);
   };
@@ -363,7 +431,7 @@ const MessagesPage = () => {
                         {u.full_name?.[0]?.toUpperCase() || "?"}
                       </div>
                       <span className="truncate flex-1">{u.full_name || "Unknown"}</span>
-                      {(u as any).is_admin && (
+                      {u.is_admin && (
                         <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] shrink-0">Instructor</Badge>
                       )}
                     </button>
@@ -462,8 +530,14 @@ const MessagesPage = () => {
                 {/* Messages */}
                 <div
                   ref={scrollRef}
-                  className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3 scroll-container"
+                  onPointerDown={handleDragScrollStart}
+                  onPointerMove={handleDragScrollMove}
+                  onPointerUp={handleDragScrollEnd}
+                  onPointerCancel={handleDragScrollEnd}
+                  onPointerLeave={handleDragScrollEnd}
+                  className="flex-1 min-h-0 cursor-grab select-none overflow-y-auto overscroll-contain p-4 space-y-3 scroll-container active:cursor-grabbing"
                   style={{ touchAction: "pan-y" }}
+                  aria-label="Private message thread - scroll with the scrollbar, mouse wheel, touch drag, or mouse drag"
                 >
                   {messagesWithSeparators.map((item) => {
                     if ("type" in item && item.type === "separator") {
