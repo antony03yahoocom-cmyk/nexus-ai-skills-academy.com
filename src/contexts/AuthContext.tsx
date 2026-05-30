@@ -2,10 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+// ── Full Profile type including avatar_url ────────────────────────────────────
 type Profile = {
   user_id: string;
   full_name?: string | null;
   role?: string | null;
+  avatar_url?: string | null;       // FIX: was missing, caused (profile as any) casts everywhere
   is_premium?: boolean | null;
   subscription_status?: string | null;
   trial_started_at?: string | null;
@@ -93,9 +95,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             loadProfile(nextSession.user.id),
             loadAdminRole(nextSession.user.id),
           ]);
-          setIsAdmin(adminResult);
-          if (!profileResult) {
-            setIsAdmin(false);
+          if (mounted) {
+            setIsAdmin(adminResult && !!profileResult);
           }
         } else {
           setProfile(null);
@@ -103,7 +104,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setIsAdmin(false);
         }
       } catch (error) {
-        console.error("[AuthContext] Failed to load profile/purchases:", error);
+        console.error("[AuthContext] syncSession error:", error);
         setProfile(null);
         setPurchases([]);
         setIsAdmin(false);
