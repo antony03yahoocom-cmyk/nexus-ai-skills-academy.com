@@ -96,6 +96,7 @@ const CourseDetailPage = () => {
 
   const courseAccess = courseId ? hasCourseAccess(courseId) : false;
   const isFree = course?.price === 0;
+  const canOpenFreeCourse = !!user && isFree;
 
   const handleBuyCourse = async () => {
     if (!user || !session || !course) {
@@ -246,8 +247,8 @@ const CourseDetailPage = () => {
             )}
 
             <div className="flex flex-wrap gap-3">
-              {enrollment ? (
-                courseAccess ? (
+              {enrollment || canOpenFreeCourse ? (
+                courseAccess || canOpenFreeCourse ? (
                   <Button variant="hero" size="lg" asChild>
                     <Link to={firstAccessibleLesson ? `/lesson/${firstAccessibleLesson.id}` : (allLessonsOrdered[0] ? `/lesson/${allLessonsOrdered[0].id}` : "#")}>
                       Continue Learning
@@ -289,12 +290,12 @@ const CourseDetailPage = () => {
                         const globalIdx = allLessonsOrdered.findIndex((l) => l.id === lesson.id);
                         const isCompleted = completions.includes(lesson.id);
                         const trialPreviewAccess = trialActive && profile?.trial_course_id === courseId && !isFree && globalIdx < 5;
-                        const canAccess = enrollment && (isAdmin || trialPreviewAccess || (() => {
+                        const canAccess = !!user && (isAdmin || isFree || trialPreviewAccess || (!!enrollment && (() => {
                           // Sequential after trial preview: previous must be completed (or it's the first)
                           if (globalIdx === 0) return canAccessLesson(courseId!, globalIdx);
                           const prevCompleted = completions.includes(allLessonsOrdered[globalIdx - 1]?.id);
                           return prevCompleted && canAccessLesson(courseId!, globalIdx);
-                        })());
+                        })()));
                         const isLocked = !canAccess;
 
                         return (

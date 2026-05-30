@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import {
   BookOpen, Clock, Trophy, Lock, CreditCard, Crown, Award, FolderOpen,
   ArrowRight, CheckCircle, Flame, Zap, Target, Sparkles, TrendingUp,
-  MessageCircle, Bell, Play, ChevronRight,
+  MessageCircle, Bell, Play, ChevronRight, Video,
 } from "lucide-react";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { Button } from "@/components/ui/button";
@@ -168,6 +168,22 @@ const StudentDashboard = () => {
     enabled: !!user,
   });
 
+  const { data: liveClassUrl = "" } = useQuery({
+    queryKey: ["live-class-url"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "live_class_url")
+        .maybeSingle();
+      return typeof data?.value === "string" ? data.value.trim() : "";
+    },
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
+
+  const hasLiveClass = liveClassUrl.length > 0;
+
   // Unread messages count for notification badge
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["dash-unread", user?.id],
@@ -267,7 +283,21 @@ const StudentDashboard = () => {
             </p>
           </div>
           {/* Quick action icons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={hasLiveClass ? "hero" : "outline"}
+              size="sm"
+              disabled={!hasLiveClass}
+              onClick={() => {
+                if (hasLiveClass) window.open(liveClassUrl, "_blank", "noopener,noreferrer");
+              }}
+              className={hasLiveClass ? "animate-pulse border-primary shadow-lg shadow-primary/30" : "cursor-not-allowed opacity-60"}
+              title={hasLiveClass ? "Join the current Google Meet live class" : "No live class link is available yet"}
+            >
+              <Video className="w-4 h-4 mr-2" />
+              JOIN LIVE CLASS
+            </Button>
             {unreadCount > 0 && (
               <Link to="/dashboard/messages" className="relative">
                 <Button variant="outline" size="sm">

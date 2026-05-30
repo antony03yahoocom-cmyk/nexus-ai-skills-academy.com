@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Camera, Save, Settings, User, ShieldPlus, Send, MessageCircle, Users, BookOpen, Newspaper, Trash2 } from "lucide-react";
+import { Camera, Save, Settings, User, ShieldPlus, Send, MessageCircle, Users, BookOpen, Newspaper, Trash2, Video } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ const AdminSettingsPage = () => {
   const [sendingNudges, setSendingNudges] = useState(false);
   const [platformAnnouncement, setPlatformAnnouncement] = useState("");
   const [whatsappGroupUrl, setWhatsappGroupUrl] = useState("https://chat.whatsapp.com/GdHfJutCYlX7xitn3gC71o");
+  const [liveClassUrl, setLiveClassUrl] = useState("");
   const [trialLessonLimit, setTrialLessonLimit] = useState("5");
   const [trialDurationDays, setTrialDurationDays] = useState("7");
   const [supportEmail, setSupportEmail] = useState("support@nexusaiskillsacademy.com");
@@ -37,7 +38,7 @@ const AdminSettingsPage = () => {
       const { data, error } = await supabase
         .from("app_settings")
         .select("key, value")
-        .in("key", ["platform_announcement", "whatsapp_group_url", "trial_lesson_limit", "trial_duration_days", "support_email", "default_currency", "maintenance_mode", "allow_registrations"]);
+        .in("key", ["platform_announcement", "whatsapp_group_url", "live_class_url", "trial_lesson_limit", "trial_duration_days", "support_email", "default_currency", "maintenance_mode", "allow_registrations"]);
 
       if (error) {
         console.error("loadSettings error:", error);
@@ -50,6 +51,9 @@ const AdminSettingsPage = () => {
         }
         if (setting.key === "whatsapp_group_url" && typeof setting.value === "string") {
           setWhatsappGroupUrl(setting.value);
+        }
+        if (setting.key === "live_class_url" && typeof setting.value === "string") {
+          setLiveClassUrl(setting.value);
         }
         if (setting.key === "trial_lesson_limit") {
           setTrialLessonLimit(String(setting.value ?? "5"));
@@ -103,11 +107,18 @@ const AdminSettingsPage = () => {
       return;
     }
 
+    const trimmedLiveClassUrl = liveClassUrl.trim();
+    if (trimmedLiveClassUrl && !/^https:\/\/meet\.google\.com\//i.test(trimmedLiveClassUrl)) {
+      toast.error("Live class URL must be a valid Google Meet link starting with https://meet.google.com/");
+      return;
+    }
+
     setSavingPlatform(true);
     try {
       const { error } = await supabase.from("app_settings").upsert([
         { key: "platform_announcement", value: platformAnnouncement },
         { key: "whatsapp_group_url", value: whatsappGroupUrl },
+        { key: "live_class_url", value: trimmedLiveClassUrl },
         { key: "trial_lesson_limit", value: parsedTrialLessonLimit },
         { key: "trial_duration_days", value: parsedTrialDurationDays },
         { key: "support_email", value: supportEmail },
@@ -236,6 +247,39 @@ const AdminSettingsPage = () => {
           </Card>
 
           <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Video className="w-5 h-5" /> Live Class</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="liveClassUrl">Google Meet URL</Label>
+                <Input
+                  id="liveClassUrl"
+                  value={liveClassUrl}
+                  onChange={(e) => setLiveClassUrl(e.target.value)}
+                  placeholder="https://meet.google.com/abc-defg-hij"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Paste an active Google Meet link here. Students will see a blinking JOIN LIVE CLASS button; clear this field to disable the button.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={handleSavePlatformSettings} disabled={savingPlatform}>
+                  <Save className="w-4 h-4 mr-2" />
+                  {savingPlatform ? "Saving..." : "Save Live Class Link"}
+                </Button>
+                {liveClassUrl.trim() ? (
+                  <Button variant="outline" asChild>
+                    <a href={liveClassUrl.trim()} target="_blank" rel="noopener noreferrer">Preview Live Class Link</a>
+                  </Button>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No live class is active right now.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Settings className="w-5 h-5" /> Platform Settings</CardTitle>
             </CardHeader>
