@@ -80,7 +80,7 @@ const MessagesPage = () => {
     if (!(target instanceof HTMLElement)) return true;
 
     return !target.closest(
-      'a, input, textarea, select, [data-no-drag-scroll="true"]'
+      'button, a, input, textarea, select, [role="button"], [data-no-drag-scroll="true"]'
     );
   };
 
