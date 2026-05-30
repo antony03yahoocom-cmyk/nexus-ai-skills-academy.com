@@ -65,22 +65,22 @@ const DashboardTopNav = () => {
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[#102A47] bg-[#1A3A5F]/95 text-white shadow-lg shadow-[#1A3A5F]/15 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
+        <div className="w-full px-3 sm:px-4 lg:px-6">
+          <div className="flex h-16 min-w-0 items-center gap-3">
             <Link to="/" className="flex items-center gap-2 shrink-0">
               <Cpu className="w-6 h-6 text-[#00C896]" />
-              <span className="font-display font-bold text-lg text-white">NEXUS AI ACADEMY</span>
+              <span className="hidden font-display text-base font-bold text-white sm:inline lg:text-lg">NEXUS AI ACADEMY</span>
             </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden flex-1 min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain px-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] md:flex">
             {navLinks.map((link) => {
               const isActive = location.pathname === link.to || (link.to !== "/dashboard" && location.pathname.startsWith(link.to));
               return (
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  className={`relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${
                     isActive
                       ? "bg-[#00C896] text-[#1A3A5F] font-semibold shadow-sm shadow-[#00C896]/25"
                       : "text-white/70 hover:text-white hover:bg-white/10"
@@ -99,7 +99,7 @@ const DashboardTopNav = () => {
           </div>
 
           {/* Desktop right actions */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden shrink-0 items-center gap-2 md:flex">
             {/* WhatsApp community */}
             <a
               href={WHATSAPP_URL}
