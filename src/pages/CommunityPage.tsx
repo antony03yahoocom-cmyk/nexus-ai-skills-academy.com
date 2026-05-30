@@ -46,9 +46,6 @@ const formatMediaLabel = (url: string) => {
   }
 };
 
-const isMissingCommunityDescriptionError = (error: any) =>
-  typeof error?.message === "string" && /Could not find the 'description' column of 'community_posts'/i.test(error.message);
-
 const CommunityPage = () => {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
@@ -64,7 +61,7 @@ const CommunityPage = () => {
   const { data: profiles = [] } = useQuery({
     queryKey: ["community-profiles"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url").limit(250);
+      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url");
       return data ?? [];
     },
     enabled: !!user,
@@ -75,8 +72,8 @@ const CommunityPage = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("community_posts")
-        .select("id, user_id, title, category, media_urls, is_public, created_at, updated_at")
-        .order("created_at", { ascending: false }).limit(50);
+        .select("*")
+        .order("created_at", { ascending: false });
       return data ?? [];
     },
     enabled: !!user,
@@ -93,7 +90,7 @@ const CommunityPage = () => {
         .from("community_post_comments")
         .select("*")
         .in("post_id", postIds)
-        .order("created_at", { ascending: true }).limit(500);
+        .order("created_at", { ascending: true });
       return data ?? [];
     },
     enabled: postIds.length > 0 && !!user,
@@ -141,7 +138,7 @@ const CommunityPage = () => {
         .select("*, courses(title)")
         .eq("public_visibility", true)
         .eq("status", "Approved" as any)
-        .order("created_at", { ascending: false }).limit(60);
+        .order("created_at", { ascending: false });
       return data ?? [];
     },
     enabled: !!user,
@@ -163,38 +160,47 @@ const CommunityPage = () => {
     queryKey: ["project-comments", projectIds.join(",")],
     queryFn: async () => {
       if (!projectIds.length) return [];
-      const { data } = await supabase.from("project_comments").select("*").in("project_id", projectIds).order("created_at", { ascending: true }).limit(500);
+      const { data } = await supabase.from("project_comments").select("*").in("project_id", projectIds).order("created_at", { ascending: true });
       return data ?? [];
     },
     enabled: projectIds.length > 0,
   });
+
+
+  // FIX: Realtime — new posts, likes, comments appear without page refresh
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("community-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "community_posts" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["community-posts"] });
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "community_post_likes" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["community-likes"] });
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "community_post_likes" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["community-likes"] });
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "community_post_comments" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["community-comments"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, queryClient]);
 
   const createPost = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to share a community post.");
       if (!postTitle.trim()) throw new Error("Give your post a title.");
       const urls = parseMediaUrls(mediaUrls);
-      const payload = {
+      const { error } = await supabase.from("community_posts").insert({
         user_id: user.id,
         title: postTitle.trim(),
         description: postDescription.trim(),
         category: postCategory,
         media_urls: urls,
-      };
-      const { error } = await supabase.from("community_posts").insert(payload as any);
-      if (error) {
-        if (isMissingCommunityDescriptionError(error)) {
-          const { error: retryError } = await supabase.from("community_posts").insert({
-            user_id: user.id,
-            title: postTitle.trim(),
-            category: postCategory,
-            media_urls: urls,
-          } as any);
-          if (retryError) throw retryError;
-          return;
-        }
-        throw error;
-      }
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Your post is live in the community feed.");
@@ -263,27 +269,6 @@ const CommunityPage = () => {
       projectLikes.filter((like: any) => like.project_id === a.id).length
     )
     .slice(0, 3);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel("community-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "community_posts" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["community-posts"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "community_post_comments" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["community-comments"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "community_post_likes" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["community-likes"] });
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, queryClient]);
 
   return (
     <div className="min-h-screen bg-background">
