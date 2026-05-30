@@ -7,13 +7,17 @@ type Profile = {
   user_id: string;
   full_name?: string | null;
   role?: string | null;
-  avatar_url?: string | null;       // FIX: was missing, caused (profile as any) casts everywhere
+  avatar_url?: string | null;
   is_premium?: boolean | null;
   subscription_status?: string | null;
-  trial_started_at?: string | null;
-  trial_days?: number | null;
+  trial_start_date?: string | null;
   trial_course_id?: string | null;
   is_banned?: boolean | null;
+};
+
+type CoursePurchase = {
+  course_id: string;
+  status: string;
 };
 
 type AuthContextType = {
@@ -23,7 +27,7 @@ type AuthContextType = {
   loading: boolean;
   isAdmin: boolean;
   isBanned: boolean;
-  purchases: any[];
+  purchases: CoursePurchase[];
   trialActive: boolean;
   trialDaysLeft: number;
   refreshProfile: () => Promise<void>;
@@ -39,7 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [purchases, setPurchases] = useState<any[]>([]);
+  const [purchases, setPurchases] = useState<CoursePurchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -60,19 +64,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const loadProfile = useCallback(async (userId: string) => {
+  const loadProfile = useCallback(async (authUser: User) => {
     try {
-      const [{ data: prof, error: profError }, { data: paid, error: paidError }] = await Promise.all([
+      const userId = authUser.id;
+      const [{ data: existingProfile, error: profError }, { data: paid, error: paidError }] = await Promise.all([
         supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
-        supabase.from("course_purchases").select("*").eq("user_id", userId).eq("status", "paid"),
+        supabase.from("course_purchases").select("course_id, status").eq("user_id", userId).eq("status", "paid"),
       ]);
 
       if (profError && profError.code !== "PGRST116") throw profError;
       if (paidError) throw paidError;
 
-      setProfile((prof as Profile | null) ?? null);
-      setPurchases(paid ?? []);
-      return prof as Profile | null;
+      let resolvedProfile = existingProfile as Profile | null;
+      if (!resolvedProfile) {
+        const fullName =
+          authUser.user_metadata?.full_name ||
+          authUser.user_metadata?.name ||
+          authUser.email?.split("@")[0] ||
+          "Student";
+        const { data: insertedProfile, error: insertError } = await supabase
+          .from("profiles")
+          .upsert({ user_id: userId, full_name: fullName }, { onConflict: "user_id" })
+          .select("*")
+          .single();
+        if (insertError) throw insertError;
+        resolvedProfile = insertedProfile as Profile;
+      }
+
+      setProfile(resolvedProfile);
+      setPurchases((paid ?? []) as CoursePurchase[]);
+      return resolvedProfile;
     } catch (error) {
       console.error("[AuthContext] Failed to load profile/purchases:", error);
       setProfile(null);
@@ -92,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         if (nextSession?.user) {
           const [profileResult, adminResult] = await Promise.all([
-            loadProfile(nextSession.user.id),
+            loadProfile(nextSession.user),
             loadAdminRole(nextSession.user.id),
           ]);
           if (mounted) {
@@ -130,7 +151,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshProfile = useCallback(async () => {
     if (!user) return;
     try {
-      await loadProfile(user.id);
+      await loadProfile(user);
     } catch (error) {
       console.error("[AuthContext] Failed to refresh profile:", error);
     }
@@ -141,12 +162,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const trialDaysLeft = useMemo(() => {
-    if (!profile?.trial_started_at) return 0;
-    const totalDays = profile.trial_days ?? 7;
-    const started = new Date(profile.trial_started_at).getTime();
+    if (!profile?.trial_start_date) return 0;
+    const totalDays = 7;
+    const started = new Date(profile.trial_start_date).getTime();
     const elapsedDays = Math.floor((Date.now() - started) / (24 * 60 * 60 * 1000));
     return Math.max(0, totalDays - elapsedDays);
-  }, [profile?.trial_started_at, profile?.trial_days]);
+  }, [profile?.trial_start_date]);
 
   const trialActive = trialDaysLeft > 0;
 
@@ -155,7 +176,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!user) return false;
       if (isAdmin || profile?.is_premium || profile?.subscription_status === "paid") return true;
       if (!courseId) return false;
-      return purchases.some((p: any) => p.course_id === courseId && p.status === "paid");
+      return purchases.some((p) => p.course_id === courseId && p.status === "paid");
     },
     [user, isAdmin, profile?.is_premium, profile?.subscription_status, purchases],
   );
@@ -173,7 +194,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!user) return;
       await supabase
         .from("profiles")
-        .update({ trial_course_id: courseId, trial_started_at: new Date().toISOString() } as any)
+        .update({ trial_course_id: courseId })
         .eq("user_id", user.id);
       await refreshProfile();
     },
