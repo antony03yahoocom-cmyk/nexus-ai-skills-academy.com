@@ -101,7 +101,7 @@ const AdminStudentsPage = () => {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {profiles.map((p: any) => {
-                    const trialDays = Math.max(0, 7 - Math.floor((Date.now() - new Date(p.trial_started_at).getTime()) / (1000 * 60 * 60 * 24)));
+                    const trialDays = Math.max(0, 7 - Math.floor((Date.now() - new Date(p.trial_start_date).getTime()) / (1000 * 60 * 60 * 24)));
                     const userPurchases = purchases.filter((pu: any) => pu.user_id === p.user_id).length;
                     const userCompletions = completions.filter((c: any) => c.user_id === p.user_id).length;
                     const marketplaceProfile = studentProfileMap.get(p.user_id);

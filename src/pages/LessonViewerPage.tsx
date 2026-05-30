@@ -340,10 +340,10 @@ const LessonViewerPage = () => {
   const hasAccess = useMemo(() => {
     if (!courseId || !user) return false;
     if (isAdmin) return true;
-    if (!hasCourseAccess(courseId)) return false;
+    if (course?.price === 0) return true;
     if (!canAccessLesson(courseId, globalIndex)) return false;
     if (trialActive && profile?.trial_course_id === courseId && globalIndex < 5) return true;
-    if (globalIndex === 0) return true;
+    if (globalIndex === 0) return hasCourseAccess(courseId);
     const prevLesson = allCourseLessons[globalIndex - 1];
     if (!prevLesson) return false;
     return allCompletions.includes(prevLesson.id) && isLessonAssignmentApproved(prevLesson.id);
@@ -370,7 +370,7 @@ const LessonViewerPage = () => {
           <p className="text-muted-foreground mb-4">
             {prevAssignmentPending ? "Complete and get your assignment approved to unlock this lesson."
               : prevNotCompleted ? "Complete the previous lesson first to unlock this one."
-              : trialActive && globalIndex >= 7 ? "This lesson is beyond the trial limit. Purchase the course for full access."
+              : trialActive && globalIndex >= 5 ? "This lesson is beyond the trial limit. Purchase the course for full access."
               : "Purchase this course or get Premium to access this lesson."}
           </p>
           <div className="flex flex-col gap-2">

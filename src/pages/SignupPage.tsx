@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Cpu, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { toast } from "sonner";
 
 const SignupPage = () => {
@@ -28,7 +27,7 @@ const SignupPage = () => {
       password,
       options: {
         data: { full_name: name, phone },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     });
     setLoading(false);
@@ -41,11 +40,15 @@ const SignupPage = () => {
   };
 
   const handleGoogleSignIn = async () => {
-    const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+        queryParams: { prompt: "select_account" },
+      },
     });
     if (error) {
-      toast.error(error instanceof Error ? error.message : "Google sign-in failed");
+      toast.error(error.message || "Google sign-in failed");
     }
   };
 
