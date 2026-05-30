@@ -36,11 +36,11 @@ const DashboardSidebar = () => {
   ];
 
   return (
-    <aside className="w-64 h-screen sticky top-0 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0 hidden lg:flex">
-      <div className="p-5 border-b border-sidebar-border">
+    <aside className="w-64 h-screen sticky top-0 bg-[#1A3A5F] text-white border-r border-[#102A47] flex flex-col shrink-0 hidden lg:flex shadow-2xl shadow-[#1A3A5F]/20">
+      <div className="p-5 border-b border-white/10">
         <Link to="/" className="flex items-center gap-2">
-          <Cpu className="w-6 h-6 text-primary" />
-          <span className="font-display font-bold">NEXUS AI ACADEMY</span>
+          <Cpu className="w-6 h-6 text-[#00C896]" />
+          <span className="font-display font-bold text-white">NEXUS AI ACADEMY</span>
         </Link>
       </div>
       <nav className="flex-1 p-3 space-y-1">
@@ -51,13 +51,13 @@ const DashboardSidebar = () => {
               key={link.to}
               to={link.to}
               className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                isActive ? "bg-[#00C896] text-[#1A3A5F] font-semibold shadow-sm shadow-[#00C896]/25" : "text-white/75 hover:bg-white/10 hover:text-white"
               }`}
             >
               <link.icon className="w-4 h-4" />
               <span className="flex-1">{link.label}</span>
               {link.badge && link.badge > 0 ? (
-                <span className="h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
+                <span className="h-5 min-w-5 px-1 rounded-full bg-[#FFB400] text-[#1A3A5F] text-[10px] flex items-center justify-center font-bold">
                   {link.badge > 9 ? "9+" : link.badge}
                 </span>
               ) : null}
@@ -65,8 +65,8 @@ const DashboardSidebar = () => {
           );
         })}
       </nav>
-      <div className="p-3 border-t border-sidebar-border">
-        <button onClick={signOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors w-full">
+      <div className="p-3 border-t border-white/10">
+        <button onClick={signOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/75 hover:bg-white/10 hover:text-white transition-colors w-full">
           <LogOut className="w-4 h-4" />
           Logout
         </button>
