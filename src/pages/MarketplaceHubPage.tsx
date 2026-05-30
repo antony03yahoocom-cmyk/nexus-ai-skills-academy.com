@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   FolderOpen,
@@ -28,8 +28,6 @@ const AVAILABILITY_OPTIONS = [
 
 const availabilityLabel = (value: string) => AVAILABILITY_OPTIONS.find((option) => option.value === value)?.label ?? "Not Available";
 const availabilityClass = (value: string) => AVAILABILITY_OPTIONS.find((option) => option.value === value)?.color ?? "bg-muted/10 text-muted-foreground";
-const isMissingMarketplaceTableError = (error: any) =>
-  typeof error?.message === "string" && /Could not find the table 'public\.marketplace_/i.test(error.message);
 
 const profileCompletion = (profile: any, hasAvatar: boolean) => {
   const checks = [
@@ -61,52 +59,74 @@ const MarketplaceHubPage = () => {
   const [projectMedia, setProjectMedia] = useState("");
   const [socialLinks, setSocialLinks] = useState({ linkedin: "", github: "", website: "", portfolio: "" });
 
-  const { data: hubData, isLoading } = useQuery({
-    queryKey: ["marketplace-student-hub", user?.id],
+  const { data: studentProfile, isLoading } = useQuery({
+    queryKey: ["marketplace-student-profile", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_marketplace_student_hub" as any, { p_user_id: user!.id });
-      if (!error) {
-        return {
-          profile: (data as any)?.profile ?? null,
-          projects: (data as any)?.projects ?? [],
-          applications: (data as any)?.applications ?? [],
-          testimonials: (data as any)?.testimonials ?? [],
-          savedOpportunitiesCount: (data as any)?.saved_opportunities_count ?? 0,
-        };
+      const { data, error } = await supabase
+        .from("marketplace_student_profiles" as any)
+        .select("*")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) {
+        if (/Could not find the table/.test(error.message)) return null;
+        throw error;
       }
-
-      if (/Could not find the function|schema cache|marketplace_saved_opportunities/.test(error.message)) {
-        const [profileRes, projectsRes, applicationsRes, testimonialsRes, savedRes] = await Promise.all([
-          supabase.from("marketplace_student_profiles" as any).select("*").eq("user_id", user!.id).maybeSingle(),
-          supabase.from("marketplace_projects" as any).select("*").eq("student_user_id", user!.id).order("created_at", { ascending: false }).limit(6),
-          supabase.from("marketplace_applications" as any).select("*, marketplace_opportunities(title)").eq("student_user_id", user!.id).order("created_at", { ascending: false }).limit(25),
-          supabase.from("testimonials").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(3),
-          supabase.from("marketplace_saved_opportunities" as any).select("*", { count: "exact", head: true }).eq("student_user_id", user!.id),
-        ]);
-
-        for (const result of [profileRes, projectsRes, applicationsRes, testimonialsRes, savedRes]) {
-          if (result.error && !/Could not find the table/.test(result.error.message)) throw result.error;
-        }
-
-        return {
-          profile: profileRes.data ?? null,
-          projects: projectsRes.data ?? [],
-          applications: applicationsRes.data ?? [],
-          testimonials: testimonialsRes.data ?? [],
-          savedOpportunitiesCount: savedRes.count ?? 0,
-        };
-      }
-
-      throw error;
+      return data;
     },
   });
 
-  const studentProfile = hubData?.profile ?? null;
-  const projects = hubData?.projects ?? [];
-  const applications = hubData?.applications ?? [];
-  const testimonials = hubData?.testimonials ?? [];
-  const savedOpportunitiesCount = hubData?.savedOpportunitiesCount ?? null;
+  const { data: projects = [] } = useQuery({
+    queryKey: ["my-marketplace-projects", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("marketplace_projects" as any)
+        .select("*")
+        .eq("student_user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(6);
+      if (error) {
+        if (/Could not find the table/.test(error.message)) return [];
+        throw error;
+      }
+      return data ?? [];
+    },
+  });
+
+  const { data: applications = [] } = useQuery({
+    queryKey: ["my-marketplace-applications", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("marketplace_applications" as any)
+        .select("*, marketplace_opportunities(title)")
+        .eq("student_user_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (error) {
+        if (/Could not find the table/.test(error.message)) return [];
+        throw error;
+      }
+      return data ?? [];
+    },
+  });
+
+  const { data: testimonials = [] } = useQuery({
+    queryKey: ["marketplace-testimonials"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("testimonials")
+        .select("*")
+        .eq("is_published", true)
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (error) {
+        if (/Could not find the table/.test(error.message)) return [];
+        throw error;
+      }
+      return data ?? [];
+    },
+  });
 
   useEffect(() => {
     if (!studentProfile) return;
@@ -127,27 +147,21 @@ const MarketplaceHubPage = () => {
   const saveProfile = useMutation({
     mutationFn: async (payload: any) => {
       const { error } = await supabase
-        .from("marketplace_student_profiles")
+        .from("marketplace_student_profiles" as any)
         .upsert({ user_id: user!.id, ...payload }, { onConflict: "user_id" });
-      if (error) {
-        if (isMissingMarketplaceTableError(error)) return;
-        throw error;
-      }
+      if (error) throw error;
     },
     onSuccess: async () => {
       toast.success("Marketplace profile updated");
-      await qc.invalidateQueries({ queryKey: ["marketplace-student-hub", user?.id] });
+      await qc.invalidateQueries({ queryKey: ["marketplace-student-profile", user?.id] });
     },
     onError: (error: any) => toast.error(error.message || "Unable to update profile"),
   });
 
   const saveProject = useMutation({
     mutationFn: async (payload: any) => {
-      const { error } = await supabase.from("marketplace_projects").insert({ student_user_id: user!.id, ...payload });
-      if (error) {
-        if (isMissingMarketplaceTableError(error)) return;
-        throw error;
-      }
+      const { error } = await supabase.from("marketplace_projects" as any).insert({ student_user_id: user!.id, ...payload });
+      if (error) throw error;
     },
     onSuccess: async () => {
       toast.success("Project added to your portfolio");
@@ -155,7 +169,7 @@ const MarketplaceHubPage = () => {
       setProjectDesc("");
       setProjectTools("");
       setProjectMedia("");
-      await qc.invalidateQueries({ queryKey: ["marketplace-student-hub", user?.id] });
+      await qc.invalidateQueries({ queryKey: ["my-marketplace-projects", user?.id] });
     },
     onError: (error: any) => toast.error(error.message || "Failed to save project"),
   });
@@ -173,19 +187,15 @@ const MarketplaceHubPage = () => {
   };
 
   const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/portfolio` : "/portfolio";
-  const completionScore = useMemo(() => profileCompletion(studentProfile, Boolean(profile?.avatar_url)), [profile?.avatar_url, studentProfile]);
+  const completionScore = profileCompletion(studentProfile, Boolean(profile?.avatar_url));
   const projectCount = projects.length;
   const applicationCount = applications.length;
-  const reviewData = useMemo(() => applications.filter((app: any) => typeof app.employer_rating === "number"), [applications]);
+  const reviewData = applications.filter((app: any) => typeof app.employer_rating === "number");
   const reviewCount = reviewData.length;
-  const reviewAverage = useMemo(
-    () => reviewCount > 0 ? (reviewData.reduce((sum: number, app: any) => sum + (app.employer_rating ?? 0), 0) / reviewCount).toFixed(1) : "0.0",
-    [reviewCount, reviewData],
-  );
-  const whatsappLink = useMemo(
-    () => studentProfile?.whatsapp_number ? `https://wa.me/${studentProfile.whatsapp_number.replace(/[^0-9]/g, "")}` : null,
-    [studentProfile?.whatsapp_number],
-  );
+  const reviewAverage = reviewCount > 0 ? (reviewData.reduce((sum: number, app: any) => sum + (app.employer_rating ?? 0), 0) / reviewCount).toFixed(1) : "0.0";
+  // TODO: implement saved opportunities table; showing placeholder for now
+  const savedOpportunitiesCount = 0;
+  const whatsappLink = studentProfile?.whatsapp_number ? `https://wa.me/${studentProfile.whatsapp_number.replace(/[^0-9]/g, "")}` : null;
 
   if (isLoading) return <div className="p-8">Loading marketplace hub...</div>;
 
@@ -244,7 +254,7 @@ const MarketplaceHubPage = () => {
               </div>
               <div className="rounded-3xl border border-white/10 bg-white/10 p-5">
                 <p className="text-xs uppercase tracking-[0.3em] text-white/70">Saved opportunities</p>
-                <p className="mt-3 text-3xl font-semibold">{savedOpportunitiesCount ?? "—"}</p>
+                <p className="mt-3 text-3xl font-semibold">{savedOpportunitiesCount}</p>
                 <p className="text-sm text-white/80 mt-2">Save job posts and gigs for later in the marketplace.</p>
               </div>
             </div>
@@ -292,13 +302,13 @@ const MarketplaceHubPage = () => {
               </div>
               <div className="rounded-3xl border border-border bg-card p-5 space-y-3">
                 <Button className="w-full" asChild>
-                  <Link to={user?.id ? `/dashboard/messages?to=${user.id}` : "/dashboard/messages"}>Message Student</Link>
+                  <Link to={`/dashboard/messages?to=${user?.id ?? ""}`}>Message Student</Link>
                 </Button>
                 <Button variant="hero" className="w-full" onClick={() => {
                   navigator.clipboard.writeText(profileUrl);
-                  toast.success("Share this link to get hired");
+                  toast.success("Profile link copied — share to get hired");
                 }}>
-                  Hire Me
+                  Copy Profile Link
                 </Button>
                 {whatsappLink && (
                   <Button variant="outline" className="w-full" asChild>
