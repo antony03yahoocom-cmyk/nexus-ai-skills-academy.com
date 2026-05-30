@@ -448,11 +448,25 @@ const LessonViewerPage = () => {
             <div className="prose prose-invert max-w-none mb-8">
               <div
                 className="text-muted-foreground leading-relaxed whitespace-pre-wrap [&_a]:text-primary [&_a]:underline [&_a]:hover:opacity-80"
-                dangerouslySetInnerHTML={{
-                  __html: lesson.content_text
-                    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-                    .replace(/\n/g, "<br/>")
-                    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
+dangerouslySetInnerHTML={{
+                  __html: (() => {
+                    // FIX: sanitize URL before injecting into href to prevent XSS
+                    const sanitizeUrl = (url: string) => {
+                      try {
+                        const u = new URL(url);
+                        if (!["http:", "https:"].includes(u.protocol)) return "#";
+                        return u.toString().replace(/"/g, "%22").replace(/'/g, "%27");
+                      } catch { return "#"; }
+                    };
+                    return lesson.content_text
+                      .replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/\n/g, "<br/>")
+                      .replace(/(https?:\/\/[^\s<]+)/g, (_, url) =>
+                        `<a href="${sanitizeUrl(url)}" target="_blank" rel="noopener noreferrer">${url.replace(/&/g, "&amp;")}</a>`
+                      );
+                  })()
                 }}
               />
             </div>
