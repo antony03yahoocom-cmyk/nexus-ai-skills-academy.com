@@ -18,7 +18,7 @@ const AdminTestimonialsPage = () => {
   const { data: testimonials = [] } = useQuery({
     queryKey: ["admin-testimonials"],
     queryFn: async () => {
-      const { data } = await supabase.from("testimonials" as any).select("*").order("created_at", { ascending: false });
+      const { data } = await supabase.from("testimonials" as any).select("*").order("created_at", { ascending: false }).limit(100);
       return (data ?? []) as any[];
     },
   });

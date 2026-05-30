@@ -11,7 +11,7 @@ const CoursesPage = () => {
   const { data: courses = [], isLoading } = useQuery({
     queryKey: ["courses"],
     queryFn: async () => {
-      const { data } = await supabase.from("courses").select("*").eq("is_published", true).order("created_at", { ascending: false });
+      const { data } = await supabase.from("courses").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(60);
       return data ?? [];
     },
   });
@@ -19,7 +19,7 @@ const CoursesPage = () => {
   const { data: moduleCounts = {} } = useQuery({
     queryKey: ["module-counts"],
     queryFn: async () => {
-      const { data } = await supabase.from("modules").select("course_id");
+      const { data } = await supabase.from("modules").select("course_id").limit(500);
       const counts: Record<string, number> = {};
       data?.forEach((m: any) => { counts[m.course_id] = (counts[m.course_id] || 0) + 1; });
       return counts;

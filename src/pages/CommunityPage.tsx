@@ -64,7 +64,7 @@ const CommunityPage = () => {
   const { data: profiles = [] } = useQuery({
     queryKey: ["community-profiles"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url");
+      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url").limit(250);
       return data ?? [];
     },
     enabled: !!user,
@@ -76,7 +76,7 @@ const CommunityPage = () => {
       const { data } = await supabase
         .from("community_posts")
         .select("id, user_id, title, category, media_urls, is_public, created_at, updated_at")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).limit(50);
       return data ?? [];
     },
     enabled: !!user,
@@ -93,7 +93,7 @@ const CommunityPage = () => {
         .from("community_post_comments")
         .select("*")
         .in("post_id", postIds)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true }).limit(500);
       return data ?? [];
     },
     enabled: postIds.length > 0 && !!user,
@@ -141,7 +141,7 @@ const CommunityPage = () => {
         .select("*, courses(title)")
         .eq("public_visibility", true)
         .eq("status", "Approved" as any)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).limit(60);
       return data ?? [];
     },
     enabled: !!user,
@@ -163,7 +163,7 @@ const CommunityPage = () => {
     queryKey: ["project-comments", projectIds.join(",")],
     queryFn: async () => {
       if (!projectIds.length) return [];
-      const { data } = await supabase.from("project_comments").select("*").in("project_id", projectIds).order("created_at", { ascending: true });
+      const { data } = await supabase.from("project_comments").select("*").in("project_id", projectIds).order("created_at", { ascending: true }).limit(500);
       return data ?? [];
     },
     enabled: projectIds.length > 0,

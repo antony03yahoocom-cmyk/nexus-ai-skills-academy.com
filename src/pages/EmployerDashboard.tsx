@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
@@ -12,30 +14,36 @@ import { Link } from "react-router-dom";
 const EmployerDashboard = () => {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [opportunityForm, setOpportunityForm] = useState({
+    title: "",
+    description: "",
+    opportunity_type: "freelance",
+    location_type: "remote",
+    experience_level: "entry",
+    category: "AI",
+    budget_min: "",
+    budget_max: "",
+    required_skills: "",
+  });
 
-  const { data: projects = [], isLoading: projectsLoading } = useQuery({
-    queryKey: ["marketplace-projects"],
+  const { data: employerHub = { projects: [], opportunities: [] }, isLoading: employerHubLoading } = useQuery({
+    queryKey: ["employer-marketplace-hub", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("marketplace_projects").select("*").order("created_at", { ascending: false }).limit(50);
-      if (error) throw error;
-      return data ?? [];
+      const [projectsRes, opportunitiesRes] = await Promise.all([
+        supabase.from("marketplace_projects").select("*").order("created_at", { ascending: false }).limit(50),
+        supabase.from("marketplace_opportunities").select("*").eq("employer_user_id", user!.id).order("created_at", { ascending: false }).limit(50),
+      ]);
+      if (projectsRes.error) throw projectsRes.error;
+      if (opportunitiesRes.error) throw opportunitiesRes.error;
+      return { projects: projectsRes.data ?? [], opportunities: opportunitiesRes.data ?? [] };
     },
     enabled: !!user,
   });
 
-  const { data: opportunities = [], isLoading: opportunitiesLoading } = useQuery({
-    queryKey: ["employer-opportunities", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("marketplace_opportunities")
-        .select("*")
-        .eq("employer_user_id", user!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
+  const projects = employerHub.projects;
+  const opportunities = employerHub.opportunities;
+  const projectsLoading = employerHubLoading;
+  const opportunitiesLoading = employerHubLoading;
 
   const opportunityIds = useMemo(() => opportunities.map((o: any) => o.id), [opportunities]);
 
@@ -47,7 +55,7 @@ const EmployerDashboard = () => {
         .from("marketplace_applications")
         .select("*")
         .in("opportunity_id", opportunityIds)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).limit(100);
       if (error) throw error;
       return data ?? [];
     },
@@ -63,7 +71,7 @@ const EmployerDashboard = () => {
     queryKey: ["employer-application-students", studentIds.join(",")],
     queryFn: async () => {
       if (!studentIds.length) return [];
-      const { data, error } = await supabase.from("profiles").select("user_id, full_name").in("user_id", studentIds);
+      const { data, error } = await supabase.from("profiles").select("user_id, full_name").in("user_id", studentIds).limit(100);
       if (error) throw error;
       return data ?? [];
     },
@@ -74,6 +82,48 @@ const EmployerDashboard = () => {
     () => Object.fromEntries((studentProfiles as any[]).map((profile) => [profile.user_id, profile.full_name || "Student"])),
     [studentProfiles],
   );
+
+
+  const applicationsByOpportunity = useMemo(() => {
+    const grouped = new Map<string, any[]>();
+    applications.forEach((application: any) => {
+      const items = grouped.get(application.opportunity_id) ?? [];
+      items.push(application);
+      grouped.set(application.opportunity_id, items);
+    });
+    return grouped;
+  }, [applications]);
+
+  const createOpportunity = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Sign in to post opportunities");
+      const title = opportunityForm.title.trim();
+      const description = opportunityForm.description.trim();
+      if (!title || !description) throw new Error("Title and description are required");
+
+      const { error } = await supabase.from("marketplace_opportunities").insert({
+        employer_user_id: user.id,
+        title,
+        description,
+        opportunity_type: opportunityForm.opportunity_type,
+        location_type: opportunityForm.location_type,
+        experience_level: opportunityForm.experience_level,
+        category: opportunityForm.category || null,
+        budget_min: opportunityForm.budget_min ? Number(opportunityForm.budget_min) : null,
+        budget_max: opportunityForm.budget_max ? Number(opportunityForm.budget_max) : null,
+        required_skills: opportunityForm.required_skills.split(",").map((skill) => skill.trim()).filter(Boolean),
+        status: "open",
+        currency: "KES",
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      toast.success("Opportunity posted to the marketplace");
+      setOpportunityForm({ title: "", description: "", opportunity_type: "freelance", location_type: "remote", experience_level: "entry", category: "AI", budget_min: "", budget_max: "", required_skills: "" });
+      await qc.invalidateQueries({ queryKey: ["employer-marketplace-hub", user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed to post opportunity"),
+  });
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -99,6 +149,24 @@ const EmployerDashboard = () => {
           <p className="text-sm text-muted-foreground mb-6">Review student work, shortlist candidates, and move hires forward.</p>
 
           <div className="space-y-6">
+            <Card>
+              <CardHeader><CardTitle>Post a real marketplace opportunity</CardTitle></CardHeader>
+              <CardContent className="grid gap-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Input value={opportunityForm.title} onChange={(e) => setOpportunityForm((form) => ({ ...form, title: e.target.value }))} placeholder="Role or gig title" />
+                  <Input value={opportunityForm.category} onChange={(e) => setOpportunityForm((form) => ({ ...form, category: e.target.value }))} placeholder="Category" />
+                </div>
+                <Textarea value={opportunityForm.description} onChange={(e) => setOpportunityForm((form) => ({ ...form, description: e.target.value }))} placeholder="Describe deliverables, timeline, and success criteria" rows={4} />
+                <div className="grid gap-3 md:grid-cols-4">
+                  <Input value={opportunityForm.opportunity_type} onChange={(e) => setOpportunityForm((form) => ({ ...form, opportunity_type: e.target.value }))} placeholder="freelance/job/internship" />
+                  <Input value={opportunityForm.location_type} onChange={(e) => setOpportunityForm((form) => ({ ...form, location_type: e.target.value }))} placeholder="remote/hybrid/onsite" />
+                  <Input value={opportunityForm.budget_min} onChange={(e) => setOpportunityForm((form) => ({ ...form, budget_min: e.target.value }))} placeholder="Min budget" type="number" />
+                  <Input value={opportunityForm.budget_max} onChange={(e) => setOpportunityForm((form) => ({ ...form, budget_max: e.target.value }))} placeholder="Max budget" type="number" />
+                </div>
+                <Input value={opportunityForm.required_skills} onChange={(e) => setOpportunityForm((form) => ({ ...form, required_skills: e.target.value }))} placeholder="Required skills, comma separated" />
+                <Button onClick={() => createOpportunity.mutate()} disabled={createOpportunity.isPending}>Post Opportunity</Button>
+              </CardContent>
+            </Card>
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
               <Card>
                 <CardHeader><CardTitle>Open Opportunities</CardTitle></CardHeader>
@@ -112,7 +180,7 @@ const EmployerDashboard = () => {
                       <div key={op.id} className="rounded-2xl border border-border p-3">
                         <p className="font-semibold truncate">{op.title}</p>
                         <p className="text-xs text-muted-foreground">{op.opportunity_type} • {op.location_type}</p>
-                        <p className="text-xs text-muted-foreground mt-2">Applicants: {applications.filter((app: any) => app.opportunity_id === op.id).length}</p>
+                        <p className="text-xs text-muted-foreground mt-2">Applicants: {(applicationsByOpportunity.get(op.id) ?? []).length}</p>
                       </div>
                     ))
                   )}
