@@ -105,7 +105,7 @@ const MessagesPage = () => {
     if (!state.isDragging || state.pointerId !== event.pointerId) return;
 
     const deltaY = event.clientY - state.startY;
-    if (Math.abs(deltaY) > 3) state.hasMoved = true;
+    if (Math.abs(deltaY) > 5) state.hasMoved = true;
     if (state.hasMoved) event.preventDefault();
 
     event.currentTarget.scrollTop = state.scrollTop - deltaY;
@@ -132,10 +132,10 @@ const MessagesPage = () => {
 
   const handleDragScrollClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!dragScrollState.current.suppressClick) return;
-
+    // Only suppress if we actually dragged (moved more than threshold)
+    dragScrollState.current.suppressClick = false;
     event.preventDefault();
     event.stopPropagation();
-    dragScrollState.current.suppressClick = false;
   };
 
   // Auto-open chat with ?to=USER_ID
