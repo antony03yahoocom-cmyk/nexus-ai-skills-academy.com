@@ -127,7 +127,7 @@ const BlogPage = () => {
         .from("blog_posts" as any)
         .select("id, title, excerpt, category, read_time, published_at, emoji, external_url")
         .eq("is_published", true)
-        .order("published_at", { ascending: false });
+        .order("published_at", { ascending: false }).limit(50);
 
       if (error) {
         console.error("blog_posts load error:", error);

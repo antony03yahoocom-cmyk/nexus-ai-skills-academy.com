@@ -26,7 +26,7 @@ const PortfolioPage = () => {
         .select("*, courses(title)")
         .eq("public_visibility", true)
         .eq("status", "Approved" as any)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).limit(60);
       return data ?? [];
     },
   });
@@ -34,7 +34,7 @@ const PortfolioPage = () => {
   const { data: profiles = [] } = useQuery({
     queryKey: ["public-profiles-map"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url");
+      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url").limit(250);
       return data ?? [];
     },
   });
@@ -42,7 +42,7 @@ const PortfolioPage = () => {
   const { data: courses = [] } = useQuery({
     queryKey: ["public-courses-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("courses").select("id, title").eq("is_published", true);
+      const { data } = await supabase.from("courses").select("id, title").eq("is_published", true).limit(100);
       return data ?? [];
     },
   });
@@ -63,7 +63,7 @@ const PortfolioPage = () => {
     queryKey: ["project-comments", projectIds],
     queryFn: async () => {
       if (projectIds.length === 0) return [];
-      const { data } = await supabase.from("project_comments").select("*").in("project_id", projectIds).order("created_at", { ascending: true });
+      const { data } = await supabase.from("project_comments").select("*").in("project_id", projectIds).order("created_at", { ascending: true }).limit(500);
       return data ?? [];
     },
     enabled: projectIds.length > 0,

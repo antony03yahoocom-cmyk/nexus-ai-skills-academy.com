@@ -21,7 +21,7 @@ const AdminFeedbackPage = () => {
   const { data: feedbackList = [] } = useQuery({
     queryKey: ["admin-feedback"],
     queryFn: async () => {
-      const { data } = await supabase.from("site_feedback" as any).select("*").order("created_at", { ascending: false });
+      const { data } = await supabase.from("site_feedback" as any).select("*").order("created_at", { ascending: false }).limit(100);
       return (data ?? []) as any[];
     },
   });

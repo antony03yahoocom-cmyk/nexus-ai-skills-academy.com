@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import {
@@ -74,7 +75,7 @@ const StudentDashboard = () => {
   const { data: enrollments = [] } = useQuery({
     queryKey: ["enrollments", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("enrollments").select("*, courses(*)").eq("user_id", user!.id).order("enrolled_at", { ascending: false });
+      const { data } = await supabase.from("enrollments").select("*, courses(*)").eq("user_id", user!.id).order("enrolled_at", { ascending: false }).limit(50);
       return data ?? [];
     },
     enabled: !!user,
@@ -83,7 +84,7 @@ const StudentDashboard = () => {
   const { data: completions = [] } = useQuery({
     queryKey: ["completions", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("lesson_completions").select("*").eq("user_id", user!.id).order("completed_at", { ascending: false });
+      const { data } = await supabase.from("lesson_completions").select("*").eq("user_id", user!.id).order("completed_at", { ascending: false }).limit(100);
       return data ?? [];
     },
     enabled: !!user,
@@ -92,7 +93,7 @@ const StudentDashboard = () => {
   const { data: certificates = [] } = useQuery({
     queryKey: ["my-certs-dash", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("certificates").select("*").eq("student_id", user!.id).eq("status", "Issued" as any);
+      const { data } = await supabase.from("certificates").select("*").eq("student_id", user!.id).eq("status", "Issued" as any).limit(10);
       return data ?? [];
     },
     enabled: !!user,
@@ -122,14 +123,14 @@ const StudentDashboard = () => {
     queryFn: async () => {
       const courseIds = enrollments.map((e: any) => e.course_id);
       if (!courseIds.length) return [];
-      const { data: mods } = await supabase.from("modules").select("id, course_id, sort_order").in("course_id", courseIds);
+      const { data: mods } = await supabase.from("modules").select("id, course_id, sort_order").in("course_id", courseIds).limit(500);
       const moduleIds = (mods ?? []).map((m: any) => m.id);
       if (!moduleIds.length) return [];
       const { data: lessons } = await supabase
         .from("lessons")
         .select("id, module_id, sort_order, week_number, day_number, title")
         .in("module_id", moduleIds)
-        .order("sort_order");
+        .order("sort_order").limit(1000);
       const modMap = Object.fromEntries((mods ?? []).map((m: any) => [m.id, m]));
       return (lessons ?? []).map((l: any) => ({ ...l, course_id: modMap[l.module_id]?.course_id, module_sort: modMap[l.module_id]?.sort_order ?? 0 }));
     },
@@ -191,29 +192,31 @@ const StudentDashboard = () => {
         .from("courses")
         .select("*")
         .eq("is_published", true)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).limit(25);
       return (data ?? []).filter((c: any) => !enrolledIds.includes(c.id)).slice(0, 3);
     },
     enabled: !!user && enrollments.length >= 0,
   });
 
   // ── Derived values ────────────────────────────────────────────────
-  const streak = calculateStreak(completions);
-  const weeklyCompletions = completions.filter(
-    (c: any) => new Date(c.completed_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  ).length;
+  const streak = useMemo(() => calculateStreak(completions), [completions]);
+  const weeklyCompletions = useMemo(
+    () => completions.filter((c: any) => new Date(c.completed_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length,
+    [completions],
+  );
 
-  const totalProgress =
-    enrollments.length > 0
-      ? Math.round(enrollments.reduce((s: number, e: any) => s + (e.progress || 0), 0) / enrollments.length)
-      : 0;
+  const totalProgress = useMemo(
+    () => enrollments.length > 0 ? Math.round(enrollments.reduce((sum: number, enrollment: any) => sum + (enrollment.progress || 0), 0) / enrollments.length) : 0,
+    [enrollments],
+  );
 
   // Most active course = highest progress but not 100%
-  const activeEnrollment = [...enrollments]
-    .filter((e: any) => (e.progress || 0) < 100)
-    .sort((a: any, b: any) => (b.progress || 0) - (a.progress || 0))[0];
+  const activeEnrollment = useMemo(
+    () => [...enrollments].filter((enrollment: any) => (enrollment.progress || 0) < 100).sort((a: any, b: any) => (b.progress || 0) - (a.progress || 0))[0],
+    [enrollments],
+  );
 
-  const pendingSubmissions = submissions.filter((s: any) => s.status === "Pending").length;
+  const pendingSubmissions = useMemo(() => submissions.filter((submission: any) => submission.status === "Pending").length, [submissions]);
 
   const statusColor = (s: string) => {
     if (s === "Approved") return "bg-success/10 text-success border-success/20";

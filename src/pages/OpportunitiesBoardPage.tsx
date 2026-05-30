@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Bookmark, BookmarkCheck } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,16 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useDebouncedValue } from "@/hooks/useDebounce";
 
 const OpportunitiesBoardPage = () => {
   const [search, setSearch] = useState("");
   const { user } = useAuth();
+  const debouncedSearch = useDebouncedValue(search, 350);
   const qc = useQueryClient();
   const { data = [], isLoading } = useQuery({
-    queryKey: ["opportunities-board", search],
+    queryKey: ["opportunities-board", debouncedSearch],
     queryFn: async () => {
       const q = supabase.from("marketplace_opportunities" as any).select("*").eq("status", "open").order("created_at", { ascending: false }).limit(50);
-      const { data, error } = search ? await q.ilike("title", `%${search}%`) : await q;
+      const { data, error } = debouncedSearch ? await q.or(`title.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%`) : await q;
       if (error) throw error;
       return data ?? [];
     },
@@ -27,7 +29,7 @@ const OpportunitiesBoardPage = () => {
     queryKey: ["saved-opportunities", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase.from("marketplace_saved_opportunities" as any).select("opportunity_id").eq("student_user_id", user!.id);
+      const { data, error } = await supabase.from("marketplace_saved_opportunities" as any).select("opportunity_id").eq("student_user_id", user!.id).limit(250);
       if (error) {
         if (/Could not find the table/.test(error.message)) return [];
         throw error;
@@ -35,7 +37,7 @@ const OpportunitiesBoardPage = () => {
       return data ?? [];
     },
   });
-  const savedIds = new Set(savedRows.map((r: any) => r.opportunity_id));
+  const savedIds = useMemo(() => new Set(savedRows.map((r: any) => r.opportunity_id)), [savedRows]);
   const toggleSave = useMutation({
     mutationFn: async ({ opportunityId, saved }: { opportunityId: string; saved: boolean }) => {
       if (!user) throw new Error("Sign in to save opportunities");

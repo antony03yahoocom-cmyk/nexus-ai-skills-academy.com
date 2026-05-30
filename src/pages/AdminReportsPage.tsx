@@ -21,7 +21,7 @@ const AdminReportsPage = () => {
       const { data } = await supabase
         .from("content_reports")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).limit(100);
       return data ?? [];
     },
   });
@@ -29,7 +29,7 @@ const AdminReportsPage = () => {
   const { data: reporters = [] } = useQuery({
     queryKey: ["admin-reporters"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name");
+      const { data } = await supabase.from("profiles").select("user_id, full_name").limit(500);
       return data ?? [];
     },
   });

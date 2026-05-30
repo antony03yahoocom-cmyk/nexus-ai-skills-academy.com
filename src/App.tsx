@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,55 +7,57 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute, AdminRoute } from "@/components/auth/ProtectedRoute";
 import StudentChatbot from "@/components/chatbot/StudentChatbot";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
-import LoginPage from "./pages/LoginPage.tsx";
-import SignupPage from "./pages/SignupPage.tsx";
-import CoursesPage from "./pages/CoursesPage.tsx";
-import CourseDetailPage from "./pages/CourseDetailPage.tsx";
-import CourseAboutPage from "./pages/CourseAboutPage.tsx";
-import LessonViewerPage from "./pages/LessonViewerPage.tsx";
-import StudentDashboard from "./pages/StudentDashboard.tsx";
-import StudentProjectsPage from "./pages/StudentProjectsPage.tsx";
-import StudentCertificatesPage from "./pages/StudentCertificatesPage.tsx";
-import AdminDashboard from "./pages/AdminDashboard.tsx";
-import AdminSubscriptionsPage from "./pages/AdminSubscriptionsPage.tsx";
-import AdminCoursesPage from "./pages/AdminCoursesPage.tsx";
-import AdminStudentsPage from "./pages/AdminStudentsPage.tsx";
-import AdminSubmissionsPage from "./pages/AdminSubmissionsPage.tsx";
-import AdminAnnouncementsPage from "./pages/AdminAnnouncementsPage.tsx";
-import AdminSettingsPage from "./pages/AdminSettingsPage.tsx";
-import AdminProjectsPage from "./pages/AdminProjectsPage.tsx";
-import AdminCertificatesPage from "./pages/AdminCertificatesPage.tsx";
-import AdminEnrollmentsPage from "./pages/AdminEnrollmentsPage.tsx";
-import AdminTestimonialsPage from "./pages/AdminTestimonialsPage.tsx";
-import AdminFeedbackPage from "./pages/AdminFeedbackPage.tsx";
-import AdminDeletionFeedbackPage from "./pages/AdminDeletionFeedbackPage.tsx";
-import AdminBlogPage from "./pages/AdminBlogPage.tsx";
-import AdminEmployersPage from "./pages/AdminEmployersPage.tsx";
-import AdminOpportunitiesPage from "./pages/AdminOpportunitiesPage.tsx";
-import AdminReportsPage from "./pages/AdminReportsPage.tsx";
-import BannedPage from "./pages/BannedPage.tsx";
-import SubscribePage from "./pages/SubscribePage.tsx";
-import PortfolioPage from "./pages/PortfolioPage.tsx";
-import CommunityPage from "./pages/CommunityPage.tsx";
-import DiscussionGroupsPage from "./pages/DiscussionGroupsPage.tsx";
-import GroupChatPage from "./pages/GroupChatPage.tsx";
-import AdminGroupsPage from "./pages/AdminGroupsPage.tsx";
-import ProfileSettingsPage from "./pages/ProfileSettingsPage.tsx";
-import MessagesPage from "./pages/MessagesPage.tsx";
-import AdminMessagesPage from "./pages/AdminMessagesPage.tsx";
-import BlogPage from "./pages/BlogPage.tsx";
-import LeaderboardPage from "./pages/LeaderboardPage.tsx";
-import NotificationsPage from "./pages/NotificationsPage.tsx";
-import ClassmatesPage from "./pages/ClassmatesPage.tsx";
-import MarketplaceHubPage from "./pages/MarketplaceHubPage.tsx";
-import OpportunitiesBoardPage from "./pages/OpportunitiesBoardPage.tsx";
-import OpportunityDetailPage from "./pages/OpportunityDetailPage.tsx";
-import EmployerSignupPage from "./pages/EmployerSignupPage.tsx";
-import EmployerDashboard from "./pages/EmployerDashboard.tsx";
+
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const SignupPage = lazy(() => import("./pages/SignupPage"));
+const CoursesPage = lazy(() => import("./pages/CoursesPage"));
+const CourseDetailPage = lazy(() => import("./pages/CourseDetailPage"));
+const CourseAboutPage = lazy(() => import("./pages/CourseAboutPage"));
+const LessonViewerPage = lazy(() => import("./pages/LessonViewerPage"));
+const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
+const StudentProjectsPage = lazy(() => import("./pages/StudentProjectsPage"));
+const StudentCertificatesPage = lazy(() => import("./pages/StudentCertificatesPage"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminSubscriptionsPage = lazy(() => import("./pages/AdminSubscriptionsPage"));
+const AdminCoursesPage = lazy(() => import("./pages/AdminCoursesPage"));
+const AdminStudentsPage = lazy(() => import("./pages/AdminStudentsPage"));
+const AdminSubmissionsPage = lazy(() => import("./pages/AdminSubmissionsPage"));
+const AdminAnnouncementsPage = lazy(() => import("./pages/AdminAnnouncementsPage"));
+const AdminSettingsPage = lazy(() => import("./pages/AdminSettingsPage"));
+const AdminProjectsPage = lazy(() => import("./pages/AdminProjectsPage"));
+const AdminCertificatesPage = lazy(() => import("./pages/AdminCertificatesPage"));
+const AdminEnrollmentsPage = lazy(() => import("./pages/AdminEnrollmentsPage"));
+const AdminTestimonialsPage = lazy(() => import("./pages/AdminTestimonialsPage"));
+const AdminFeedbackPage = lazy(() => import("./pages/AdminFeedbackPage"));
+const AdminDeletionFeedbackPage = lazy(() => import("./pages/AdminDeletionFeedbackPage"));
+const AdminBlogPage = lazy(() => import("./pages/AdminBlogPage"));
+const AdminEmployersPage = lazy(() => import("./pages/AdminEmployersPage"));
+const AdminOpportunitiesPage = lazy(() => import("./pages/AdminOpportunitiesPage"));
+const AdminReportsPage = lazy(() => import("./pages/AdminReportsPage"));
+const BannedPage = lazy(() => import("./pages/BannedPage"));
+const SubscribePage = lazy(() => import("./pages/SubscribePage"));
+const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
+const CommunityPage = lazy(() => import("./pages/CommunityPage"));
+const DiscussionGroupsPage = lazy(() => import("./pages/DiscussionGroupsPage"));
+const GroupChatPage = lazy(() => import("./pages/GroupChatPage"));
+const AdminGroupsPage = lazy(() => import("./pages/AdminGroupsPage"));
+const ProfileSettingsPage = lazy(() => import("./pages/ProfileSettingsPage"));
+const MessagesPage = lazy(() => import("./pages/MessagesPage"));
+const AdminMessagesPage = lazy(() => import("./pages/AdminMessagesPage"));
+const BlogPage = lazy(() => import("./pages/BlogPage"));
+const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const ClassmatesPage = lazy(() => import("./pages/ClassmatesPage"));
+const MarketplaceHubPage = lazy(() => import("./pages/MarketplaceHubPage"));
+const OpportunitiesBoardPage = lazy(() => import("./pages/OpportunitiesBoardPage"));
+const OpportunityDetailPage = lazy(() => import("./pages/OpportunityDetailPage"));
+const EmployerSignupPage = lazy(() => import("./pages/EmployerSignupPage"));
+const EmployerDashboard = lazy(() => import("./pages/EmployerDashboard"));
 
 const queryClient = new QueryClient();
+const PageLoader = () => <div className="min-h-screen p-8">Loading page...</div>;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -63,58 +66,59 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/courses" element={<CoursesPage />} />
-            <Route path="/courses/:courseId" element={<CourseDetailPage />} />
-            <Route path="/courses/:courseId/about" element={<CourseAboutPage />} />
-            <Route path="/subscribe" element={<SubscribePage />} />
-            <Route path="/portfolio" element={<PortfolioPage />} />
-            <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
-            <Route path="/opportunities" element={<OpportunitiesBoardPage />} />
-            <Route path="/dashboard/opportunities" element={<ProtectedRoute><OpportunitiesBoardPage /></ProtectedRoute>} />
-            <Route path="/dashboard/marketing" element={<ProtectedRoute><MarketplaceHubPage /></ProtectedRoute>} />
-            <Route path="/opportunities/:opportunityId" element={<OpportunityDetailPage />} />
-            <Route path="/employer/signup" element={<EmployerSignupPage />} />
-            <Route path="/employer/dashboard" element={<ProtectedRoute><EmployerDashboard /></ProtectedRoute>} />
-            <Route path="/blog" element={<BlogPage />} />
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
-            <Route path="/lesson/:lessonId" element={<ProtectedRoute><LessonViewerPage /></ProtectedRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
-            <Route path="/dashboard/projects" element={<ProtectedRoute><StudentProjectsPage /></ProtectedRoute>} />
-            <Route path="/dashboard/certificates" element={<ProtectedRoute><StudentCertificatesPage /></ProtectedRoute>} />
-            <Route path="/dashboard/marketplace" element={<ProtectedRoute><MarketplaceHubPage /></ProtectedRoute>} />
-            <Route path="/dashboard/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-            <Route path="/dashboard/classmates" element={<ProtectedRoute><ClassmatesPage /></ProtectedRoute>} />
-            <Route path="/discussions" element={<ProtectedRoute><DiscussionGroupsPage /></ProtectedRoute>} />
-            <Route path="/discussions/:groupId" element={<ProtectedRoute><GroupChatPage /></ProtectedRoute>} />
-            <Route path="/dashboard/settings" element={<ProtectedRoute><ProfileSettingsPage /></ProtectedRoute>} />
-            <Route path="/dashboard/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
-            <Route path="/dashboard/*" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
-            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-            <Route path="/admin/courses" element={<AdminRoute><AdminCoursesPage /></AdminRoute>} />
-            <Route path="/admin/students" element={<AdminRoute><AdminStudentsPage /></AdminRoute>} />
-            <Route path="/admin/enrollments" element={<AdminRoute><AdminEnrollmentsPage /></AdminRoute>} />
-            <Route path="/admin/subscriptions" element={<AdminRoute><AdminSubscriptionsPage /></AdminRoute>} />
-            <Route path="/admin/submissions" element={<AdminRoute><AdminSubmissionsPage /></AdminRoute>} />
-            <Route path="/admin/announcements" element={<AdminRoute><AdminAnnouncementsPage /></AdminRoute>} />
-            <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
-            <Route path="/admin/employers" element={<AdminRoute><AdminEmployersPage /></AdminRoute>} />
-            <Route path="/admin/opportunities" element={<AdminRoute><AdminOpportunitiesPage /></AdminRoute>} />
-            <Route path="/admin/reports" element={<AdminRoute><AdminReportsPage /></AdminRoute>} />
-            <Route path="/admin/projects" element={<AdminRoute><AdminProjectsPage /></AdminRoute>} />
-            <Route path="/admin/certificates" element={<AdminRoute><AdminCertificatesPage /></AdminRoute>} />
-            <Route path="/admin/groups" element={<AdminRoute><AdminGroupsPage /></AdminRoute>} />
-            <Route path="/admin/messages" element={<AdminRoute><AdminMessagesPage /></AdminRoute>} />
-            <Route path="/admin/testimonials" element={<AdminRoute><AdminTestimonialsPage /></AdminRoute>} />
-            <Route path="/admin/feedback" element={<AdminRoute><AdminFeedbackPage /></AdminRoute>} />
-            <Route path="/admin/deletion-feedback" element={<AdminRoute><AdminDeletionFeedbackPage /></AdminRoute>} />
-            <Route path="/admin/blog" element={<AdminRoute><AdminBlogPage /></AdminRoute>} />
-            <Route path="/banned" element={<BannedPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/courses" element={<CoursesPage />} />
+              <Route path="/courses/:courseId" element={<CourseDetailPage />} />
+              <Route path="/courses/:courseId/about" element={<CourseAboutPage />} />
+              <Route path="/subscribe" element={<SubscribePage />} />
+              <Route path="/portfolio" element={<PortfolioPage />} />
+              <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
+              <Route path="/opportunities" element={<OpportunitiesBoardPage />} />
+              <Route path="/dashboard/opportunities" element={<ProtectedRoute><OpportunitiesBoardPage /></ProtectedRoute>} />
+              <Route path="/dashboard/marketing" element={<ProtectedRoute><MarketplaceHubPage /></ProtectedRoute>} />
+              <Route path="/opportunities/:opportunityId" element={<OpportunityDetailPage />} />
+              <Route path="/employer/signup" element={<EmployerSignupPage />} />
+              <Route path="/employer/dashboard" element={<ProtectedRoute><EmployerDashboard /></ProtectedRoute>} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/lesson/:lessonId" element={<ProtectedRoute><LessonViewerPage /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
+              <Route path="/dashboard/projects" element={<ProtectedRoute><StudentProjectsPage /></ProtectedRoute>} />
+              <Route path="/dashboard/certificates" element={<ProtectedRoute><StudentCertificatesPage /></ProtectedRoute>} />
+              <Route path="/dashboard/marketplace" element={<ProtectedRoute><MarketplaceHubPage /></ProtectedRoute>} />
+              <Route path="/dashboard/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+              <Route path="/dashboard/classmates" element={<ProtectedRoute><ClassmatesPage /></ProtectedRoute>} />
+              <Route path="/discussions" element={<ProtectedRoute><DiscussionGroupsPage /></ProtectedRoute>} />
+              <Route path="/discussions/:groupId" element={<ProtectedRoute><GroupChatPage /></ProtectedRoute>} />
+              <Route path="/dashboard/settings" element={<ProtectedRoute><ProfileSettingsPage /></ProtectedRoute>} />
+              <Route path="/dashboard/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
+              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/admin/subscriptions" element={<AdminRoute><AdminSubscriptionsPage /></AdminRoute>} />
+              <Route path="/admin/courses" element={<AdminRoute><AdminCoursesPage /></AdminRoute>} />
+              <Route path="/admin/students" element={<AdminRoute><AdminStudentsPage /></AdminRoute>} />
+              <Route path="/admin/submissions" element={<AdminRoute><AdminSubmissionsPage /></AdminRoute>} />
+              <Route path="/admin/announcements" element={<AdminRoute><AdminAnnouncementsPage /></AdminRoute>} />
+              <Route path="/admin/settings" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
+              <Route path="/admin/projects" element={<AdminRoute><AdminProjectsPage /></AdminRoute>} />
+              <Route path="/admin/certificates" element={<AdminRoute><AdminCertificatesPage /></AdminRoute>} />
+              <Route path="/admin/enrollments" element={<AdminRoute><AdminEnrollmentsPage /></AdminRoute>} />
+              <Route path="/admin/testimonials" element={<AdminRoute><AdminTestimonialsPage /></AdminRoute>} />
+              <Route path="/admin/feedback" element={<AdminRoute><AdminFeedbackPage /></AdminRoute>} />
+              <Route path="/admin/deletion-feedback" element={<AdminRoute><AdminDeletionFeedbackPage /></AdminRoute>} />
+              <Route path="/admin/blog" element={<AdminRoute><AdminBlogPage /></AdminRoute>} />
+              <Route path="/admin/employers" element={<AdminRoute><AdminEmployersPage /></AdminRoute>} />
+              <Route path="/admin/opportunities" element={<AdminRoute><AdminOpportunitiesPage /></AdminRoute>} />
+              <Route path="/admin/reports" element={<AdminRoute><AdminReportsPage /></AdminRoute>} />
+              <Route path="/admin/groups" element={<AdminRoute><AdminGroupsPage /></AdminRoute>} />
+              <Route path="/admin/messages" element={<AdminRoute><AdminMessagesPage /></AdminRoute>} />
+              <Route path="/banned" element={<BannedPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
           <StudentChatbot />
         </AuthProvider>
       </BrowserRouter>

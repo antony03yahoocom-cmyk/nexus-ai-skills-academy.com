@@ -27,7 +27,7 @@ const AdminDeletionFeedbackPage = () => {
       const { data, error } = await supabase
         .from("account_deletion_feedback")
         .select("id, user_id, email, full_name, reason, created_at")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).limit(100);
 
       if (error) throw error;
       return data satisfies DeletionFeedback[];

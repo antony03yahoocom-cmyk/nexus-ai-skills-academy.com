@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import AdminSidebar from "@/components/dashboard/AdminSidebar";
@@ -21,7 +22,7 @@ const AdminOpportunitiesPage = () => {
       const { data } = await supabase
         .from("marketplace_opportunities")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).limit(100);
       return data ?? [];
     },
   });
@@ -31,7 +32,7 @@ const AdminOpportunitiesPage = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("marketplace_employer_profiles")
-        .select("user_id, company_name, verification_status");
+        .select("user_id, company_name, verification_status").limit(250);
       return data ?? [];
     },
   });
@@ -60,7 +61,7 @@ const AdminOpportunitiesPage = () => {
     onError: (error: any) => toast.error(error.message || "Could not delete opportunity."),
   });
 
-  const employerMap = new Map((employers as any[]).map((employer: any) => [employer.user_id, employer]));
+  const employerMap = useMemo(() => new Map((employers as any[]).map((employer: any) => [employer.user_id, employer])), [employers]);
 
   return (
     <div className="min-h-screen bg-background flex">

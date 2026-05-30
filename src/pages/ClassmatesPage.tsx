@@ -60,12 +60,12 @@ const ClassmatesPage = () => {
   const { data: academyMates = [] } = useQuery({
     queryKey: ["academy-mates", user?.id],
     queryFn: async () => {
-      const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+      const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin").limit(100);
       const adminIds = new Set((adminRoles ?? []).map((r) => r.user_id));
       const { data } = await supabase
         .from("profiles")
         .select("user_id, full_name, avatar_url, created_at")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).limit(100);
       return (data ?? []).filter((p: any) => p.user_id !== user?.id && !adminIds.has(p.user_id));
     },
     enabled: !!user,

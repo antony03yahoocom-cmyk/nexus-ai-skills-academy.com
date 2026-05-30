@@ -21,7 +21,7 @@ const AdminSubscriptionsPage = () => {
         .from("course_purchases")
         .select("*, courses(title), profiles!course_purchases_user_id_fkey(full_name)")
         .eq("status", "paid")
-        .order("purchased_at", { ascending: false });
+        .order("purchased_at", { ascending: false }).limit(100);
       return data ?? [];
     },
   });
