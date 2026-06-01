@@ -136,11 +136,12 @@ const MarketplaceHubPage = () => {
     setSkillsInput((studentProfile.skills ?? []).join(", "));
     setCoursesInput((studentProfile.completed_courses ?? []).join(", "));
     setCertificatesInput((studentProfile.certificates ?? []).join(", "));
+    const sl = (studentProfile.social_links ?? {}) as any;
     setSocialLinks({
-      linkedin: studentProfile.social_links?.linkedin ?? "",
-      github: studentProfile.social_links?.github ?? "",
-      website: studentProfile.social_links?.website ?? "",
-      portfolio: studentProfile.social_links?.portfolio ?? "",
+      linkedin: sl.linkedin ?? "",
+      github: sl.github ?? "",
+      website: sl.website ?? "",
+      portfolio: sl.portfolio ?? "",
     });
   }, [studentProfile]);
 
