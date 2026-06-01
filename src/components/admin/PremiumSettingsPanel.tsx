@@ -50,12 +50,11 @@ export function PremiumSettingsPanel() {
         throw new Error('Please enter a valid URL for live class link');
       }
 
-      const { error } = await supabase
-        .from('app_settings')
+      const { error } = await (supabase.from('app_settings') as any)
         .upsert(
           {
             key: 'premium_pricing',
-            value: newSettings,
+            value: newSettings as any,
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'key' }
