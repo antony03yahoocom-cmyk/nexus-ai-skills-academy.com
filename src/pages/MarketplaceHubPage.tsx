@@ -64,7 +64,7 @@ const MarketplaceHubPage = () => {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("marketplace_student_profiles" as any)
+        .from("marketplace_student_profiles")
         .select("*")
         .eq("user_id", user!.id)
         .maybeSingle();
@@ -81,7 +81,7 @@ const MarketplaceHubPage = () => {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("marketplace_projects" as any)
+        .from("marketplace_projects")
         .select("*")
         .eq("student_user_id", user!.id)
         .order("created_at", { ascending: false })
@@ -99,7 +99,7 @@ const MarketplaceHubPage = () => {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("marketplace_applications" as any)
+        .from("marketplace_applications")
         .select("*, marketplace_opportunities(title)")
         .eq("student_user_id", user!.id)
         .order("created_at", { ascending: false });
@@ -147,7 +147,7 @@ const MarketplaceHubPage = () => {
   const saveProfile = useMutation({
     mutationFn: async (payload: any) => {
       const { error } = await supabase
-        .from("marketplace_student_profiles" as any)
+        .from("marketplace_student_profiles")
         .upsert({ user_id: user!.id, ...payload }, { onConflict: "user_id" });
       if (error) throw error;
     },
@@ -160,7 +160,7 @@ const MarketplaceHubPage = () => {
 
   const saveProject = useMutation({
     mutationFn: async (payload: any) => {
-      const { error } = await supabase.from("marketplace_projects" as any).insert({ student_user_id: user!.id, ...payload });
+      const { error } = await supabase.from("marketplace_projects").insert({ student_user_id: user!.id, ...payload });
       if (error) throw error;
     },
     onSuccess: async () => {
