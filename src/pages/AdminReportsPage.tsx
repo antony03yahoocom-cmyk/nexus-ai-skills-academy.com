@@ -18,7 +18,7 @@ const AdminReportsPage = () => {
   const { data: reports = [] } = useQuery({
     queryKey: ["admin-reports"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("content_reports")
         .select("*")
         .order("created_at", { ascending: false }).limit(100);
