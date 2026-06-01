@@ -172,36 +172,93 @@ export type Database = {
           },
         ]
       }
+      community_post_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      community_post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_posts: {
         Row: {
-          author_id: string
+          author_id: string | null
+          category: string | null
           content: string | null
           content_type: string | null
           created_at: string
+          description: string | null
           id: string
+          media_urls: Json
           metadata: Json | null
           title: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
-          author_id: string
+          author_id?: string | null
+          category?: string | null
           content?: string | null
           content_type?: string | null
           created_at?: string
+          description?: string | null
           id?: string
+          media_urls?: Json
           metadata?: Json | null
           title?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
-          author_id?: string
+          author_id?: string | null
+          category?: string | null
           content?: string | null
           content_type?: string | null
           created_at?: string
+          description?: string | null
           id?: string
+          media_urls?: Json
           metadata?: Json | null
           title?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -667,6 +724,225 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      marketplace_applications: {
+        Row: {
+          cover_message: string | null
+          created_at: string
+          employer_rating: number | null
+          id: string
+          opportunity_id: string
+          proposal: string | null
+          status: string
+          student_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          cover_message?: string | null
+          created_at?: string
+          employer_rating?: number | null
+          id?: string
+          opportunity_id: string
+          proposal?: string | null
+          status?: string
+          student_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          cover_message?: string | null
+          created_at?: string
+          employer_rating?: number | null
+          id?: string
+          opportunity_id?: string
+          proposal?: string | null
+          status?: string
+          student_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketplace_employer_profiles: {
+        Row: {
+          company_name: string
+          created_at: string
+          description: string | null
+          id: string
+          logo_url: string | null
+          updated_at: string
+          user_id: string
+          verified: boolean
+          website: string | null
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          updated_at?: string
+          user_id: string
+          verified?: boolean
+          website?: string | null
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          updated_at?: string
+          user_id?: string
+          verified?: boolean
+          website?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_opportunities: {
+        Row: {
+          budget_max: number | null
+          budget_min: number | null
+          category: string | null
+          created_at: string
+          currency: string
+          description: string
+          employer_user_id: string
+          experience_level: string
+          featured: boolean
+          id: string
+          location_type: string
+          opportunity_type: string
+          required_skills: string[]
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          budget_max?: number | null
+          budget_min?: number | null
+          category?: string | null
+          created_at?: string
+          currency?: string
+          description: string
+          employer_user_id: string
+          experience_level?: string
+          featured?: boolean
+          id?: string
+          location_type?: string
+          opportunity_type?: string
+          required_skills?: string[]
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          budget_max?: number | null
+          budget_min?: number | null
+          category?: string | null
+          created_at?: string
+          currency?: string
+          description?: string
+          employer_user_id?: string
+          experience_level?: string
+          featured?: boolean
+          id?: string
+          location_type?: string
+          opportunity_type?: string
+          required_skills?: string[]
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketplace_projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          media_urls: string[]
+          student_user_id: string
+          title: string
+          tools_used: string[]
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          media_urls?: string[]
+          student_user_id: string
+          title: string
+          tools_used?: string[]
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          media_urls?: string[]
+          student_user_id?: string
+          title?: string
+          tools_used?: string[]
+        }
+        Relationships: []
+      }
+      marketplace_student_profiles: {
+        Row: {
+          availability_status: string
+          bio: string | null
+          certificates: string[]
+          completed_courses: string[]
+          created_at: string
+          earnings_total: number
+          featured: boolean
+          headline: string | null
+          id: string
+          profile_views: number
+          rank_title: string
+          skills: string[]
+          social_links: Json
+          updated_at: string
+          user_id: string
+          whatsapp_number: string | null
+          xp_points: number
+        }
+        Insert: {
+          availability_status?: string
+          bio?: string | null
+          certificates?: string[]
+          completed_courses?: string[]
+          created_at?: string
+          earnings_total?: number
+          featured?: boolean
+          headline?: string | null
+          id?: string
+          profile_views?: number
+          rank_title?: string
+          skills?: string[]
+          social_links?: Json
+          updated_at?: string
+          user_id: string
+          whatsapp_number?: string | null
+          xp_points?: number
+        }
+        Update: {
+          availability_status?: string
+          bio?: string | null
+          certificates?: string[]
+          completed_courses?: string[]
+          created_at?: string
+          earnings_total?: number
+          featured?: boolean
+          headline?: string | null
+          id?: string
+          profile_views?: number
+          rank_title?: string
+          skills?: string[]
+          social_links?: Json
+          updated_at?: string
+          user_id?: string
+          whatsapp_number?: string | null
+          xp_points?: number
+        }
+        Relationships: []
       }
       message_attachments: {
         Row: {
@@ -1194,6 +1470,27 @@ export type Database = {
           name?: string
           rating?: number | null
           role?: string | null
+        }
+        Relationships: []
+      }
+      user_follows: {
+        Row: {
+          created_at: string
+          followee_id: string
+          follower_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          followee_id: string
+          follower_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          followee_id?: string
+          follower_id?: string
+          id?: string
         }
         Relationships: []
       }
