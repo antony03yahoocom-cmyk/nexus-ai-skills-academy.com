@@ -50,7 +50,7 @@ const AdminBlogPage = () => {
         .order("published_at", { ascending: false });
 
       if (error) throw error;
-      return (data ?? []) as BlogPost[];
+      return ((data ?? []) as unknown) as BlogPost[];
     },
   });
 
