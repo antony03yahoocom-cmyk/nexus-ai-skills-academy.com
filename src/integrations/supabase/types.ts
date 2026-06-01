@@ -172,6 +172,86 @@ export type Database = {
           },
         ]
       }
+      community_posts: {
+        Row: {
+          author_id: string
+          content: string | null
+          content_type: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content?: string | null
+          content_type?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string | null
+          content_type?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      conversation_members: {
+        Row: {
+          conversation_id: string
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_members_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       course_purchases: {
         Row: {
           amount: number
@@ -361,6 +441,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      follows: {
+        Row: {
+          created_at: string
+          followee_id: string
+          follower_id: string
+        }
+        Insert: {
+          created_at?: string
+          followee_id: string
+          follower_id: string
+        }
+        Update: {
+          created_at?: string
+          followee_id?: string
+          follower_id?: string
+        }
+        Relationships: []
       }
       followup_log: {
         Row: {
@@ -570,6 +668,82 @@ export type Database = {
           },
         ]
       }
+      message_attachments: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string | null
+          mime: string | null
+          size: number | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          mime?: string | null
+          size?: number | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          mime?: string | null
+          size?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string | null
+          content_type: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          read_by: string[]
+          sender_id: string
+        }
+        Insert: {
+          content?: string | null
+          content_type?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          read_by?: string[]
+          sender_id: string
+        }
+        Update: {
+          content?: string | null
+          content_type?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          read_by?: string[]
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modules: {
         Row: {
           course_id: string
@@ -605,6 +779,99 @@ export type Database = {
           },
         ]
       }
+      post_attachments: {
+        Row: {
+          created_at: string
+          id: string
+          mime: string | null
+          post_id: string | null
+          size: number | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mime?: string | null
+          post_id?: string | null
+          size?: number | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime?: string | null
+          post_id?: string | null
+          size?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_attachments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_comments: {
+        Row: {
+          author_id: string
+          content: string | null
+          created_at: string
+          id: string
+          post_id: string | null
+        }
+        Insert: {
+          author_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          post_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          post_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       private_messages: {
         Row: {
           content: string
@@ -632,245 +899,6 @@ export type Database = {
         }
         Relationships: []
       }
-      marketplace_applications: {
-        Row: {
-          attachment_urls: string[]
-          cover_message: string | null
-          created_at: string
-          employer_rating: number | null
-          id: string
-          opportunity_id: string
-          portfolio_links: string[]
-          proposal: string
-          status: string
-          student_user_id: string
-          updated_at: string
-        }
-        Insert: {
-          attachment_urls?: string[]
-          cover_message?: string | null
-          created_at?: string
-          employer_rating?: number | null
-          id?: string
-          opportunity_id: string
-          portfolio_links?: string[]
-          proposal: string
-          status?: string
-          student_user_id: string
-          updated_at?: string
-        }
-        Update: {
-          attachment_urls?: string[]
-          cover_message?: string | null
-          created_at?: string
-          employer_rating?: number | null
-          id?: string
-          opportunity_id?: string
-          portfolio_links?: string[]
-          proposal?: string
-          status?: string
-          student_user_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "marketplace_applications_opportunity_id_fkey"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "marketplace_opportunities"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      marketplace_opportunities: {
-        Row: {
-          applicants_count: number
-          attachments: string[]
-          budget_max: number | null
-          budget_min: number | null
-          category: string
-          created_at: string
-          currency: string
-          deadline: string | null
-          description: string
-          duration: string | null
-          employer_user_id: string
-          experience_level: string
-          id: string
-          location_type: string
-          opportunity_type: string
-          required_skills: string[]
-          status: string
-          title: string
-          updated_at: string
-          views_count: number
-        }
-        Insert: {
-          applicants_count?: number
-          attachments?: string[]
-          budget_max?: number | null
-          budget_min?: number | null
-          category: string
-          created_at?: string
-          currency?: string
-          deadline?: string | null
-          description: string
-          duration?: string | null
-          employer_user_id: string
-          experience_level?: string
-          id?: string
-          location_type?: string
-          opportunity_type: string
-          required_skills?: string[]
-          status?: string
-          title: string
-          updated_at?: string
-          views_count?: number
-        }
-        Update: {
-          applicants_count?: number
-          attachments?: string[]
-          budget_max?: number | null
-          budget_min?: number | null
-          category?: string
-          created_at?: string
-          currency?: string
-          deadline?: string | null
-          description?: string
-          duration?: string | null
-          employer_user_id?: string
-          experience_level?: string
-          id?: string
-          location_type?: string
-          opportunity_type?: string
-          required_skills?: string[]
-          status?: string
-          title?: string
-          updated_at?: string
-          views_count?: number
-        }
-        Relationships: []
-      }
-      marketplace_projects: {
-        Row: {
-          behance_url: string | null
-          comments_count: number
-          completion_date: string | null
-          created_at: string
-          description: string | null
-          dribbble_url: string | null
-          featured: boolean
-          github_url: string | null
-          id: string
-          likes_count: number
-          live_demo_url: string | null
-          media_urls: string[]
-          student_user_id: string
-          title: string
-          tools_used: string[]
-          updated_at: string
-          views_count: number
-        }
-        Insert: {
-          behance_url?: string | null
-          comments_count?: number
-          completion_date?: string | null
-          created_at?: string
-          description?: string | null
-          dribbble_url?: string | null
-          featured?: boolean
-          github_url?: string | null
-          id?: string
-          likes_count?: number
-          live_demo_url?: string | null
-          media_urls?: string[]
-          student_user_id: string
-          title: string
-          tools_used?: string[]
-          updated_at?: string
-          views_count?: number
-        }
-        Update: {
-          behance_url?: string | null
-          comments_count?: number
-          completion_date?: string | null
-          created_at?: string
-          description?: string | null
-          dribbble_url?: string | null
-          featured?: boolean
-          github_url?: string | null
-          id?: string
-          likes_count?: number
-          live_demo_url?: string | null
-          media_urls?: string[]
-          student_user_id?: string
-          title?: string
-          tools_used?: string[]
-          updated_at?: string
-          views_count?: number
-        }
-        Relationships: []
-      }
-      marketplace_student_profiles: {
-        Row: {
-          availability_status: string
-          bio: string | null
-          certificates: string[]
-          completed_courses: string[]
-          created_at: string
-          earnings_total: number
-          headline: string | null
-          id: string
-          level: number
-          profile_views: number
-          rank_title: string
-          skills: string[]
-          social_links: Json
-          updated_at: string
-          user_id: string
-          whatsapp_number: string | null
-          xp_points: number
-        }
-        Insert: {
-          availability_status?: string
-          bio?: string | null
-          certificates?: string[]
-          completed_courses?: string[]
-          created_at?: string
-          earnings_total?: number
-          headline?: string | null
-          id?: string
-          level?: number
-          profile_views?: number
-          rank_title?: string
-          skills?: string[]
-          social_links?: Json
-          updated_at?: string
-          user_id: string
-          whatsapp_number?: string | null
-          xp_points?: number
-        }
-        Update: {
-          availability_status?: string
-          bio?: string | null
-          certificates?: string[]
-          completed_courses?: string[]
-          created_at?: string
-          earnings_total?: number
-          headline?: string | null
-          id?: string
-          level?: number
-          profile_views?: number
-          rank_title?: string
-          skills?: string[]
-          social_links?: Json
-          updated_at?: string
-          user_id?: string
-          whatsapp_number?: string | null
-          xp_points?: number
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -878,6 +906,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_premium: boolean
+          phone: string | null
           subscription_status: string
           trial_course_id: string | null
           trial_start_date: string
@@ -890,6 +919,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_premium?: boolean
+          phone?: string | null
           subscription_status?: string
           trial_course_id?: string | null
           trial_start_date?: string
@@ -902,6 +932,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_premium?: boolean
+          phone?: string | null
           subscription_status?: string
           trial_course_id?: string | null
           trial_start_date?: string
@@ -975,147 +1006,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      community_posts: {
-        Row: {
-          category: string
-          created_at: string
-          description: string | null
-          id: string
-          is_public: boolean
-          media_urls: Json | null
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          category: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_public?: boolean
-          media_urls?: Json | null
-          title: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_public?: boolean
-          media_urls?: Json | null
-          title?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "community_posts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "auth.users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      community_post_comments: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "community_post_comments_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "community_posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      community_post_likes: {
-        Row: {
-          created_at: string
-          id: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "community_post_likes_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "community_posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_follows: {
-        Row: {
-          created_at: string
-          follower_id: string
-          followee_id: string
-          id: string
-        }
-        Insert: {
-          created_at?: string
-          follower_id: string
-          followee_id: string
-          id?: string
-        }
-        Update: {
-          created_at?: string
-          follower_id?: string
-          followee_id?: string
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_follows_follower_id_fkey"
-            columns: ["follower_id"]
-            isOneToOne: false
-            referencedRelation: "auth.users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_follows_followee_id_fkey"
-            columns: ["followee_id"]
-            isOneToOne: false
-            referencedRelation: "auth.users"
             referencedColumns: ["id"]
           },
         ]
@@ -1307,6 +1197,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_presence: {
+        Row: {
+          last_active: string
+          online: boolean
+          user_id: string
+        }
+        Insert: {
+          last_active?: string
+          online?: boolean
+          user_id: string
+        }
+        Update: {
+          last_active?: string
+          online?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1365,6 +1273,10 @@ export type Database = {
       }
     }
     Functions: {
+      add_read_to_message: {
+        Args: { message_id: string; user_id: string }
+        Returns: undefined
+      }
       can_access_course: {
         Args: { p_course_id: string; p_user_id: string }
         Returns: boolean
@@ -1373,10 +1285,42 @@ export type Database = {
         Args: { p_lesson_id: string; p_user_id: string }
         Returns: boolean
       }
+      fetch_trending_posts: {
+        Args: { p_limit: number }
+        Returns: {
+          author_id: string
+          comments_count: number
+          content: string
+          content_type: string
+          created_at: string
+          id: string
+          likes_count: number
+          metadata: Json
+          title: string
+          updated_at: string
+        }[]
+      }
       get_next_lesson: {
         Args: { p_current_lesson: string; p_user_id: string }
         Returns: {
           next_lesson_id: string
+        }[]
+      }
+      get_posts_for_user: {
+        Args: { p_limit: number; p_user_id: string }
+        Returns: {
+          author_followed: boolean
+          author_id: string
+          comments_count: number
+          content: string
+          content_type: string
+          created_at: string
+          id: string
+          liked_by_me: boolean
+          likes_count: number
+          metadata: Json
+          title: string
+          updated_at: string
         }[]
       }
       has_course_access: {
