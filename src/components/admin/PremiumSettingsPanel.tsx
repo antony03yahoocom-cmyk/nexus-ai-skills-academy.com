@@ -34,7 +34,7 @@ export function PremiumSettingsPanel() {
         live_class_link: '',
       };
       
-      return (data?.value as PremiumSettings) || defaultSettings;
+      return ((data?.value as unknown) as PremiumSettings) || defaultSettings;
     },
   });
 
