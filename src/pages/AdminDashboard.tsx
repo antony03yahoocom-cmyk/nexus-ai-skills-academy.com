@@ -209,7 +209,7 @@ const AdminDashboard = () => {
   } = useQuery({
     queryKey: ["admin-reports-count"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("content_reports")
         .select("id, status");
       return data ?? [];

@@ -42,10 +42,10 @@ const EmployerSignupPage = () => {
       if (upsertErr) throw upsertErr;
 
       // ensure user_roles contains employer
-      const { error: roleErr } = await supabase.from("user_roles").upsert({ user_id: user.id, role: "employer" }, { onConflict: "user_id_role" });
+      const { error: roleErr } = await supabase.from("user_roles").upsert({ user_id: user.id, role: "employer" as any }, { onConflict: "user_id_role" } as any);
       if (roleErr) {
         // try insert fallback
-        await supabase.from("user_roles").insert({ user_id: user.id, role: "employer" });
+        await supabase.from("user_roles").insert({ user_id: user.id, role: "employer" as any });
       }
 
       toast.success("Employer profile created");

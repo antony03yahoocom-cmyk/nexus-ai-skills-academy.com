@@ -18,7 +18,7 @@ const AdminReportsPage = () => {
   const { data: reports = [] } = useQuery({
     queryKey: ["admin-reports"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("content_reports")
         .select("*")
         .order("created_at", { ascending: false }).limit(100);
@@ -36,7 +36,7 @@ const AdminReportsPage = () => {
 
   const updateReport = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("content_reports").update({ status }).eq("id", id);
+      const { error } = await (supabase.from("content_reports" as any) as any).update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -48,7 +48,7 @@ const AdminReportsPage = () => {
 
   const deleteReport = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("content_reports").delete().eq("id", id);
+      const { error } = await (supabase.from("content_reports" as any) as any).delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

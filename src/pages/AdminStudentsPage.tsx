@@ -51,7 +51,7 @@ const AdminStudentsPage = () => {
 
   const banMutation = useMutation({
     mutationFn: async ({ id, is_banned }: { id: string; is_banned: boolean }) => {
-      const { error } = await supabase.from("profiles").update({ is_banned }).eq("id", id);
+      const { error } = await (supabase.from("profiles") as any).update({ is_banned }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
