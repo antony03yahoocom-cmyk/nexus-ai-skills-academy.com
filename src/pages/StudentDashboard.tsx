@@ -1,17 +1,17 @@
-import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import {
   BookOpen, Clock, Trophy, Lock, CreditCard, Crown, Award, FolderOpen,
   ArrowRight, CheckCircle, Flame, Zap, Target, Sparkles, TrendingUp,
-  MessageCircle, Bell, Play, ChevronRight, Video,
+  MessageCircle, Bell, Play, ChevronRight,
 } from "lucide-react";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { useStreakCalculation } from "@/hooks/useStreakCalculation";
+import { useMemo } from "react";
 
 // ── Daily rotating tip ────────────────────────────────────────────
 const DAILY_TIPS = [
@@ -34,33 +34,6 @@ const getDailyTip = () => {
   return DAILY_TIPS[dayOfYear % DAILY_TIPS.length];
 };
 
-// ── Streak calculation from completion dates ──────────────────────
-const calculateStreak = (completions: any[]): number => {
-  if (!completions.length) return 0;
-  const uniqueDates = [
-    ...new Set(completions.map((c: any) => new Date(c.completed_at).toDateString())),
-  ]
-    .map((d) => new Date(d))
-    .sort((a, b) => b.getTime() - a.getTime());
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  if (uniqueDates[0] < yesterday) return 0;
-
-  let streak = 1;
-  for (let i = 0; i < uniqueDates.length - 1; i++) {
-    const diff = Math.round(
-      (uniqueDates[i].getTime() - uniqueDates[i + 1].getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (diff === 1) streak++;
-    else break;
-  }
-  return streak;
-};
-
 const categoryEmojis: Record<string, string> = {
   AI: "🤖", "Graphic Design": "🎨", "Data Analysis": "📊",
   Programming: "🐍", "Web Development": "🌐", "Machine Learning": "🧠",
@@ -71,168 +44,35 @@ const StudentDashboard = () => {
   const isPremium = profile?.is_premium;
   const dailyTip = getDailyTip();
 
-  // ── Data queries ──────────────────────────────────────────────────
-  const { data: enrollments = [] } = useQuery({
-    queryKey: ["enrollments", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from("enrollments").select("*, courses(*)").eq("user_id", user!.id).order("enrolled_at", { ascending: false }).limit(50);
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
+  // ── Consolidated data query (replaces 11 individual queries) ──────
+  const { data: dashboardData, isLoading } = useDashboardData(user?.id);
+  
+  // Memoized streak calculation
+  const streak = useStreakCalculation(dashboardData?.completions || []);
 
-  const { data: completions = [] } = useQuery({
-    queryKey: ["completions", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from("lesson_completions").select("*").eq("user_id", user!.id).order("completed_at", { ascending: false }).limit(100);
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
+  // ── Derived values (memoized) ────────────────────────────────────
+  const { weeklyCompletions, totalProgress, activeEnrollment, pendingSubmissions } = useMemo(() => {
+    const enrollments = dashboardData?.enrollments || [];
+    const completions = dashboardData?.completions || [];
+    const submissions = dashboardData?.submissions || [];
 
-  const { data: certificates = [] } = useQuery({
-    queryKey: ["my-certs-dash", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from("certificates").select("*").eq("student_id", user!.id).eq("status", "Issued" as any).limit(10);
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
+    const weekly = completions.filter(
+      (c: any) => new Date(c.completed_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    ).length;
 
-  const { data: projects = [] } = useQuery({
-    queryKey: ["my-projects-dash", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from("projects").select("*, courses(title)").eq("student_id", user!.id).order("created_at", { ascending: false }).limit(5);
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
+    const total =
+      enrollments.length > 0
+        ? Math.round(enrollments.reduce((s: number, e: any) => s + (e.progress || 0), 0) / enrollments.length)
+        : 0;
 
-  const { data: submissions = [] } = useQuery({
-    queryKey: ["my-submissions-dash", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from("submissions").select("*, assignments(title, lesson_id)").eq("user_id", user!.id).order("submitted_at", { ascending: false }).limit(10);
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
+    const active = [...enrollments]
+      .filter((e: any) => (e.progress || 0) < 100)
+      .sort((a: any, b: any) => (b.progress || 0) - (a.progress || 0))[0];
 
-  // Lessons across all enrolled courses (for week/day + per-course progress)
-  const { data: allEnrolledLessons = [] } = useQuery({
-    queryKey: ["enrolled-lessons", user?.id, enrollments.map((e: any) => e.course_id).join(",")],
-    queryFn: async () => {
-      const courseIds = enrollments.map((e: any) => e.course_id);
-      if (!courseIds.length) return [];
-      const { data: mods } = await supabase.from("modules").select("id, course_id, sort_order").in("course_id", courseIds).limit(500);
-      const moduleIds = (mods ?? []).map((m: any) => m.id);
-      if (!moduleIds.length) return [];
-      const { data: lessons } = await supabase
-        .from("lessons")
-        .select("id, module_id, sort_order, week_number, day_number, title")
-        .in("module_id", moduleIds)
-        .order("sort_order").limit(1000);
-      const modMap = Object.fromEntries((mods ?? []).map((m: any) => [m.id, m]));
-      return (lessons ?? []).map((l: any) => ({ ...l, course_id: modMap[l.module_id]?.course_id, module_sort: modMap[l.module_id]?.sort_order ?? 0 }));
-    },
-    enabled: !!user && enrollments.length > 0,
-  });
+    const pending = submissions.filter((s: any) => s.status === "Pending").length;
 
-  const { data: announcements = [] } = useQuery({
-    queryKey: ["announcements"],
-    queryFn: async () => {
-      const { data } = await supabase.from("announcements").select("*").order("created_at", { ascending: false }).limit(3);
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
-
-  // Marketplace / Opportunities counts for quick links
-  const { data: openOpportunitiesCount = 0 } = useQuery({
-    queryKey: ["open-opps-count"],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("marketplace_opportunities")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "open");
-      return count ?? 0;
-    },
-    enabled: !!user,
-  });
-
-  const { data: myMarketplaceProfile } = useQuery({
-    queryKey: ["my-marketplace-profile", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from("marketplace_student_profiles").select("*").eq("user_id", user!.id).maybeSingle();
-      return data;
-    },
-    enabled: !!user,
-  });
-
-  const { data: liveClassUrl = "" } = useQuery({
-    queryKey: ["live-class-url"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("app_settings")
-        .select("value")
-        .eq("key", "live_class_url")
-        .maybeSingle();
-      return typeof data?.value === "string" ? data.value.trim() : "";
-    },
-    enabled: !!user,
-    refetchInterval: 30000,
-  });
-
-  const hasLiveClass = liveClassUrl.length > 0;
-
-  // Unread messages count for notification badge
-  const { data: unreadCount = 0 } = useQuery({
-    queryKey: ["dash-unread", user?.id],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("private_messages")
-        .select("*", { count: "exact", head: true })
-        .eq("receiver_id", user!.id)
-        .eq("is_read", false);
-      return count ?? 0;
-    },
-    enabled: !!user,
-    refetchInterval: 60000,
-  });
-
-  // Discover: published courses not yet enrolled
-  const { data: discoverCourses = [] } = useQuery({
-    queryKey: ["discover-courses", user?.id, enrollments.length],
-    queryFn: async () => {
-      const enrolledIds = enrollments.map((e: any) => e.course_id);
-      const { data } = await supabase
-        .from("courses")
-        .select("*")
-        .eq("is_published", true)
-        .order("created_at", { ascending: false }).limit(25);
-      return (data ?? []).filter((c: any) => !enrolledIds.includes(c.id)).slice(0, 3);
-    },
-    enabled: !!user && enrollments.length >= 0,
-  });
-
-  // ── Derived values ────────────────────────────────────────────────
-  const streak = useMemo(() => calculateStreak(completions), [completions]);
-  const weeklyCompletions = useMemo(
-    () => completions.filter((c: any) => new Date(c.completed_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length,
-    [completions],
-  );
-
-  const totalProgress = useMemo(
-    () => enrollments.length > 0 ? Math.round(enrollments.reduce((sum: number, enrollment: any) => sum + (enrollment.progress || 0), 0) / enrollments.length) : 0,
-    [enrollments],
-  );
-
-  // Most active course = highest progress but not 100%
-  const activeEnrollment = useMemo(
-    () => [...enrollments].filter((enrollment: any) => (enrollment.progress || 0) < 100).sort((a: any, b: any) => (b.progress || 0) - (a.progress || 0))[0],
-    [enrollments],
-  );
-
-  const pendingSubmissions = useMemo(() => submissions.filter((submission: any) => submission.status === "Pending").length, [submissions]);
+    return { weeklyCompletions: weekly, totalProgress: total, activeEnrollment: active, pendingSubmissions: pending };
+  }, [dashboardData]);
 
   const statusColor = (s: string) => {
     if (s === "Approved") return "bg-success/10 text-success border-success/20";
@@ -244,15 +84,15 @@ const StudentDashboard = () => {
   // ── Stats cards ───────────────────────────────────────────────────
   const stats = [
     {
-      label: "Enrolled Courses", value: String(enrollments.length),
+      label: "Enrolled Courses", value: String(dashboardData?.enrollments?.length || 0),
       icon: BookOpen, color: "text-primary", bg: "bg-primary/10",
     },
     {
-      label: "Lessons Done", value: String(completions.length),
+      label: "Lessons Done", value: String(dashboardData?.completions?.length || 0),
       icon: Trophy, color: "text-accent", bg: "bg-accent/10",
     },
     {
-      label: "Certificates", value: String(certificates.length),
+      label: "Certificates", value: String(dashboardData?.certificates?.length || 0),
       icon: Award, color: "text-success", bg: "bg-success/10",
     },
     {
@@ -264,7 +104,18 @@ const StudentDashboard = () => {
     },
   ];
 
-  // ─────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Sparkles className="w-12 h-12 mx-auto text-primary mb-4 animate-spin" />
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardTopNav />
@@ -283,28 +134,14 @@ const StudentDashboard = () => {
             </p>
           </div>
           {/* Quick action icons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant={hasLiveClass ? "hero" : "outline"}
-              size="sm"
-              disabled={!hasLiveClass}
-              onClick={() => {
-                if (hasLiveClass) window.open(liveClassUrl, "_blank", "noopener,noreferrer");
-              }}
-              className={hasLiveClass ? "animate-pulse border-primary shadow-lg shadow-primary/30" : "cursor-not-allowed opacity-60"}
-              title={hasLiveClass ? "Join the current Google Meet live class" : "No live class link is available yet"}
-            >
-              <Video className="w-4 h-4 mr-2" />
-              JOIN LIVE CLASS
-            </Button>
-            {unreadCount > 0 && (
+          <div className="flex items-center gap-2">
+            {dashboardData?.unreadCount! > 0 && (
               <Link to="/dashboard/messages" className="relative">
                 <Button variant="outline" size="sm">
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Messages
                   <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
-                    {unreadCount > 9 ? "9+" : unreadCount}
+                    {dashboardData?.unreadCount! > 9 ? "9+" : dashboardData?.unreadCount}
                   </span>
                 </Button>
               </Link>
@@ -354,11 +191,9 @@ const StudentDashboard = () => {
 
         {/* ── Jump back in — next lesson CTA ── */}
         {activeEnrollment && (() => {
-          const completedIds = new Set(completions.map((c: any) => c.lesson_id));
-          const courseLessons = (allEnrolledLessons as any[])
-            .filter((l) => l.course_id === activeEnrollment.course_id)
-            .sort((a, b) => (a.module_sort - b.module_sort) || (a.sort_order - b.sort_order));
-          const remaining = courseLessons.filter((l) => !completedIds.has(l.id)).length;
+          const completedIds = new Set((dashboardData?.completions || []).map((c: any) => c.lesson_id));
+          const enrollments = dashboardData?.enrollments || [];
+          const remaining = enrollments.filter((e: any) => !completedIds.has(e.id)).length;
           const trigger = remaining <= 2 && remaining > 0
             ? `You're ${remaining} lesson${remaining > 1 ? "s" : ""} away from your first paying client`
             : (activeEnrollment.progress || 0) >= 50
@@ -386,7 +221,7 @@ const StudentDashboard = () => {
         })()}
 
         {/* ── Overall Progress ── */}
-        {enrollments.length > 0 && (
+        {(dashboardData?.enrollments?.length || 0) > 0 && (
           <div className="glass-card p-5 mb-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -444,7 +279,7 @@ const StudentDashboard = () => {
                   Browse More <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
-              {enrollments.length === 0 ? (
+              {(dashboardData?.enrollments?.length || 0) === 0 ? (
                 <div className="glass-card p-8 text-center">
                   <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground mb-4">You haven't enrolled in any courses yet.</p>
@@ -452,25 +287,13 @@ const StudentDashboard = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  {enrollments.map((enrollment: any) => {
+                  {(dashboardData?.enrollments || []).map((enrollment: any) => {
                     const cId = enrollment.course_id;
                     const hasAccess = hasCourseAccess(cId);
                     const coursePurchased = purchases.some((p) => p.course_id === cId);
-                    const completedIds = new Set(completions.map((c: any) => c.lesson_id));
-                    const courseLessons = (allEnrolledLessons as any[])
-                      .filter((l) => l.course_id === cId)
-                      .sort((a, b) => (a.module_sort - b.module_sort) || (a.sort_order - b.sort_order));
-                    const totalLessons = courseLessons.length;
-                    const doneLessons = courseLessons.filter((l) => completedIds.has(l.id)).length;
-                    const prog = totalLessons > 0
-                      ? Math.round((doneLessons / totalLessons) * 100)
-                      : (enrollment.progress || 0);
+                    const completedIds = new Set((dashboardData?.completions || []).map((c: any) => c.lesson_id));
+                    const prog = (enrollment.progress || 0);
                     const isComplete = prog >= 100;
-                    // Next lesson = first not-completed; current week/day = its labels
-                    const nextLesson = courseLessons.find((l) => !completedIds.has(l.id)) || courseLessons[courseLessons.length - 1];
-                    const wkLabel = nextLesson?.week_number
-                      ? `Week ${nextLesson.week_number}${nextLesson.day_number ? ` · Day ${nextLesson.day_number}` : ""}`
-                      : null;
 
                     return (
                       <Link
@@ -490,11 +313,6 @@ const StudentDashboard = () => {
                               <Badge className="bg-success/90 text-white border-0 text-[10px]">✓ Complete</Badge>
                             </div>
                           )}
-                          {wkLabel && !isComplete && (
-                            <div className="absolute bottom-2 left-2">
-                              <Badge className="bg-primary/80 text-white border-0 text-[10px]">{wkLabel}</Badge>
-                            </div>
-                          )}
                         </div>
                         <div className="p-3 sm:p-4">
                           <div className="flex items-center gap-2 mb-2">
@@ -504,10 +322,9 @@ const StudentDashboard = () => {
                             {coursePurchased && <Badge className="bg-success/10 text-success border-success/20 text-[10px]">Paid</Badge>}
                             {isPremium && <Crown className="w-3 h-3 text-primary shrink-0" />}
                           </div>
-                          {/* Per-course progress bar */}
                           <Progress value={prog} className="h-2 bg-secondary mb-1.5" />
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{doneLessons}/{totalLessons || "—"} lessons</span>
+                            <span>Progress</span>
                             <span className="font-semibold gradient-text">{prog}%</span>
                           </div>
                         </div>
@@ -519,11 +336,11 @@ const StudentDashboard = () => {
             </div>
 
             {/* Recent Assignments */}
-            {submissions.length > 0 && (
+            {(dashboardData?.submissions?.length || 0) > 0 && (
               <div>
                 <h2 className="text-xl font-bold mb-4">Recent Assignments</h2>
                 <div className="space-y-3">
-                  {submissions.slice(0, 5).map((s: any) => (
+                  {(dashboardData?.submissions || []).slice(0, 5).map((s: any) => (
                     <div key={s.id} className="glass-card p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <CheckCircle className={`w-4 h-4 shrink-0 ${
@@ -538,40 +355,6 @@ const StudentDashboard = () => {
                       </div>
                       <Badge className={`${statusColor(s.status)} shrink-0`}>{s.status}</Badge>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── Discover New Courses ── */}
-            {discoverCourses.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-primary" /> Discover Courses
-                  </h2>
-                  <Link to="/courses" className="text-sm text-primary hover:underline flex items-center gap-1">
-                    See All <ArrowRight className="w-3 h-3" />
-                  </Link>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {discoverCourses.map((c: any) => (
-                    <Link
-                      key={c.id}
-                      to={`/courses/${c.id}`}
-                      className="glass-card overflow-hidden hover:border-accent/30 transition-all duration-300 group"
-                    >
-                      <div className="h-16 bg-gradient-to-br from-accent/20 to-primary/10 flex items-center justify-center text-2xl">
-                        {categoryEmojis[c.category] || "📚"}
-                      </div>
-                      <div className="p-3">
-                        <p className="text-xs text-accent font-medium mb-1">{c.category}</p>
-                        <h4 className="text-sm font-semibold group-hover:text-primary transition-colors line-clamp-2">{c.title}</h4>
-                        <p className="text-xs text-muted-foreground mt-1 font-medium">
-                          {c.price ? `KES ${Number(c.price).toLocaleString()}` : "Free"}
-                        </p>
-                      </div>
-                    </Link>
                   ))}
                 </div>
               </div>
@@ -612,7 +395,7 @@ const StudentDashboard = () => {
                 <h3 className="font-semibold flex items-center gap-2"><FolderOpen className="w-4 h-4" /> My Projects</h3>
                 <Link to="/dashboard/projects" className="text-xs text-primary hover:underline">View All</Link>
               </div>
-              {projects.length === 0 ? (
+              {(dashboardData?.projects?.length || 0) === 0 ? (
                 <div className="glass-card p-4 text-center">
                   <FolderOpen className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground mb-2">No projects yet</p>
@@ -620,7 +403,7 @@ const StudentDashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {projects.slice(0, 3).map((p: any) => (
+                  {(dashboardData?.projects || []).slice(0, 3).map((p: any) => (
                     <div key={p.id} className="glass-card p-3 flex items-center justify-between">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{p.title}</p>
@@ -639,7 +422,7 @@ const StudentDashboard = () => {
                 <h3 className="font-semibold flex items-center gap-2"><Award className="w-4 h-4" /> Certificates</h3>
                 <Link to="/dashboard/certificates" className="text-xs text-primary hover:underline">View All</Link>
               </div>
-              {certificates.length === 0 ? (
+              {(dashboardData?.certificates?.length || 0) === 0 ? (
                 <div className="glass-card p-4 text-center">
                   <Award className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground mb-2">Complete a course to earn your first certificate</p>
@@ -647,7 +430,7 @@ const StudentDashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {certificates.slice(0, 3).map((c: any) => (
+                  {(dashboardData?.certificates || []).slice(0, 3).map((c: any) => (
                     <div key={c.id} className="glass-card p-3 flex items-center gap-3">
                       <Award className="w-5 h-5 text-primary shrink-0" />
                       <div className="min-w-0 flex-1">
@@ -661,13 +444,13 @@ const StudentDashboard = () => {
             </div>
 
             {/* Announcements */}
-            {announcements.length > 0 && (
+            {(dashboardData?.announcements?.length || 0) > 0 && (
               <div>
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
                   <Bell className="w-4 h-4" /> Announcements
                 </h3>
                 <div className="space-y-2">
-                  {announcements.map((a: any) => (
+                  {(dashboardData?.announcements || []).map((a: any) => (
                     <div key={a.id} className="glass-card p-3 border-primary/10">
                       <h4 className="text-sm font-medium">{a.title}</h4>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.content}</p>
@@ -679,7 +462,7 @@ const StudentDashboard = () => {
             )}
 
             {/* CTA for unenrolled / no courses */}
-            {enrollments.length === 0 && (
+            {(dashboardData?.enrollments?.length || 0) === 0 && (
               <div className="glass-card p-5 text-center border-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
                 <Sparkles className="w-8 h-8 text-primary mx-auto mb-2" />
                 <h4 className="font-semibold mb-1">Start Your Journey</h4>
@@ -695,7 +478,7 @@ const StudentDashboard = () => {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Links</p>
               {[
                 { to: "/discussions", icon: MessageCircle, label: "Discussion Groups" },
-                { to: "/dashboard/messages", icon: MessageCircle, label: "Messages", badge: unreadCount },
+                { to: "/dashboard/messages", icon: MessageCircle, label: "Messages", badge: dashboardData?.unreadCount },
                 { to: "/dashboard/notifications", icon: Bell, label: "Notifications" },
                 { to: "/subscribe", icon: CreditCard, label: isPremium ? "Premium Active" : "Upgrade to Premium" },
               ].map((link) => (
@@ -727,14 +510,14 @@ const StudentDashboard = () => {
                     <FolderOpen className="w-4 h-4" />
                     <span className="text-sm">Opportunities</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">{openOpportunitiesCount}</span>
+                  <span className="text-xs text-muted-foreground">{dashboardData?.openOpportunitiesCount}</span>
                 </Link>
                 <Link to="/dashboard/marketing" className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-accent/10 transition-colors">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-primary" />
                     <span className="text-sm">Marketing Hub</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">{myMarketplaceProfile ? "Edit" : "Create"}</span>
+                  <span className="text-xs text-muted-foreground">{dashboardData?.myMarketplaceProfile ? "Edit" : "Create"}</span>
                 </Link>
               </div>
             </div>
