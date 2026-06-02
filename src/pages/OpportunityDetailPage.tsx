@@ -354,6 +354,41 @@ export default function OpportunityDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Report this opportunity</DialogTitle>
+              <DialogDescription>
+                Tell us what's wrong. Admins will review and take action.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input
+                placeholder="Reason (e.g. spam, scam, misleading)"
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+              />
+              <Textarea
+                placeholder="Additional details (optional)"
+                rows={4}
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setReportOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => submitReport.mutate()}
+                disabled={!reportReason.trim() || submitReport.isPending}
+              >
+                {submitReport.isPending ? "Submitting..." : "Submit Report"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
