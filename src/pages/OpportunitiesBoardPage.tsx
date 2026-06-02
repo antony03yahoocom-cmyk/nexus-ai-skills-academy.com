@@ -23,7 +23,6 @@ const typeColor: Record<string, string> = {
 
 const OpportunitiesBoardPage = () => {
   const [search, setSearch] = useState("");
-  const [search, setSearch] = useState("");
   const [savedOnly, setSavedOnly] = useState(false);
   const { user } = useAuth();
   const nav = useNavigate();
