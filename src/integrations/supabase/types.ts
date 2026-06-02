@@ -1181,6 +1181,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_banned: boolean
           is_premium: boolean
           phone: string | null
           subscription_status: string
@@ -1194,6 +1195,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_banned?: boolean
           is_premium?: boolean
           phone?: string | null
           subscription_status?: string
@@ -1207,6 +1209,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_banned?: boolean
           is_premium?: boolean
           phone?: string | null
           subscription_status?: string
