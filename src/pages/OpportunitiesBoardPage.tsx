@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Search, Briefcase, Clock, MapPin } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Search, Briefcase, Clock, MapPin, Bookmark, BookmarkCheck } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const typeColor: Record<string, string> = {
   freelance: "bg-sky-500/10 text-sky-400 border-sky-500/20",
@@ -22,13 +23,26 @@ const typeColor: Record<string, string> = {
 
 const OpportunitiesBoardPage = () => {
   const [search, setSearch] = useState("");
+  const [savedOnly, setSavedOnly] = useState(false);
   const { user } = useAuth();
   const nav = useNavigate();
+  const qc = useQueryClient();
+
+  const { data: savedIds = [] } = useQuery({
+    queryKey: ["saved-opportunities", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("marketplace_saved_opportunities")
+        .select("opportunity_id")
+        .eq("user_id", user!.id);
+      return (data ?? []).map((r: any) => r.opportunity_id as string);
+    },
+  });
 
   const { data = [], isLoading } = useQuery({
-    queryKey: ["opportunities-board", search],
+    queryKey: ["opportunities-board", search, savedOnly, savedIds.length],
     queryFn: async () => {
-      // FIX: cast as any because marketplace_opportunities is not in generated types yet
       const q = (supabase as any)
         .from("marketplace_opportunities")
         .select("*")
@@ -37,8 +51,32 @@ const OpportunitiesBoardPage = () => {
         .limit(50);
       const { data, error } = search ? await q.ilike("title", `%${search}%`) : await q;
       if (error) throw error;
-      return (data ?? []) as any[];
+      let rows = (data ?? []) as any[];
+      if (savedOnly) rows = rows.filter((r) => savedIds.includes(r.id));
+      return rows;
     },
+  });
+
+  const toggleSave = useMutation({
+    mutationFn: async (opportunityId: string) => {
+      if (!user) throw new Error("Sign in to save opportunities");
+      const isSaved = savedIds.includes(opportunityId);
+      if (isSaved) {
+        const { error } = await (supabase as any)
+          .from("marketplace_saved_opportunities")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("opportunity_id", opportunityId);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from("marketplace_saved_opportunities")
+          .insert({ user_id: user.id, opportunity_id: opportunityId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-opportunities", user?.id] }),
+    onError: (e: any) => toast.error(e.message ?? "Failed"),
   });
 
   return (
@@ -62,15 +100,27 @@ const OpportunitiesBoardPage = () => {
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search jobs, gigs, internships..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search + Saved filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search jobs, gigs, internships..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          {user && (
+            <Button
+              variant={savedOnly ? "hero" : "outline"}
+              onClick={() => setSavedOnly((v) => !v)}
+              className="sm:w-auto"
+            >
+              {savedOnly ? <BookmarkCheck className="w-4 h-4 mr-2" /> : <Bookmark className="w-4 h-4 mr-2" />}
+              {savedOnly ? `Saved (${savedIds.length})` : "Saved only"}
+            </Button>
+          )}
         </div>
 
         {/* Results */}
@@ -139,10 +189,25 @@ const OpportunitiesBoardPage = () => {
                     </span>
                   </div>
 
-                  {/* FIX: was <a href=...> causing full page reload. Now uses <Link> */}
-                  <Button asChild className="w-full mt-1">
-                    <Link to={`/opportunities/${op.id}`}>View & Apply</Link>
-                  </Button>
+                  <div className="flex gap-2 mt-1">
+                    <Button asChild className="flex-1">
+                      <Link to={`/opportunities/${op.id}`}>View & Apply</Link>
+                    </Button>
+                    {user && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => toggleSave.mutate(op.id)}
+                        aria-label={savedIds.includes(op.id) ? "Unsave" : "Save"}
+                      >
+                        {savedIds.includes(op.id) ? (
+                          <BookmarkCheck className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Bookmark className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}

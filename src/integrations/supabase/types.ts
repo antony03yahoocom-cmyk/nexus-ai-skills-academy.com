@@ -262,6 +262,45 @@ export type Database = {
         }
         Relationships: []
       }
+      content_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
       conversation_members: {
         Row: {
           conversation_id: string
@@ -854,6 +893,27 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_profile_views: {
+        Row: {
+          created_at: string
+          id: string
+          profile_user_id: string
+          viewer_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_user_id: string
+          viewer_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_user_id?: string
+          viewer_user_id?: string | null
+        }
+        Relationships: []
+      }
       marketplace_projects: {
         Row: {
           created_at: string
@@ -881,6 +941,27 @@ export type Database = {
           student_user_id?: string
           title?: string
           tools_used?: string[]
+        }
+        Relationships: []
+      }
+      marketplace_saved_opportunities: {
+        Row: {
+          created_at: string
+          id: string
+          opportunity_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          opportunity_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          opportunity_id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1054,6 +1135,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          is_read: boolean
+          message: string | null
+          metadata: Json
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          metadata?: Json
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          metadata?: Json
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       post_attachments: {
         Row: {

@@ -8,8 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Clock, Briefcase, DollarSign } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Briefcase, DollarSign, Bookmark, BookmarkCheck, Flag, Sparkles } from "lucide-react";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 const statusColor: Record<string, string> = {
   pending: "bg-amber-500/10 text-amber-400 border-amber-500/20",
@@ -24,6 +28,101 @@ export default function OpportunityDetailPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [proposal, setProposal] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
+
+  const { data: saved } = useQuery({
+    queryKey: ["saved-opportunity", opportunityId, user?.id],
+    enabled: !!user && !!opportunityId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("marketplace_saved_opportunities")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("opportunity_id", opportunityId)
+        .maybeSingle();
+      return data as { id: string } | null;
+    },
+  });
+
+  const toggleSave = useMutation({
+    mutationFn: async () => {
+      if (saved) {
+        const { error } = await (supabase as any)
+          .from("marketplace_saved_opportunities")
+          .delete()
+          .eq("id", saved.id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from("marketplace_saved_opportunities")
+          .insert({ user_id: user!.id, opportunity_id: opportunityId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: async () => {
+      toast.success(saved ? "Removed from saved" : "Saved");
+      await qc.invalidateQueries({ queryKey: ["saved-opportunity", opportunityId, user?.id] });
+      await qc.invalidateQueries({ queryKey: ["saved-opportunities", user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed"),
+  });
+
+  const submitReport = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from("content_reports").insert({
+        reporter_id: user!.id,
+        target_type: "opportunity",
+        target_id: opportunityId,
+        reason: reportReason || "other",
+        details: reportDetails || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Report submitted to admins");
+      setReportOpen(false);
+      setReportReason("");
+      setReportDetails("");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed to report"),
+  });
+
+  const generateAIProposal = async () => {
+    if (!op) return;
+    setAiLoading(true);
+    try {
+      const { data: sp } = await (supabase as any)
+        .from("marketplace_student_profiles")
+        .select("headline, bio, skills")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke("ai-proposal", {
+        body: {
+          opportunityTitle: op.title,
+          opportunityDescription: op.description,
+          requiredSkills: op.required_skills,
+          studentHeadline: sp?.headline,
+          studentBio: sp?.bio,
+          studentSkills: sp?.skills,
+        },
+      });
+      if (error) throw error;
+      if (data?.proposal) {
+        setProposal(data.proposal);
+        toast.success("AI draft ready — edit before submitting");
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
+    } catch (e: any) {
+      toast.error(e.message ?? "AI assist failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
 
   const { data: op, isLoading } = useQuery({
     queryKey: ["opportunity", opportunityId],
@@ -106,12 +205,30 @@ export default function OpportunityDetailPage() {
     <div className="min-h-screen bg-background">
       <DashboardTopNav />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {/* Back */}
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/opportunities">
-            <ArrowLeft className="w-4 h-4 mr-1" /> All Opportunities
-          </Link>
-        </Button>
+        {/* Back + action row */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <Button variant="ghost" size="sm" asChild className="-ml-2">
+            <Link to="/opportunities">
+              <ArrowLeft className="w-4 h-4 mr-1" /> All Opportunities
+            </Link>
+          </Button>
+          {user && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toggleSave.mutate()}
+                disabled={toggleSave.isPending}
+              >
+                {saved ? <BookmarkCheck className="w-4 h-4 mr-1" /> : <Bookmark className="w-4 h-4 mr-1" />}
+                {saved ? "Saved" : "Save"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
+                <Flag className="w-4 h-4 mr-1" /> Report
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Details card */}
         <Card className="glass-card">
@@ -198,10 +315,22 @@ export default function OpportunityDetailPage() {
             ) : (
               <>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium" htmlFor="proposal">
-                    Cover letter / Proposal
-                    <span className="text-muted-foreground font-normal ml-1">(min 20 characters)</span>
-                  </label>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <label className="text-sm font-medium" htmlFor="proposal">
+                      Cover letter / Proposal
+                      <span className="text-muted-foreground font-normal ml-1">(min 20 characters)</span>
+                    </label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={generateAIProposal}
+                      disabled={aiLoading}
+                    >
+                      <Sparkles className="w-3.5 h-3.5 mr-1" />
+                      {aiLoading ? "Drafting..." : "AI Assist"}
+                    </Button>
+                  </div>
                   <Textarea
                     id="proposal"
                     value={proposal}
@@ -225,6 +354,41 @@ export default function OpportunityDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Report this opportunity</DialogTitle>
+              <DialogDescription>
+                Tell us what's wrong. Admins will review and take action.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input
+                placeholder="Reason (e.g. spam, scam, misleading)"
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+              />
+              <Textarea
+                placeholder="Additional details (optional)"
+                rows={4}
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setReportOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => submitReport.mutate()}
+                disabled={!reportReason.trim() || submitReport.isPending}
+              >
+                {submitReport.isPending ? "Submitting..." : "Submit Report"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
