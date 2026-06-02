@@ -100,15 +100,27 @@ const OpportunitiesBoardPage = () => {
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search jobs, gigs, internships..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search + Saved filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search jobs, gigs, internships..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          {user && (
+            <Button
+              variant={savedOnly ? "hero" : "outline"}
+              onClick={() => setSavedOnly((v) => !v)}
+              className="sm:w-auto"
+            >
+              {savedOnly ? <BookmarkCheck className="w-4 h-4 mr-2" /> : <Bookmark className="w-4 h-4 mr-2" />}
+              {savedOnly ? `Saved (${savedIds.length})` : "Saved only"}
+            </Button>
+          )}
         </div>
 
         {/* Results */}
