@@ -189,10 +189,25 @@ const OpportunitiesBoardPage = () => {
                     </span>
                   </div>
 
-                  {/* FIX: was <a href=...> causing full page reload. Now uses <Link> */}
-                  <Button asChild className="w-full mt-1">
-                    <Link to={`/opportunities/${op.id}`}>View & Apply</Link>
-                  </Button>
+                  <div className="flex gap-2 mt-1">
+                    <Button asChild className="flex-1">
+                      <Link to={`/opportunities/${op.id}`}>View & Apply</Link>
+                    </Button>
+                    {user && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => toggleSave.mutate(op.id)}
+                        aria-label={savedIds.includes(op.id) ? "Unsave" : "Save"}
+                      >
+                        {savedIds.includes(op.id) ? (
+                          <BookmarkCheck className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Bookmark className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}
