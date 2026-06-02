@@ -8,8 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Clock, Briefcase, DollarSign } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Briefcase, DollarSign, Bookmark, BookmarkCheck, Flag, Sparkles } from "lucide-react";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 const statusColor: Record<string, string> = {
   pending: "bg-amber-500/10 text-amber-400 border-amber-500/20",
