@@ -28,6 +28,101 @@ export default function OpportunityDetailPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [proposal, setProposal] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
+
+  const { data: saved } = useQuery({
+    queryKey: ["saved-opportunity", opportunityId, user?.id],
+    enabled: !!user && !!opportunityId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("marketplace_saved_opportunities")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("opportunity_id", opportunityId)
+        .maybeSingle();
+      return data as { id: string } | null;
+    },
+  });
+
+  const toggleSave = useMutation({
+    mutationFn: async () => {
+      if (saved) {
+        const { error } = await (supabase as any)
+          .from("marketplace_saved_opportunities")
+          .delete()
+          .eq("id", saved.id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from("marketplace_saved_opportunities")
+          .insert({ user_id: user!.id, opportunity_id: opportunityId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: async () => {
+      toast.success(saved ? "Removed from saved" : "Saved");
+      await qc.invalidateQueries({ queryKey: ["saved-opportunity", opportunityId, user?.id] });
+      await qc.invalidateQueries({ queryKey: ["saved-opportunities", user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed"),
+  });
+
+  const submitReport = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from("content_reports").insert({
+        reporter_id: user!.id,
+        target_type: "opportunity",
+        target_id: opportunityId,
+        reason: reportReason || "other",
+        details: reportDetails || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Report submitted to admins");
+      setReportOpen(false);
+      setReportReason("");
+      setReportDetails("");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed to report"),
+  });
+
+  const generateAIProposal = async () => {
+    if (!op) return;
+    setAiLoading(true);
+    try {
+      const { data: sp } = await (supabase as any)
+        .from("marketplace_student_profiles")
+        .select("headline, bio, skills")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke("ai-proposal", {
+        body: {
+          opportunityTitle: op.title,
+          opportunityDescription: op.description,
+          requiredSkills: op.required_skills,
+          studentHeadline: sp?.headline,
+          studentBio: sp?.bio,
+          studentSkills: sp?.skills,
+        },
+      });
+      if (error) throw error;
+      if (data?.proposal) {
+        setProposal(data.proposal);
+        toast.success("AI draft ready — edit before submitting");
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
+    } catch (e: any) {
+      toast.error(e.message ?? "AI assist failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
 
   const { data: op, isLoading } = useQuery({
     queryKey: ["opportunity", opportunityId],
