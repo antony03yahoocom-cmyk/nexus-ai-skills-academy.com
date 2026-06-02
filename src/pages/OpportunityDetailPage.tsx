@@ -315,10 +315,22 @@ export default function OpportunityDetailPage() {
             ) : (
               <>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium" htmlFor="proposal">
-                    Cover letter / Proposal
-                    <span className="text-muted-foreground font-normal ml-1">(min 20 characters)</span>
-                  </label>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <label className="text-sm font-medium" htmlFor="proposal">
+                      Cover letter / Proposal
+                      <span className="text-muted-foreground font-normal ml-1">(min 20 characters)</span>
+                    </label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={generateAIProposal}
+                      disabled={aiLoading}
+                    >
+                      <Sparkles className="w-3.5 h-3.5 mr-1" />
+                      {aiLoading ? "Drafting..." : "AI Assist"}
+                    </Button>
+                  </div>
                   <Textarea
                     id="proposal"
                     value={proposal}
