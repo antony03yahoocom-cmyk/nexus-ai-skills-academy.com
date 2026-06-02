@@ -205,12 +205,30 @@ export default function OpportunityDetailPage() {
     <div className="min-h-screen bg-background">
       <DashboardTopNav />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {/* Back */}
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/opportunities">
-            <ArrowLeft className="w-4 h-4 mr-1" /> All Opportunities
-          </Link>
-        </Button>
+        {/* Back + action row */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <Button variant="ghost" size="sm" asChild className="-ml-2">
+            <Link to="/opportunities">
+              <ArrowLeft className="w-4 h-4 mr-1" /> All Opportunities
+            </Link>
+          </Button>
+          {user && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toggleSave.mutate()}
+                disabled={toggleSave.isPending}
+              >
+                {saved ? <BookmarkCheck className="w-4 h-4 mr-1" /> : <Bookmark className="w-4 h-4 mr-1" />}
+                {saved ? "Saved" : "Save"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
+                <Flag className="w-4 h-4 mr-1" /> Report
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Details card */}
         <Card className="glass-card">
