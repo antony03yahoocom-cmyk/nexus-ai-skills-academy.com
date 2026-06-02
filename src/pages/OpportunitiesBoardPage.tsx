@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Search, Briefcase, Clock, MapPin } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Search, Briefcase, Clock, MapPin, Bookmark, BookmarkCheck } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const typeColor: Record<string, string> = {
   freelance: "bg-sky-500/10 text-sky-400 border-sky-500/20",
