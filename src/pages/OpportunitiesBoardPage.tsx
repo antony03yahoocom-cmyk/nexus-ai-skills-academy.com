@@ -23,13 +23,27 @@ const typeColor: Record<string, string> = {
 
 const OpportunitiesBoardPage = () => {
   const [search, setSearch] = useState("");
+  const [search, setSearch] = useState("");
+  const [savedOnly, setSavedOnly] = useState(false);
   const { user } = useAuth();
   const nav = useNavigate();
+  const qc = useQueryClient();
+
+  const { data: savedIds = [] } = useQuery({
+    queryKey: ["saved-opportunities", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("marketplace_saved_opportunities")
+        .select("opportunity_id")
+        .eq("user_id", user!.id);
+      return (data ?? []).map((r: any) => r.opportunity_id as string);
+    },
+  });
 
   const { data = [], isLoading } = useQuery({
-    queryKey: ["opportunities-board", search],
+    queryKey: ["opportunities-board", search, savedOnly, savedIds.length],
     queryFn: async () => {
-      // FIX: cast as any because marketplace_opportunities is not in generated types yet
       const q = (supabase as any)
         .from("marketplace_opportunities")
         .select("*")
@@ -38,8 +52,32 @@ const OpportunitiesBoardPage = () => {
         .limit(50);
       const { data, error } = search ? await q.ilike("title", `%${search}%`) : await q;
       if (error) throw error;
-      return (data ?? []) as any[];
+      let rows = (data ?? []) as any[];
+      if (savedOnly) rows = rows.filter((r) => savedIds.includes(r.id));
+      return rows;
     },
+  });
+
+  const toggleSave = useMutation({
+    mutationFn: async (opportunityId: string) => {
+      if (!user) throw new Error("Sign in to save opportunities");
+      const isSaved = savedIds.includes(opportunityId);
+      if (isSaved) {
+        const { error } = await (supabase as any)
+          .from("marketplace_saved_opportunities")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("opportunity_id", opportunityId);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from("marketplace_saved_opportunities")
+          .insert({ user_id: user.id, opportunity_id: opportunityId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-opportunities", user?.id] }),
+    onError: (e: any) => toast.error(e.message ?? "Failed"),
   });
 
   return (
