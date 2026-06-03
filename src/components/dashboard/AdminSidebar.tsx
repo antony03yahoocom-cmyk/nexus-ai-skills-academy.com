@@ -318,6 +318,15 @@ const AdminSidebar = () => {
       <span className="text-xs text-primary font-medium mt-1 block">
         Admin Panel
       </span>
+      {showBack && (
+        <button
+          onClick={handleBack}
+          className="mt-3 flex items-center gap-2 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back
+        </button>
+      )}
     </div>
   );
 
