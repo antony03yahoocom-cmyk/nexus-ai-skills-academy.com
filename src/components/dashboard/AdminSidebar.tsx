@@ -290,6 +290,7 @@ const NavLink = ({
 
 const AdminSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const { signOut } = useAuth();
 
@@ -297,6 +298,9 @@ const AdminSidebar = () => {
 
   const [mobileOpen, setMobileOpen] =
     useState(false);
+
+  const showBack = location.pathname !== "/admin";
+  const handleBack = () => (window.history.length > 1 ? navigate(-1) : navigate("/admin"));
 
   const brandBar = (
     <div className="p-5 border-b border-sidebar-border shrink-0">
