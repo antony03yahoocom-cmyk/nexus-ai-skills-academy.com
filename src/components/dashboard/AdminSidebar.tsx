@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
   LayoutDashboard,
@@ -24,6 +24,7 @@ import {
   CreditCard,
   Briefcase,
   Flag,
+  ArrowLeft,
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
