@@ -83,7 +83,7 @@ const AdminReportsPage = () => {
                         <h2 className="text-lg font-semibold truncate">{report.target_type || "Content report"}</h2>
                         <Badge className={statusColor(report.status)}>{report.status}</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-1">Reporter: {reporterMap.get(report.reporter_user_id) || report.reporter_user_id}</p>
+                      <p className="text-sm text-muted-foreground mb-1">Reporter: {reporterMap.get(report.reporter_id) || report.reporter_id}</p>
                       <p className="text-sm text-muted-foreground">Target ID: {report.target_id}</p>
                       {report.details && <p className="mt-3 text-sm text-muted-foreground">{report.details}</p>}
                     </div>
