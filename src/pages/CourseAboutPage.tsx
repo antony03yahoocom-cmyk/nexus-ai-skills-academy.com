@@ -132,7 +132,9 @@ const CourseAboutPage = () => {
 
   const isFree = course.price === 0;
   const courseAccess = courseId ? hasCourseAccess(courseId) : false;
-  const canOpenFreeCourse = !!user && isFree;
+  // ✅ Enrollment-first: students must enroll (free or paid) before they can open lessons or pay.
+  const canOpenFreeCourse = !!user && isFree && !!enrollment;
+  const needsEnroll = !!user && !enrollment;
   const priceFormatted = isFree ? "Free" : `KES ${course.price.toLocaleString()}`;
   const achievements: string[] = Array.isArray(course.what_you_achieve) ? (course.what_you_achieve as any[]).map(String) : [];
   const audience: string[] = Array.isArray(course.who_is_for) ? (course.who_is_for as any[]).map(String) : [];

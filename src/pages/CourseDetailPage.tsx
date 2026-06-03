@@ -96,7 +96,8 @@ const CourseDetailPage = () => {
 
   const courseAccess = courseId ? hasCourseAccess(courseId) : false;
   const isFree = course?.price === 0;
-  const canOpenFreeCourse = !!user && isFree;
+  // ✅ Enrollment-first: free courses still require an enrollment record before access.
+  const canOpenFreeCourse = !!user && isFree && !!enrollment;
 
   const handleBuyCourse = async () => {
     if (!user || !session || !course) {
