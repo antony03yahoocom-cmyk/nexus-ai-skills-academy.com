@@ -385,16 +385,28 @@ const AdminSidebar = () => {
 
       {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border flex items-center justify-between px-4 h-14 shadow-sm">
-        <Link
-          to="/"
-          className="flex items-center gap-2"
-        >
-          <Cpu className="w-5 h-5 text-primary" />
+        <div className="flex items-center gap-2">
+          {showBack && (
+            <button
+              onClick={handleBack}
+              aria-label="Go back"
+              title="Go back"
+              className="p-1.5 rounded-lg hover:bg-sidebar-accent/50 text-sidebar-foreground"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
+          <Link
+            to="/"
+            className="flex items-center gap-2"
+          >
+            <Cpu className="w-5 h-5 text-primary" />
 
-          <span className="font-display font-bold text-sm">
-            NEXUS ADMIN
-          </span>
-        </Link>
+            <span className="font-display font-bold text-sm">
+              NEXUS ADMIN
+            </span>
+          </Link>
+        </div>
 
         <button
           onClick={() =>
