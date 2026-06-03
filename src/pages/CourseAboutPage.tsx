@@ -132,7 +132,9 @@ const CourseAboutPage = () => {
 
   const isFree = course.price === 0;
   const courseAccess = courseId ? hasCourseAccess(courseId) : false;
-  const canOpenFreeCourse = !!user && isFree;
+  // ✅ Enrollment-first: students must enroll (free or paid) before they can open lessons or pay.
+  const canOpenFreeCourse = !!user && isFree && !!enrollment;
+  const needsEnroll = !!user && !enrollment;
   const priceFormatted = isFree ? "Free" : `KES ${course.price.toLocaleString()}`;
   const achievements: string[] = Array.isArray(course.what_you_achieve) ? (course.what_you_achieve as any[]).map(String) : [];
   const audience: string[] = Array.isArray(course.who_is_for) ? (course.who_is_for as any[]).map(String) : [];
@@ -203,28 +205,28 @@ const CourseAboutPage = () => {
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <span className="text-2xl font-bold gradient-text">{priceFormatted}</span>
-                {courseAccess || enrollment || canOpenFreeCourse ? (
+                {courseAccess || canOpenFreeCourse ? (
                   <Button variant="hero" size="lg" asChild>
                     <Link to={`/courses/${courseId}`}>
-                      {courseAccess || canOpenFreeCourse ? "Continue Learning" : "Go to Course"} <ArrowRight className="w-4 h-4 ml-1" />
+                      Continue Learning <ArrowRight className="w-4 h-4 ml-1" />
                     </Link>
-                  </Button>
-                ) : isFree ? (
-                  <Button variant="hero" size="lg" onClick={() => user ? navigate(`/courses/${courseId}`) : navigate("/login")}>
-                    {user ? "Start Free Course" : "Sign In to Start Free"}
-                  </Button>
-                ) : user && trialActive && !profile?.trial_course_id ? (
-                  <Button variant="hero" size="lg" onClick={() => enroll.mutate()} disabled={enroll.isPending}>
-                    {enroll.isPending ? "Starting trial…" : "Start 7-Day Trial"}
                   </Button>
                 ) : !user ? (
                   <Button variant="hero" size="lg" onClick={() => navigate("/login")}>
-                    Sign In to Start Trial
+                    Sign In to Enroll
+                  </Button>
+                ) : !enrollment ? (
+                  <Button variant="hero" size="lg" onClick={() => enroll.mutate()} disabled={enroll.isPending}>
+                    {enroll.isPending ? "Enrolling…" : isFree ? "Enroll for Free" : "Enroll Now"}
+                  </Button>
+                ) : isFree ? (
+                  <Button variant="hero" size="lg" asChild>
+                    <Link to={`/courses/${courseId}`}>Start Learning <ArrowRight className="w-4 h-4 ml-1" /></Link>
                   </Button>
                 ) : (
                   <Button variant="hero" size="lg" onClick={handleBuy} disabled={payLoading}>
                     <CreditCard className="w-4 h-4 mr-2" />
-                    {payLoading ? "Processing…" : `Enroll for ${priceFormatted}`}
+                    {payLoading ? "Processing…" : `Pay ${priceFormatted}`}
                   </Button>
                 )}
               </div>
@@ -362,26 +364,26 @@ const CourseAboutPage = () => {
           <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to start learning?</h2>
           <p className="text-muted-foreground mb-6">Join now and get full access to all lessons, assignments, and a certificate of completion.</p>
           <div className="flex flex-wrap gap-3 justify-center">
-            {courseAccess || enrollment || canOpenFreeCourse ? (
+            {courseAccess || canOpenFreeCourse ? (
               <Button variant="hero" size="lg" asChild>
                 <Link to={`/courses/${courseId}`}>Go to Course <ArrowRight className="w-4 h-4 ml-1" /></Link>
               </Button>
-            ) : isFree ? (
-              <Button variant="hero" size="lg" onClick={() => user ? navigate(`/courses/${courseId}`) : navigate("/login")}>
-                {user ? "Start Free Course" : "Sign In to Start Free"}
-              </Button>
-            ) : user && trialActive && !profile?.trial_course_id ? (
-              <Button variant="hero" size="lg" onClick={() => enroll.mutate()} disabled={enroll.isPending}>
-                {enroll.isPending ? "Starting trial…" : "Start 7-Day Trial"}
-              </Button>
             ) : !user ? (
               <Button variant="hero" size="lg" onClick={() => navigate("/login")}>
-                Sign In to Start Trial
+                Sign In to Enroll
+              </Button>
+            ) : !enrollment ? (
+              <Button variant="hero" size="lg" onClick={() => enroll.mutate()} disabled={enroll.isPending}>
+                {enroll.isPending ? "Enrolling…" : isFree ? "Enroll for Free" : "Enroll Now"}
+              </Button>
+            ) : isFree ? (
+              <Button variant="hero" size="lg" asChild>
+                <Link to={`/courses/${courseId}`}>Start Learning <ArrowRight className="w-4 h-4 ml-1" /></Link>
               </Button>
             ) : (
               <Button variant="hero" size="lg" onClick={handleBuy} disabled={payLoading}>
                 <CreditCard className="w-4 h-4 mr-2" />
-                {payLoading ? "Processing…" : `Enroll for ${priceFormatted}`}
+                {payLoading ? "Processing…" : `Pay ${priceFormatted}`}
               </Button>
             )}
           </div>

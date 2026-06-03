@@ -96,7 +96,8 @@ const CourseDetailPage = () => {
 
   const courseAccess = courseId ? hasCourseAccess(courseId) : false;
   const isFree = course?.price === 0;
-  const canOpenFreeCourse = !!user && isFree;
+  // ✅ Enrollment-first: free courses still require an enrollment record before access.
+  const canOpenFreeCourse = !!user && isFree && !!enrollment;
 
   const handleBuyCourse = async () => {
     if (!user || !session || !course) {
@@ -223,8 +224,8 @@ const CourseDetailPage = () => {
               </div>
             )}
 
-            {/* No access banner */}
-            {user && !courseAccess && !trialActive && !isFree && (
+            {/* No access banner - only after enrollment */}
+            {user && enrollment && !courseAccess && !trialActive && !isFree && (
               <div className="glass-card p-4 mb-6 border-destructive/30 bg-destructive/5 flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-destructive" />
