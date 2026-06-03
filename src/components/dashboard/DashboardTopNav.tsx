@@ -1,5 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell, Users, Sparkles } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell, Users, Sparkles, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -9,8 +9,11 @@ const WHATSAPP_URL = "https://chat.whatsapp.com/GdHfJutCYlX7xitn3gC71o";
 
 const DashboardTopNav = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { signOut, profile, user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const showBack = location.pathname !== "/dashboard" && location.pathname !== "/";
+  const handleBack = () => (window.history.length > 1 ? navigate(-1) : navigate("/dashboard"));
 
   const { data: unreadMessages = 0 } = useQuery({
     queryKey: ["unread-messages", user?.id],
@@ -67,6 +70,16 @@ const DashboardTopNav = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[#102A47] bg-[#1A3A5F]/95 text-white shadow-lg shadow-[#1A3A5F]/15 backdrop-blur-xl">
         <div className="w-full px-3 sm:px-4 lg:px-6">
           <div className="flex h-16 min-w-0 items-center gap-3">
+            {showBack && (
+              <button
+                onClick={handleBack}
+                aria-label="Go back"
+                title="Go back"
+                className="shrink-0 p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
             <Link to="/" className="flex items-center gap-2 shrink-0">
               <Cpu className="w-6 h-6 text-[#00C896]" />
               <span className="hidden font-display text-base font-bold text-white sm:inline lg:text-lg">NEXUS AI ACADEMY</span>
