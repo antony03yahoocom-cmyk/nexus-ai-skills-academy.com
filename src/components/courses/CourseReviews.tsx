@@ -14,10 +14,20 @@ interface Props {
 const CourseReviews = ({ courseId }: Props) => {
   const { user, hasCourseAccess } = useAuth();
   const queryClient = useQueryClient();
-  const access = hasCourseAccess(courseId);
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState("");
   const [hoverRating, setHoverRating] = useState(0);
+
+  // Any enrolled student (free, paid, premium, or trial) can review the course.
+  const { data: enrollment } = useQuery({
+    queryKey: ["review-enrollment", user?.id, courseId],
+    enabled: !!user && !!courseId,
+    queryFn: async () => {
+      const { data } = await supabase.from("enrollments").select("id").eq("user_id", user!.id).eq("course_id", courseId).maybeSingle();
+      return data;
+    },
+  });
+  const access = !!enrollment || hasCourseAccess(courseId);
 
   const { data: reviews = [] } = useQuery({
     queryKey: ["course-reviews", courseId],
@@ -36,7 +46,7 @@ const CourseReviews = ({ courseId }: Props) => {
     queryKey: ["review-profiles", userIds.join(",")],
     queryFn: async () => {
       if (!userIds.length) return [];
-      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url").in("user_id", userIds);
+      const { data } = await supabase.from("profiles_public").select("user_id, full_name, avatar_url").in("user_id", userIds);
       return data ?? [];
     },
     enabled: userIds.length > 0,

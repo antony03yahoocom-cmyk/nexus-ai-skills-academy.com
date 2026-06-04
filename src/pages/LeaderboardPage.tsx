@@ -44,7 +44,7 @@ const LeaderboardPage = () => {
 
       // Get profiles
       const { data: profiles } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("user_id, full_name, is_premium")
         .in("user_id", userIds);
 

@@ -153,7 +153,7 @@ const MessagesPage = () => {
     const to = searchParams.get("to");
     if (!to || !user || selectedUser?.id === to) return;
     supabase
-      .from("profiles")
+      .from("profiles_public")
       .select("user_id, full_name")
       .eq("user_id", to)
       .single()
@@ -175,7 +175,7 @@ const MessagesPage = () => {
       .then(async ({ data: roleData }) => {
         if (!roleData?.user_id) return;
         const { data: profile } = await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("user_id, full_name")
           .eq("user_id", roleData.user_id)
           .single();
@@ -215,7 +215,7 @@ const MessagesPage = () => {
 
     const [{ data: profiles }, { data: adminRoles }] = await Promise.all([
       supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("user_id, full_name, avatar_url")
         .in("user_id", userIds),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
@@ -328,7 +328,7 @@ const MessagesPage = () => {
     setShowNewChat(true);
     setSearch("");
     const [{ data: allProfiles }, { data: adminRoles }] = await Promise.all([
-      supabase.from("profiles").select("user_id, full_name, avatar_url"),
+      supabase.from("profiles_public").select("user_id, full_name, avatar_url"),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
     ]);
     const adminIds = new Set((adminRoles || []).map((r) => r.user_id));

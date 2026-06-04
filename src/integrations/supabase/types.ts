@@ -1685,6 +1685,81 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_student_profiles_public: {
+        Row: {
+          availability_status: string | null
+          bio: string | null
+          certificates: string[] | null
+          completed_courses: string[] | null
+          created_at: string | null
+          featured: boolean | null
+          headline: string | null
+          profile_views: number | null
+          rank_title: string | null
+          skills: string[] | null
+          social_links: Json | null
+          updated_at: string | null
+          user_id: string | null
+          xp_points: number | null
+        }
+        Insert: {
+          availability_status?: string | null
+          bio?: string | null
+          certificates?: string[] | null
+          completed_courses?: string[] | null
+          created_at?: string | null
+          featured?: boolean | null
+          headline?: string | null
+          profile_views?: number | null
+          rank_title?: string | null
+          skills?: string[] | null
+          social_links?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+          xp_points?: number | null
+        }
+        Update: {
+          availability_status?: string | null
+          bio?: string | null
+          certificates?: string[] | null
+          completed_courses?: string[] | null
+          created_at?: string | null
+          featured?: boolean | null
+          headline?: string | null
+          profile_views?: number | null
+          rank_title?: string | null
+          skills?: string[] | null
+          social_links?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+          xp_points?: number | null
+        }
+        Relationships: []
+      }
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       add_read_to_message: {
@@ -1713,6 +1788,29 @@ export type Database = {
           title: string
           updated_at: string
         }[]
+      }
+      get_my_profile: {
+        Args: never
+        Returns: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          is_banned: boolean
+          is_premium: boolean
+          phone: string | null
+          subscription_status: string
+          trial_course_id: string | null
+          trial_start_date: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_next_lesson: {
         Args: { p_current_lesson: string; p_user_id: string }
@@ -1746,6 +1844,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_lesson_assignment_approved: {
+        Args: { p_lesson_id: string; p_user_id: string }
         Returns: boolean
       }
     }
