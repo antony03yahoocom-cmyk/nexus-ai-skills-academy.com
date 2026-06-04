@@ -133,7 +133,7 @@ const GroupChatPage = () => {
 
       const { data: profiles } =
         await supabase
-          .from("profiles_public" as any)
+          .from("profiles_public")
           .select(
             "user_id, full_name",
           )
@@ -195,7 +195,7 @@ const GroupChatPage = () => {
 
       const { data: profiles } =
         await supabase
-          .from("profiles_public" as any)
+          .from("profiles_public")
           .select(
             "user_id, full_name",
           )

@@ -70,7 +70,7 @@ const NotificationsPage = () => {
 
       const senderIds = [...new Set(data.map((m: any) => m.sender_id))];
       const { data: profiles } = await supabase
-        .from("profiles_public" as any)
+        .from("profiles_public")
         .select("user_id, full_name")
         .in("user_id", senderIds);
 

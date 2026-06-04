@@ -38,7 +38,7 @@ const ClassmatesPage = () => {
       const userIds = [...new Set((ens ?? []).map((e: any) => e.user_id))];
       if (userIds.length === 0) return [];
       const { data: profiles } = await supabase
-        .from("profiles_public" as any)
+        .from("profiles_public")
         .select("user_id, full_name, avatar_url")
         .in("user_id", userIds);
       const courseTitleMap: Record<string, string> = {};
@@ -63,7 +63,7 @@ const ClassmatesPage = () => {
       const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin").limit(100);
       const adminIds = new Set((adminRoles ?? []).map((r) => r.user_id));
       const { data } = await supabase
-        .from("profiles_public" as any)
+        .from("profiles_public")
         .select("user_id, full_name, avatar_url, created_at")
         .order("created_at", { ascending: false }).limit(100);
       return (data ?? []).filter((p: any) => p.user_id !== user?.id && !adminIds.has(p.user_id));
