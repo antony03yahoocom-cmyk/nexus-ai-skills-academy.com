@@ -12,22 +12,20 @@ const SubscribePage = () => {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const verify = searchParams.get("verify");
-    const reference = searchParams.get("reference");
-
-    if (verify === "true" && reference && session) {
-      const key = `paystack-verified-${reference}`;
-      if (sessionStorage.getItem(key)) return;
-      sessionStorage.setItem(key, "1");
-      verifyPayment(reference);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, session]);
-
+useEffect(() => {
+  const verify = searchParams.get("verify");
+  const reference = searchParams.get("reference");
+  
+  if (verify === "true" && reference && session) {
+    const key = `paystack-verified-${reference}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    verifyPayment(reference);
+  }
+}, [searchParams, session]);
   const verifyPayment = async (reference: string) => {
     setLoading(true);
-    const loadingToast = toast.loading("Verifying your payment…");
+    const loadingToast = toast.loading("Verifying your payment...");
     try {
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paystack?action=verify`,
@@ -49,14 +47,12 @@ const SubscribePage = () => {
       } else {
         toast.error(result.message || result.error || "Payment verification failed. Please contact support.");
       }
-      // Clean URL regardless of outcome
       window.history.replaceState({}, "", "/subscribe");
-    } catch {
+    } catch (e) {
       toast.dismiss(loadingToast);
       toast.error("Failed to verify payment. Please refresh or contact support.");
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   const handlePremium = async () => {
@@ -76,18 +72,9 @@ const SubscribePage = () => {
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
           body: JSON.stringify({
-            amount: 500000, // KES 5,000 in kobo/cents
+            amount: 500000, // KES 5,000 in cents
             plan_type: "premium",
-            /*
-             * FIX: was `?verify=true&reference=` — the trailing `&reference=` caused
-             * Paystack to append its own `?reference=XXXX` making the URL have TWO
-             * `reference` params. URLSearchParams.get("reference") returned "" (the
-             * first, empty one), so verification always silently failed.
-             *
-             * Correct pattern: just `?verify=true`. Paystack automatically appends
-             * `?trxref=…&reference=…` to whatever callback_url you provide.
-             */
-            callback_url: `${window.location.origin}/subscribe?verify=true`,
+            callback_url: `${window.location.origin}/subscribe?verify=true&reference=`,
           }),
         }
       );
@@ -97,28 +84,22 @@ const SubscribePage = () => {
       } else {
         toast.error(data.error || "Failed to initialize payment");
       }
-    } catch {
+    } catch (e) {
       toast.error("Payment initialization failed");
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
-  // ── Already premium ──────────────────────────────────────────────
   if (profile?.is_premium) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="pt-24 pb-16 flex items-center justify-center px-4">
-          <div className="glass-card p-12 text-center max-w-md w-full">
+        <div className="pt-24 pb-16 flex items-center justify-center">
+          <div className="glass-card p-12 text-center max-w-md">
             <Crown className="w-16 h-16 text-primary mx-auto mb-4" />
             <h1 className="text-2xl font-bold mb-2">You're a Premium Member!</h1>
-            <p className="text-muted-foreground mb-6">
-              You have full access to all courses, assignments, and mentorship.
-            </p>
-            <Button variant="hero" asChild>
-              <Link to="/dashboard">Go to Dashboard</Link>
-            </Button>
+            <p className="text-muted-foreground mb-6">You have full access to all courses and mentorship.</p>
+            <Button variant="hero" asChild><Link to="/dashboard">Go to Dashboard</Link></Button>
           </div>
         </div>
         <Footer />
@@ -126,7 +107,6 @@ const SubscribePage = () => {
     );
   }
 
-  // ── Subscribe page ───────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -138,7 +118,7 @@ const SubscribePage = () => {
             </h1>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
               {trialActive
-                ? `Your trial has ${trialDaysLeft} day${trialDaysLeft !== 1 ? "s" : ""} left (1 course, first 5 lessons).`
+                ? `Your trial has ${trialDaysLeft} days left (1 course, first 5 lessons).`
                 : "Unlock all courses with a single payment."}
             </p>
             <p className="text-sm text-muted-foreground mt-2">
@@ -149,11 +129,8 @@ const SubscribePage = () => {
           <div className="max-w-lg mx-auto">
             <div className="glass-card p-8 text-center glow-primary relative">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">
-                  ALL ACCESS
-                </span>
+                <span className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">ALL ACCESS</span>
               </div>
-
               <Crown className="w-10 h-10 mx-auto mb-3 text-primary" />
               <h2 className="text-2xl font-bold mb-1">Premium Plan</h2>
               <div className="text-4xl sm:text-5xl font-bold gradient-text mb-1">KES 5,000</div>
@@ -175,15 +152,9 @@ const SubscribePage = () => {
                 ))}
               </ul>
 
-              <Button
-                variant="hero"
-                size="lg"
-                className="w-full"
-                onClick={handlePremium}
-                disabled={loading || !user}
-              >
+              <Button variant="hero" size="lg" className="w-full" onClick={handlePremium} disabled={loading || !user}>
                 <CreditCard className="w-4 h-4 mr-2" />
-                {loading ? "Processing…" : user ? "Pay KES 5,000 via M-Pesa" : "Log in to Subscribe"}
+                {loading ? "Processing..." : user ? "Pay KES 5,000 via M-Pesa" : "Log in to Subscribe"}
               </Button>
             </div>
 

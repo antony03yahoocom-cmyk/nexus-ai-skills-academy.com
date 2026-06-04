@@ -337,58 +337,24 @@ const LessonViewerPage = () => {
 
   const globalIndex = useMemo(() => allCourseLessons.findIndex((l: any) => l.id === lessonId), [allCourseLessons, lessonId]);
 
-  /*
-   * hasAccess can return three values:
-   *   null    → data is still loading; show spinner, not the locked screen
-   *   false   → definitively no access; show locked screen
-   *   true    → access granted; render lesson
-   *
-   * FIX 1: Return null (not false) when allCourseLessons hasn't loaded yet.
-   *   Previously: globalIndex was -1 while the list was empty, causing the "Lesson
-   *   Locked" screen to flash for ~300–800ms before data arrived.
-   *
-   * FIX 2: Trial limit message now correctly uses >= 5 (matches canAccessLesson).
-   *   The locked-screen message previously said `>= 7`, which was wrong.
-   *
-   * Sequential lock is intentional product design — students must complete each
-   * lesson (and get assignments approved) before progressing. This enforces the
-   * structured learning path for both trial AND paid users.
-   */
-  const hasAccess = useMemo((): boolean | null => {
+  const hasAccess = useMemo(() => {
     if (!courseId || !user) return false;
     if (isAdmin) return true;
-
-    // Guard: course lesson list is still loading — render nothing yet
-    if (!allCourseLessons.length) return null;
-
-    // Lesson not in course (shouldn't happen with valid data)
-    if (globalIndex === -1) return false;
-
-    // canAccessLesson: returns true if paid/premium OR (trial AND index < 5)
+    if (course?.price === 0) return true;
     if (!canAccessLesson(courseId, globalIndex)) return false;
-
-    // Trial users: limited to first 5 lessons only; no sequential check needed
-    if (trialActive && profile?.trial_course_id === courseId) {
-      return globalIndex < 5;
-    }
-
-    // First lesson is always accessible if user has any form of access
-    if (globalIndex === 0) return true;
-
-    // Sequential access: previous lesson must be completed AND its assignments approved
+    if (trialActive && profile?.trial_course_id === courseId && globalIndex < 5) return true;
+    if (globalIndex === 0) return hasCourseAccess(courseId);
     const prevLesson = allCourseLessons[globalIndex - 1];
     if (!prevLesson) return false;
     return allCompletions.includes(prevLesson.id) && isLessonAssignmentApproved(prevLesson.id);
-  }, [courseId, user, isAdmin, profile, trialActive, canAccessLesson, globalIndex, allCourseLessons, allCompletions, allAssignments, allSubmissions]);
+  }, [courseId, user, isAdmin, profile, trialActive, hasCourseAccess, canAccessLesson, globalIndex, allCourseLessons, allCompletions, allAssignments, allSubmissions]);
 
   const currentAssignmentsApproved = isLessonAssignmentApproved(lessonId!);
   const canComplete = !currentCompletion && currentAssignmentsApproved;
 
-  // Show spinner while lesson OR the lesson list is loading
-  // hasAccess === null means allCourseLessons hasn't loaded yet
-  if (!lesson || hasAccess === null) return (
+  if (!lesson) return (
     <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
-      <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading lesson…
+      <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading...
     </div>
   );
 
@@ -404,7 +370,7 @@ const LessonViewerPage = () => {
           <p className="text-muted-foreground mb-4">
             {prevAssignmentPending ? "Complete and get your assignment approved to unlock this lesson."
               : prevNotCompleted ? "Complete the previous lesson first to unlock this one."
-              : trialActive && globalIndex >= 5 ? "This lesson is beyond your free trial limit. Purchase the course for full access."
+              : trialActive && globalIndex >= 5 ? "This lesson is beyond the trial limit. Purchase the course for full access."
               : "Purchase this course or get Premium to access this lesson."}
           </p>
           <div className="flex flex-col gap-2">
@@ -484,13 +450,8 @@ const LessonViewerPage = () => {
                 className="text-muted-foreground leading-relaxed whitespace-pre-wrap [&_a]:text-primary [&_a]:underline [&_a]:hover:opacity-80"
 dangerouslySetInnerHTML={{
                   __html: (() => {
-                    /*
-                     * FIX 4: Sanitize URL before injecting into href attribute.
-                     * The previous regex built `<a href="$1">` from a raw captured URL.
-                     * A URL containing `" onclick="...` would inject executable HTML.
-                     * The sanitizer validates protocol and percent-encodes quotes.
-                     */
-                    const sanitizeUrl = (url: string): string => {
+                    // FIX: sanitize URL before injecting into href to prevent XSS
+                    const sanitizeUrl = (url: string) => {
                       try {
                         const u = new URL(url);
                         if (!["http:", "https:"].includes(u.protocol)) return "#";
