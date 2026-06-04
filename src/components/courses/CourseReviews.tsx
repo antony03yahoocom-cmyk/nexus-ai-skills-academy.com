@@ -14,10 +14,20 @@ interface Props {
 const CourseReviews = ({ courseId }: Props) => {
   const { user, hasCourseAccess } = useAuth();
   const queryClient = useQueryClient();
-  const access = hasCourseAccess(courseId);
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState("");
   const [hoverRating, setHoverRating] = useState(0);
+
+  // Any enrolled student (free, paid, premium, or trial) can review the course.
+  const { data: enrollment } = useQuery({
+    queryKey: ["review-enrollment", user?.id, courseId],
+    enabled: !!user && !!courseId,
+    queryFn: async () => {
+      const { data } = await supabase.from("enrollments").select("id").eq("user_id", user!.id).eq("course_id", courseId).maybeSingle();
+      return data;
+    },
+  });
+  const access = !!enrollment || hasCourseAccess(courseId);
 
   const { data: reviews = [] } = useQuery({
     queryKey: ["course-reviews", courseId],
