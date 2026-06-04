@@ -54,6 +54,16 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Reject non-user/assistant roles and oversized content to block prompt injection
+    const safeMessages = messages.filter((m: any) =>
+      m && (m.role === "user" || m.role === "assistant") &&
+      typeof m.content === "string" && m.content.length > 0 && m.content.length <= 4000
+    );
+    if (safeMessages.length !== messages.length || safeMessages.length === 0) {
+      return new Response(JSON.stringify({ error: "Invalid message format" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
