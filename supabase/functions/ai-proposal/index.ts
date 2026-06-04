@@ -1,12 +1,44 @@
 // AI proposal assistant — generates a tailored cover proposal for a marketplace opportunity.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const MAX_TEXT = 4000;
+const MAX_LIST = 30;
+const clip = (s: unknown, n = MAX_TEXT) => String(s ?? '').slice(0, n);
+const clipList = (arr: unknown) =>
+  Array.isArray(arr) ? arr.slice(0, MAX_LIST).map((x) => clip(x, 80)) : [];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { opportunityTitle, opportunityDescription, requiredSkills, studentHeadline, studentBio, studentSkills } =
-      await req.json();
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = await req.json();
+    const opportunityTitle = clip(body.opportunityTitle, 200);
+    const opportunityDescription = clip(body.opportunityDescription, MAX_TEXT);
+    const requiredSkills = clipList(body.requiredSkills);
+    const studentHeadline = clip(body.studentHeadline, 200);
+    const studentBio = clip(body.studentBio, MAX_TEXT);
+    const studentSkills = clipList(body.studentSkills);
 
     if (!opportunityTitle || !opportunityDescription) {
       return new Response(JSON.stringify({ error: 'Missing opportunity fields' }), {
@@ -28,12 +60,12 @@ Deno.serve(async (req) => {
     const userPrompt = `OPPORTUNITY
 Title: ${opportunityTitle}
 Description: ${opportunityDescription}
-Required skills: ${(requiredSkills || []).join(', ') || 'unspecified'}
+Required skills: ${requiredSkills.join(', ') || 'unspecified'}
 
 STUDENT
 Headline: ${studentHeadline || 'Aspiring professional'}
 Bio: ${studentBio || 'n/a'}
-Skills: ${(studentSkills || []).join(', ') || 'n/a'}
+Skills: ${studentSkills.join(', ') || 'n/a'}
 
 Write the proposal now.`;
 
@@ -50,8 +82,8 @@ Write the proposal now.`;
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      return new Response(JSON.stringify({ error: 'AI request failed', detail: text }), {
+      console.error('AI request failed', res.status, await res.text());
+      return new Response(JSON.stringify({ error: 'AI request failed' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -64,7 +96,8 @@ Write the proposal now.`;
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
+    console.error('ai-proposal error:', e);
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
