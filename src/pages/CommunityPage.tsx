@@ -61,7 +61,7 @@ const CommunityPage = () => {
   const { data: profiles = [] } = useQuery({
     queryKey: ["community-profiles"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url");
+      const { data } = await supabase.from("profiles_public" as any).select("user_id, full_name, avatar_url");
       return data ?? [];
     },
     enabled: !!user,

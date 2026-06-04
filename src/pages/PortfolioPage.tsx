@@ -34,7 +34,7 @@ const PortfolioPage = () => {
   const { data: profiles = [] } = useQuery({
     queryKey: ["public-profiles-map"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name, avatar_url").limit(250);
+      const { data } = await supabase.from("profiles_public" as any).select("user_id, full_name, avatar_url").limit(250);
       return data ?? [];
     },
   });
