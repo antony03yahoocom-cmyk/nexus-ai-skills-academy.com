@@ -328,7 +328,7 @@ const MessagesPage = () => {
     setShowNewChat(true);
     setSearch("");
     const [{ data: allProfiles }, { data: adminRoles }] = await Promise.all([
-      supabase.from("profiles_public" as any).select("user_id, full_name, avatar_url"),
+      (supabase as any).from("profiles_public").select("user_id, full_name, avatar_url"),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
     ]);
     const adminIds = new Set((adminRoles || []).map((r) => r.user_id));

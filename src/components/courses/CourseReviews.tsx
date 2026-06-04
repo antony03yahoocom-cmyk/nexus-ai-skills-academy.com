@@ -46,7 +46,7 @@ const CourseReviews = ({ courseId }: Props) => {
     queryKey: ["review-profiles", userIds.join(",")],
     queryFn: async () => {
       if (!userIds.length) return [];
-      const { data } = await supabase.from("profiles_public" as any).select("user_id, full_name, avatar_url").in("user_id", userIds);
+      const { data } = await (supabase as any).from("profiles_public").select("user_id, full_name, avatar_url").in("user_id", userIds);
       return data ?? [];
     },
     enabled: userIds.length > 0,

@@ -71,7 +71,7 @@ const EmployerDashboard = () => {
     queryKey: ["employer-application-students", studentIds.join(",")],
     queryFn: async () => {
       if (!studentIds.length) return [];
-      const { data, error } = await supabase.from("profiles_public" as any).select("user_id, full_name").in("user_id", studentIds).limit(100);
+      const { data, error } = await (supabase as any).from("profiles_public").select("user_id, full_name").in("user_id", studentIds).limit(100);
       if (error) throw error;
       return data ?? [];
     },
