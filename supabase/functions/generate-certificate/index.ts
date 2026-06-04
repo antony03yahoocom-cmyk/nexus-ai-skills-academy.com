@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
     if (insertError) {
       console.error("Certificate insert error:", insertError);
       return new Response(
-        JSON.stringify({ error: "Failed to save certificate: " + insertError.message }),
+        JSON.stringify({ error: "Failed to save certificate" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -233,7 +233,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("generate-certificate error:", err);
     return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "An unexpected error occurred" }),
+      JSON.stringify({ error: "An unexpected error occurred" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

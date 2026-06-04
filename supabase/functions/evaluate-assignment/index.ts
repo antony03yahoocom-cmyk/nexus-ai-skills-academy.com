@@ -138,6 +138,13 @@ serve(async (req) => {
       });
     }
 
+    if ((submission as any).user_id !== user.id) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const assignment = (submission as any).assignments;
     const course = assignment?.lessons?.modules?.courses;
     const approvalMode = course?.approval_mode || "manual";
@@ -320,7 +327,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Evaluate assignment error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Internal error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
