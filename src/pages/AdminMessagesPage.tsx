@@ -100,11 +100,7 @@ const AdminMessagesPage = () => {
   }, [user, selectedUser, loadConversations]);
 
   useEffect(() => {
-    const c = scrollRef.current;
-    if (!c) return;
-    requestAnimationFrame(() => {
-      c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
-    });
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
   const loadStudents = async () => {
@@ -124,13 +120,13 @@ const AdminMessagesPage = () => {
   const filteredStudents = allStudents.filter((u) => u.full_name?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden bg-background">
+    <div className="flex min-h-screen bg-background">
       <AdminSidebar />
-      <div className="flex-1 flex flex-col h-[100dvh] min-h-0 min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col">
         <DashboardTopNav />
-        <div className="flex-1 flex overflow-hidden min-h-0">
+        <div className="flex-1 flex overflow-hidden">
           {/* Conversation list */}
-          <div className={cn("w-full md:w-80 border-r flex flex-col min-h-0 shrink-0", selectedUser ? "hidden md:flex" : "flex")}>
+          <div className={cn("w-full md:w-80 border-r flex flex-col shrink-0", selectedUser ? "hidden md:flex" : "flex")}>
             <div className="p-4 border-b flex items-center justify-between">
               <h2 className="font-semibold flex items-center gap-2"><Mail className="h-4 w-4" /> Messages</h2>
               <Button size="sm" variant="outline" onClick={loadStudents}>New</Button>
@@ -172,7 +168,7 @@ const AdminMessagesPage = () => {
           </div>
 
           {/* Chat */}
-          <div className={cn("flex-1 flex flex-col min-h-0 min-w-0", !selectedUser ? "hidden md:flex" : "flex")}>
+          <div className={cn("flex-1 flex flex-col", !selectedUser ? "hidden md:flex" : "flex")}>
             {selectedUser ? (
               <>
                 <div className="px-4 py-3 border-b flex items-center gap-3">
@@ -180,7 +176,7 @@ const AdminMessagesPage = () => {
                   <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">{selectedUser.name[0]?.toUpperCase()}</div>
                   <div><p className="font-semibold text-sm">{selectedUser.name}</p><p className="text-xs text-muted-foreground">Private message</p></div>
                 </div>
-                <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y p-4 space-y-3">
+                <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
                   {messages.map((msg) => {
                     const isMine = msg.sender_id === user?.id;
                     return (

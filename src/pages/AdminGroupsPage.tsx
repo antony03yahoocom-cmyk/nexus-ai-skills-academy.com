@@ -15,7 +15,7 @@ const AdminGroupsPage = () => {
       const { data } = await supabase
         .from("discussion_groups")
         .select("*")
-        .order("created_at", { ascending: false }).limit(100);
+        .order("created_at", { ascending: false });
       return data ?? [];
     },
   });
@@ -23,7 +23,7 @@ const AdminGroupsPage = () => {
   const { data: memberCounts = {} } = useQuery({
     queryKey: ["admin-group-member-counts"],
     queryFn: async () => {
-      const { data } = await supabase.from("group_members").select("group_id").limit(1000);
+      const { data } = await supabase.from("group_members").select("group_id");
       const counts: Record<string, number> = {};
       (data ?? []).forEach((m: any) => { counts[m.group_id] = (counts[m.group_id] || 0) + 1; });
       return counts;
@@ -33,7 +33,7 @@ const AdminGroupsPage = () => {
   const { data: messageCounts = {} } = useQuery({
     queryKey: ["admin-group-message-counts"],
     queryFn: async () => {
-      const { data } = await supabase.from("group_messages").select("group_id").limit(1000);
+      const { data } = await supabase.from("group_messages").select("group_id");
       const counts: Record<string, number> = {};
       (data ?? []).forEach((m: any) => { counts[m.group_id] = (counts[m.group_id] || 0) + 1; });
       return counts;

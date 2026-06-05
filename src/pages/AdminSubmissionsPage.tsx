@@ -19,7 +19,7 @@ const AdminSubmissionsPage = () => {
       const { data } = await supabase
         .from("submissions")
         .select("*, assignments(title, lesson_id, lessons:lesson_id(title, modules:module_id(title, courses:course_id(title))))")
-        .order("submitted_at", { ascending: false }).limit(100);
+        .order("submitted_at", { ascending: false });
       return data ?? [];
     },
   });
@@ -27,7 +27,7 @@ const AdminSubmissionsPage = () => {
   const { data: profiles = [] } = useQuery({
     queryKey: ["admin-profiles-sub-map"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name").limit(500);
+      const { data } = await supabase.from("profiles").select("user_id, full_name");
       return data ?? [];
     },
   });

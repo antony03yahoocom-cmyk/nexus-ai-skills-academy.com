@@ -15,7 +15,7 @@ const AdminCertificatesPage = () => {
       const { data } = await supabase
         .from("certificates")
         .select("*, courses(title)")
-        .order("created_at", { ascending: false }).limit(100);
+        .order("created_at", { ascending: false });
       return data ?? [];
     },
   });
@@ -23,7 +23,7 @@ const AdminCertificatesPage = () => {
   const { data: profiles = [] } = useQuery({
     queryKey: ["admin-profiles-cert-map"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name").limit(500);
+      const { data } = await supabase.from("profiles").select("user_id, full_name");
       return data ?? [];
     },
   });

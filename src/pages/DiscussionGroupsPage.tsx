@@ -25,7 +25,7 @@ const DiscussionGroupsPage = () => {
       const { data } = await supabase
         .from("discussion_groups")
         .select("*")
-        .order("created_at", { ascending: false }).limit(50);
+        .order("created_at", { ascending: false });
       return data ?? [];
     },
     enabled: !!user,
@@ -36,7 +36,7 @@ const DiscussionGroupsPage = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("group_members")
-        .select("group_id, role").limit(100)
+        .select("group_id, role")
         .eq("user_id", user!.id);
       return data ?? [];
     },
@@ -51,7 +51,7 @@ const DiscussionGroupsPage = () => {
       if (groupIds.length === 0) return {};
       const { data } = await supabase
         .from("group_members")
-        .select("group_id").limit(500);
+        .select("group_id");
       const counts: Record<string, number> = {};
       (data ?? []).forEach((m: any) => {
         counts[m.group_id] = (counts[m.group_id] || 0) + 1;

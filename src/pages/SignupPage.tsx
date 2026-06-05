@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Cpu, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+import { lovable } from "@/integrations/lovable/index";
 import { toast } from "sonner";
 
 const SignupPage = () => {
@@ -13,7 +13,6 @@ const SignupPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [phone, setPhone] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,8 +26,8 @@ const SignupPage = () => {
       email,
       password,
       options: {
-        data: { full_name: name, phone },
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        data: { full_name: name },
+        emailRedirectTo: window.location.origin,
       },
     });
     setLoading(false);
@@ -41,14 +40,11 @@ const SignupPage = () => {
   };
 
   const handleGoogleSignIn = async () => {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/dashboard`,
-      extraParams: { prompt: "select_account" },
+    const { error } = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
     });
-    if (result.error) {
-      toast.error((result.error as any).message || "Google sign-in failed");
-    } else if (!result.redirected) {
-      navigate("/dashboard");
+    if (error) {
+      toast.error(error instanceof Error ? error.message : "Google sign-in failed");
     }
   };
 
@@ -89,16 +85,6 @@ const SignupPage = () => {
               <Label htmlFor="name">Full Name</Label>
               <Input id="name" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} className="bg-secondary border-border" required />
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="phone">Phone number</Label>
-                <span className="text-xs text-muted-foreground">Optional</span>
-              </div>
-              <Input id="phone" placeholder="+2547..." value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-secondary border-border" />
-              <p className="text-xs text-muted-foreground">Your phone number helps us keep your account secure and makes it easier for the academy to contact you.</p>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-secondary border-border" required />

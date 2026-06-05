@@ -14,33 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      account_deletion_feedback: {
-        Row: {
-          created_at: string
-          email: string | null
-          full_name: string | null
-          id: string
-          reason: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          reason: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          reason?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       announcements: {
         Row: {
           content: string
@@ -65,27 +38,8 @@ export type Database = {
         }
         Relationships: []
       }
-      app_settings: {
-        Row: {
-          key: string
-          updated_at: string
-          value: Json
-        }
-        Insert: {
-          key: string
-          updated_at?: string
-          value: Json
-        }
-        Update: {
-          key?: string
-          updated_at?: string
-          value?: Json
-        }
-        Relationships: []
-      }
       assignments: {
         Row: {
-          attachment_files: Json
           created_at: string
           deliverable: string | null
           description: string | null
@@ -96,7 +50,6 @@ export type Database = {
           title: string
         }
         Insert: {
-          attachment_files?: Json
           created_at?: string
           deliverable?: string | null
           description?: string | null
@@ -107,7 +60,6 @@ export type Database = {
           title: string
         }
         Update: {
-          attachment_files?: Json
           created_at?: string
           deliverable?: string | null
           description?: string | null
@@ -172,182 +124,6 @@ export type Database = {
           },
         ]
       }
-      community_post_comments: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      community_post_likes: {
-        Row: {
-          created_at: string
-          id: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      community_posts: {
-        Row: {
-          author_id: string | null
-          category: string | null
-          content: string | null
-          content_type: string | null
-          created_at: string
-          description: string | null
-          id: string
-          media_urls: Json
-          metadata: Json | null
-          title: string | null
-          updated_at: string
-          user_id: string | null
-        }
-        Insert: {
-          author_id?: string | null
-          category?: string | null
-          content?: string | null
-          content_type?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          media_urls?: Json
-          metadata?: Json | null
-          title?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Update: {
-          author_id?: string | null
-          category?: string | null
-          content?: string | null
-          content_type?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          media_urls?: Json
-          metadata?: Json | null
-          title?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      content_reports: {
-        Row: {
-          created_at: string
-          details: string | null
-          id: string
-          reason: string
-          reporter_id: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          status: string
-          target_id: string
-          target_type: string
-        }
-        Insert: {
-          created_at?: string
-          details?: string | null
-          id?: string
-          reason: string
-          reporter_id: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string
-          target_id: string
-          target_type: string
-        }
-        Update: {
-          created_at?: string
-          details?: string | null
-          id?: string
-          reason?: string
-          reporter_id?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string
-          target_id?: string
-          target_type?: string
-        }
-        Relationships: []
-      }
-      conversation_members: {
-        Row: {
-          conversation_id: string
-          role: string | null
-          user_id: string
-        }
-        Insert: {
-          conversation_id: string
-          role?: string | null
-          user_id: string
-        }
-        Update: {
-          conversation_id?: string
-          role?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversation_members_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      conversations: {
-        Row: {
-          created_at: string
-          id: string
-          title: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          title?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          title?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       course_purchases: {
         Row: {
           amount: number
@@ -386,36 +162,6 @@ export type Database = {
           },
         ]
       }
-      course_reviews: {
-        Row: {
-          content: string | null
-          course_id: string
-          created_at: string
-          id: string
-          rating: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          content?: string | null
-          course_id: string
-          created_at?: string
-          id?: string
-          rating: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          content?: string | null
-          course_id?: string
-          created_at?: string
-          id?: string
-          rating?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       courses: {
         Row: {
           approval_mode: string
@@ -424,18 +170,10 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
-          instructor_bio: string | null
-          instructor_name: string | null
-          instructor_photo_url: string | null
           is_published: boolean
-          long_description: string | null
           price: number
           title: string
-          trailer_video_type: string | null
-          trailer_video_url: string | null
           updated_at: string
-          what_you_achieve: Json | null
-          who_is_for: Json | null
         }
         Insert: {
           approval_mode?: string
@@ -444,18 +182,10 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
-          instructor_bio?: string | null
-          instructor_name?: string | null
-          instructor_photo_url?: string | null
           is_published?: boolean
-          long_description?: string | null
           price?: number
           title: string
-          trailer_video_type?: string | null
-          trailer_video_url?: string | null
           updated_at?: string
-          what_you_achieve?: Json | null
-          who_is_for?: Json | null
         }
         Update: {
           approval_mode?: string
@@ -464,18 +194,10 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
-          instructor_bio?: string | null
-          instructor_name?: string | null
-          instructor_photo_url?: string | null
           is_published?: boolean
-          long_description?: string | null
           price?: number
           title?: string
-          trailer_video_type?: string | null
-          trailer_video_url?: string | null
           updated_at?: string
-          what_you_achieve?: Json | null
-          who_is_for?: Json | null
         }
         Relationships: []
       }
@@ -537,45 +259,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      follows: {
-        Row: {
-          created_at: string
-          followee_id: string
-          follower_id: string
-        }
-        Insert: {
-          created_at?: string
-          followee_id: string
-          follower_id: string
-        }
-        Update: {
-          created_at?: string
-          followee_id?: string
-          follower_id?: string
-        }
-        Relationships: []
-      }
-      followup_log: {
-        Row: {
-          id: string
-          nudge_key: string
-          sent_at: string
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          nudge_key: string
-          sent_at?: string
-          user_id: string
-        }
-        Update: {
-          id?: string
-          nudge_key?: string
-          sent_at?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       group_members: {
         Row: {
@@ -709,7 +392,6 @@ export type Database = {
           content_text: string | null
           content_type: string
           created_at: string
-          day_number: number | null
           file_url: string | null
           file_url_backup: string | null
           id: string
@@ -717,13 +399,11 @@ export type Database = {
           order_index: number | null
           sort_order: number
           title: string
-          week_number: number | null
         }
         Insert: {
           content_text?: string | null
           content_type: string
           created_at?: string
-          day_number?: number | null
           file_url?: string | null
           file_url_backup?: string | null
           id?: string
@@ -731,13 +411,11 @@ export type Database = {
           order_index?: number | null
           sort_order?: number
           title: string
-          week_number?: number | null
         }
         Update: {
           content_text?: string | null
           content_type?: string
           created_at?: string
-          day_number?: number | null
           file_url?: string | null
           file_url_backup?: string | null
           id?: string
@@ -745,7 +423,6 @@ export type Database = {
           order_index?: number | null
           sort_order?: number
           title?: string
-          week_number?: number | null
         }
         Relationships: [
           {
@@ -760,343 +437,6 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      marketplace_applications: {
-        Row: {
-          cover_message: string | null
-          created_at: string
-          employer_rating: number | null
-          id: string
-          opportunity_id: string
-          proposal: string | null
-          status: string
-          student_user_id: string
-          updated_at: string
-        }
-        Insert: {
-          cover_message?: string | null
-          created_at?: string
-          employer_rating?: number | null
-          id?: string
-          opportunity_id: string
-          proposal?: string | null
-          status?: string
-          student_user_id: string
-          updated_at?: string
-        }
-        Update: {
-          cover_message?: string | null
-          created_at?: string
-          employer_rating?: number | null
-          id?: string
-          opportunity_id?: string
-          proposal?: string | null
-          status?: string
-          student_user_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      marketplace_employer_profiles: {
-        Row: {
-          company_name: string
-          created_at: string
-          description: string | null
-          id: string
-          logo_url: string | null
-          updated_at: string
-          user_id: string
-          verified: boolean
-          website: string | null
-        }
-        Insert: {
-          company_name: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          logo_url?: string | null
-          updated_at?: string
-          user_id: string
-          verified?: boolean
-          website?: string | null
-        }
-        Update: {
-          company_name?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          logo_url?: string | null
-          updated_at?: string
-          user_id?: string
-          verified?: boolean
-          website?: string | null
-        }
-        Relationships: []
-      }
-      marketplace_opportunities: {
-        Row: {
-          budget_max: number | null
-          budget_min: number | null
-          category: string | null
-          created_at: string
-          currency: string
-          description: string
-          employer_user_id: string
-          experience_level: string
-          featured: boolean
-          id: string
-          location_type: string
-          opportunity_type: string
-          required_skills: string[]
-          status: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          budget_max?: number | null
-          budget_min?: number | null
-          category?: string | null
-          created_at?: string
-          currency?: string
-          description: string
-          employer_user_id: string
-          experience_level?: string
-          featured?: boolean
-          id?: string
-          location_type?: string
-          opportunity_type?: string
-          required_skills?: string[]
-          status?: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          budget_max?: number | null
-          budget_min?: number | null
-          category?: string | null
-          created_at?: string
-          currency?: string
-          description?: string
-          employer_user_id?: string
-          experience_level?: string
-          featured?: boolean
-          id?: string
-          location_type?: string
-          opportunity_type?: string
-          required_skills?: string[]
-          status?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      marketplace_profile_views: {
-        Row: {
-          created_at: string
-          id: string
-          profile_user_id: string
-          viewer_user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          profile_user_id: string
-          viewer_user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          profile_user_id?: string
-          viewer_user_id?: string | null
-        }
-        Relationships: []
-      }
-      marketplace_projects: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          media_urls: string[]
-          student_user_id: string
-          title: string
-          tools_used: string[]
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          media_urls?: string[]
-          student_user_id: string
-          title: string
-          tools_used?: string[]
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          media_urls?: string[]
-          student_user_id?: string
-          title?: string
-          tools_used?: string[]
-        }
-        Relationships: []
-      }
-      marketplace_saved_opportunities: {
-        Row: {
-          created_at: string
-          id: string
-          opportunity_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          opportunity_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          opportunity_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      marketplace_student_profiles: {
-        Row: {
-          availability_status: string
-          bio: string | null
-          certificates: string[]
-          completed_courses: string[]
-          created_at: string
-          earnings_total: number
-          featured: boolean
-          headline: string | null
-          id: string
-          profile_views: number
-          rank_title: string
-          skills: string[]
-          social_links: Json
-          updated_at: string
-          user_id: string
-          whatsapp_number: string | null
-          xp_points: number
-        }
-        Insert: {
-          availability_status?: string
-          bio?: string | null
-          certificates?: string[]
-          completed_courses?: string[]
-          created_at?: string
-          earnings_total?: number
-          featured?: boolean
-          headline?: string | null
-          id?: string
-          profile_views?: number
-          rank_title?: string
-          skills?: string[]
-          social_links?: Json
-          updated_at?: string
-          user_id: string
-          whatsapp_number?: string | null
-          xp_points?: number
-        }
-        Update: {
-          availability_status?: string
-          bio?: string | null
-          certificates?: string[]
-          completed_courses?: string[]
-          created_at?: string
-          earnings_total?: number
-          featured?: boolean
-          headline?: string | null
-          id?: string
-          profile_views?: number
-          rank_title?: string
-          skills?: string[]
-          social_links?: Json
-          updated_at?: string
-          user_id?: string
-          whatsapp_number?: string | null
-          xp_points?: number
-        }
-        Relationships: []
-      }
-      message_attachments: {
-        Row: {
-          created_at: string
-          id: string
-          message_id: string | null
-          mime: string | null
-          size: number | null
-          storage_path: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          message_id?: string | null
-          mime?: string | null
-          size?: number | null
-          storage_path: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          message_id?: string | null
-          mime?: string | null
-          size?: number | null
-          storage_path?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "message_attachments_message_id_fkey"
-            columns: ["message_id"]
-            isOneToOne: false
-            referencedRelation: "messages"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      messages: {
-        Row: {
-          content: string | null
-          content_type: string | null
-          conversation_id: string | null
-          created_at: string
-          id: string
-          metadata: Json | null
-          read_by: string[]
-          sender_id: string
-        }
-        Insert: {
-          content?: string | null
-          content_type?: string | null
-          conversation_id?: string | null
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          read_by?: string[]
-          sender_id: string
-        }
-        Update: {
-          content?: string | null
-          content_type?: string | null
-          conversation_id?: string | null
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          read_by?: string[]
-          sender_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
         ]
@@ -1136,132 +476,6 @@ export type Database = {
           },
         ]
       }
-      notifications: {
-        Row: {
-          created_at: string
-          event_type: string
-          id: string
-          is_read: boolean
-          message: string | null
-          metadata: Json
-          title: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          event_type: string
-          id?: string
-          is_read?: boolean
-          message?: string | null
-          metadata?: Json
-          title: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          event_type?: string
-          id?: string
-          is_read?: boolean
-          message?: string | null
-          metadata?: Json
-          title?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      post_attachments: {
-        Row: {
-          created_at: string
-          id: string
-          mime: string | null
-          post_id: string | null
-          size: number | null
-          storage_path: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          mime?: string | null
-          post_id?: string | null
-          size?: number | null
-          storage_path: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          mime?: string | null
-          post_id?: string | null
-          size?: number | null
-          storage_path?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "post_attachments_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "community_posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      post_comments: {
-        Row: {
-          author_id: string
-          content: string | null
-          created_at: string
-          id: string
-          post_id: string | null
-        }
-        Insert: {
-          author_id: string
-          content?: string | null
-          created_at?: string
-          id?: string
-          post_id?: string | null
-        }
-        Update: {
-          author_id?: string
-          content?: string | null
-          created_at?: string
-          id?: string
-          post_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "post_comments_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "community_posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      post_likes: {
-        Row: {
-          created_at: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "post_likes_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "community_posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       private_messages: {
         Row: {
           content: string
@@ -1295,9 +509,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
-          is_banned: boolean
           is_premium: boolean
-          phone: string | null
           subscription_status: string
           trial_course_id: string | null
           trial_start_date: string
@@ -1309,9 +521,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
-          is_banned?: boolean
           is_premium?: boolean
-          phone?: string | null
           subscription_status?: string
           trial_course_id?: string | null
           trial_start_date?: string
@@ -1323,9 +533,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
-          is_banned?: boolean
           is_premium?: boolean
-          phone?: string | null
           subscription_status?: string
           trial_course_id?: string | null
           trial_start_date?: string
@@ -1338,67 +546,6 @@ export type Database = {
             columns: ["trial_course_id"]
             isOneToOne: false
             referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_comments: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          project_id: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          project_id: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          project_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_comments_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_likes: {
-        Row: {
-          created_at: string
-          id: string
-          project_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          project_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          project_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_likes_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1450,72 +597,6 @@ export type Database = {
           },
         ]
       }
-      promo_codes: {
-        Row: {
-          code: string
-          course_id: string | null
-          created_at: string
-          discount_percent: number
-          expires_at: string | null
-          id: string
-          is_active: boolean
-          max_uses: number | null
-          uses: number
-        }
-        Insert: {
-          code: string
-          course_id?: string | null
-          created_at?: string
-          discount_percent: number
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          max_uses?: number | null
-          uses?: number
-        }
-        Update: {
-          code?: string
-          course_id?: string | null
-          created_at?: string
-          discount_percent?: number
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          max_uses?: number | null
-          uses?: number
-        }
-        Relationships: []
-      }
-      site_feedback: {
-        Row: {
-          category: string | null
-          created_at: string | null
-          email: string | null
-          id: string
-          is_read: boolean | null
-          message: string
-          name: string | null
-        }
-        Insert: {
-          category?: string | null
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          is_read?: boolean | null
-          message: string
-          name?: string | null
-        }
-        Update: {
-          category?: string | null
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          is_read?: boolean | null
-          message?: string
-          name?: string | null
-        }
-        Relationships: []
-      }
       submissions: {
         Row: {
           assignment_id: string
@@ -1559,75 +640,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      testimonials: {
-        Row: {
-          content: string
-          created_at: string | null
-          id: string
-          is_published: boolean | null
-          name: string
-          rating: number | null
-          role: string | null
-        }
-        Insert: {
-          content: string
-          created_at?: string | null
-          id?: string
-          is_published?: boolean | null
-          name: string
-          rating?: number | null
-          role?: string | null
-        }
-        Update: {
-          content?: string
-          created_at?: string | null
-          id?: string
-          is_published?: boolean | null
-          name?: string
-          rating?: number | null
-          role?: string | null
-        }
-        Relationships: []
-      }
-      user_follows: {
-        Row: {
-          created_at: string
-          followee_id: string
-          follower_id: string
-          id: string
-        }
-        Insert: {
-          created_at?: string
-          followee_id: string
-          follower_id: string
-          id?: string
-        }
-        Update: {
-          created_at?: string
-          followee_id?: string
-          follower_id?: string
-          id?: string
-        }
-        Relationships: []
-      }
-      user_presence: {
-        Row: {
-          last_active: string
-          online: boolean
-          user_id: string
-        }
-        Insert: {
-          last_active?: string
-          online?: boolean
-          user_id: string
-        }
-        Update: {
-          last_active?: string
-          online?: boolean
-          user_id?: string
-        }
-        Relationships: []
       }
       user_roles: {
         Row: {
@@ -1685,87 +697,8 @@ export type Database = {
         }
         Relationships: []
       }
-      marketplace_student_profiles_public: {
-        Row: {
-          availability_status: string | null
-          bio: string | null
-          certificates: string[] | null
-          completed_courses: string[] | null
-          created_at: string | null
-          featured: boolean | null
-          headline: string | null
-          profile_views: number | null
-          rank_title: string | null
-          skills: string[] | null
-          social_links: Json | null
-          updated_at: string | null
-          user_id: string | null
-          xp_points: number | null
-        }
-        Insert: {
-          availability_status?: string | null
-          bio?: string | null
-          certificates?: string[] | null
-          completed_courses?: string[] | null
-          created_at?: string | null
-          featured?: boolean | null
-          headline?: string | null
-          profile_views?: number | null
-          rank_title?: string | null
-          skills?: string[] | null
-          social_links?: Json | null
-          updated_at?: string | null
-          user_id?: string | null
-          xp_points?: number | null
-        }
-        Update: {
-          availability_status?: string | null
-          bio?: string | null
-          certificates?: string[] | null
-          completed_courses?: string[] | null
-          created_at?: string | null
-          featured?: boolean | null
-          headline?: string | null
-          profile_views?: number | null
-          rank_title?: string | null
-          skills?: string[] | null
-          social_links?: Json | null
-          updated_at?: string | null
-          user_id?: string | null
-          xp_points?: number | null
-        }
-        Relationships: []
-      }
-      profiles_public: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          full_name: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          full_name?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          full_name?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
     }
     Functions: {
-      add_read_to_message: {
-        Args: { message_id: string; user_id: string }
-        Returns: undefined
-      }
       can_access_course: {
         Args: { p_course_id: string; p_user_id: string }
         Returns: boolean
@@ -1774,65 +707,10 @@ export type Database = {
         Args: { p_lesson_id: string; p_user_id: string }
         Returns: boolean
       }
-      fetch_trending_posts: {
-        Args: { p_limit: number }
-        Returns: {
-          author_id: string
-          comments_count: number
-          content: string
-          content_type: string
-          created_at: string
-          id: string
-          likes_count: number
-          metadata: Json
-          title: string
-          updated_at: string
-        }[]
-      }
-      get_my_profile: {
-        Args: never
-        Returns: {
-          avatar_url: string | null
-          created_at: string
-          full_name: string | null
-          id: string
-          is_banned: boolean
-          is_premium: boolean
-          phone: string | null
-          subscription_status: string
-          trial_course_id: string | null
-          trial_start_date: string
-          updated_at: string
-          user_id: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "profiles"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
       get_next_lesson: {
         Args: { p_current_lesson: string; p_user_id: string }
         Returns: {
           next_lesson_id: string
-        }[]
-      }
-      get_posts_for_user: {
-        Args: { p_limit: number; p_user_id: string }
-        Returns: {
-          author_followed: boolean
-          author_id: string
-          comments_count: number
-          content: string
-          content_type: string
-          created_at: string
-          id: string
-          liked_by_me: boolean
-          likes_count: number
-          metadata: Json
-          title: string
-          updated_at: string
         }[]
       }
       has_course_access: {
@@ -1844,10 +722,6 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
-        Returns: boolean
-      }
-      is_lesson_assignment_approved: {
-        Args: { p_lesson_id: string; p_user_id: string }
         Returns: boolean
       }
     }

@@ -18,14 +18,6 @@ export default {
         body: ["Inter", "sans-serif"],
       },
       colors: {
-        midnight: "hsl(220 70% 10%)",
-        electric: "hsl(183 100% 58%)",
-        soft: "hsl(210 16% 96%)",
-        slate: {
-          DEFAULT: "hsl(214 13% 45%)",
-          foreground: "hsl(210 16% 96%)",
-          muted: "hsl(214 15% 63%)",
-        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -52,8 +44,8 @@ export default {
           foreground: "hsl(var(--accent-foreground))",
         },
         success: {
-          DEFAULT: "hsl(142 76% 36%)",
-          foreground: "hsl(0 0% 100%)",
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -88,7 +80,7 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        float: {
+        "float": {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-10px)" },
         },
@@ -100,7 +92,7 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        float: "float 6s ease-in-out infinite",
+        "float": "float 6s ease-in-out infinite",
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
       },
     },

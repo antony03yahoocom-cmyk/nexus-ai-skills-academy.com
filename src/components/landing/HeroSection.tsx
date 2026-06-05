@@ -1,10 +1,8 @@
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 
 const HeroSection = () => {
-  const { user } = useAuth();
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background */}
@@ -34,8 +32,8 @@ const HeroSection = () => {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button variant="hero" size="lg" asChild>
-            <Link to={user ? "/dashboard" : "/signup"}>
-              {user ? "Start Learning" : "Join Now"}
+            <Link to="/signup">
+              Join Now
               <ArrowRight className="w-4 h-4 ml-1" />
             </Link>
           </Button>
