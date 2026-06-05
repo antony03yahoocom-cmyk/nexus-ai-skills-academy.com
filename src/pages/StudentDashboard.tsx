@@ -289,8 +289,10 @@ const StudentDashboard = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {(dashboardData?.enrollments || []).map((enrollment: any) => {
                     const cId = enrollment.course_id;
-                    const hasAccess = hasCourseAccess(cId);
+                    const isFreeCourse = (enrollment.courses?.price ?? 0) === 0;
                     const coursePurchased = purchases.some((p) => p.course_id === cId);
+                    // ✅ Unlocked when: free course (enrolled), purchased, or premium/admin access
+                    const hasAccess = isFreeCourse || coursePurchased || hasCourseAccess(cId);
                     const completedIds = new Set((dashboardData?.completions || []).map((c: any) => c.lesson_id));
                     const prog = (enrollment.progress || 0);
                     const isComplete = prog >= 100;

@@ -64,6 +64,32 @@ const LessonViewerPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ✅ Realtime: refresh submission/completion state instantly when admin approves
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`lesson-${lessonId}-submissions-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "submissions", filter: `user_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["my-submissions"] });
+          queryClient.invalidateQueries({ queryKey: ["all-submissions"] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "lesson_completions", filter: `user_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["all-completions"] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, lessonId, queryClient]);
+
   const { data: lesson } = useQuery({
     queryKey: ["lesson", lessonId],
     queryFn: async () => {
@@ -383,6 +409,7 @@ const LessonViewerPage = () => {
   }
 
   const nextLesson = globalIndex >= 0 && globalIndex < allCourseLessons.length - 1 ? allCourseLessons[globalIndex + 1] : null;
+  const prevLesson = globalIndex > 0 ? allCourseLessons[globalIndex - 1] : null;
   const canGoNext = currentCompletion && currentAssignmentsApproved && nextLesson;
 
   return (
@@ -474,6 +501,13 @@ dangerouslySetInnerHTML={{
 
           {/* Actions */}
           <div className="flex flex-wrap gap-3 mb-8">
+            {prevLesson && (
+              <Button variant="outline" asChild className="w-full sm:w-auto">
+                <Link to={`/lesson/${prevLesson.id}`}>
+                  <ArrowLeft className="w-4 h-4 mr-1" /> Previous Lesson
+                </Link>
+              </Button>
+            )}
             {canComplete && (
               <Button variant="hero" onClick={() => markComplete.mutate()} disabled={markComplete.isPending} className="w-full sm:w-auto">
                 <CheckCircle className="w-4 h-4 mr-1" />
