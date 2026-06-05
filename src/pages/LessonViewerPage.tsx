@@ -409,6 +409,7 @@ const LessonViewerPage = () => {
   }
 
   const nextLesson = globalIndex >= 0 && globalIndex < allCourseLessons.length - 1 ? allCourseLessons[globalIndex + 1] : null;
+  const prevLesson = globalIndex > 0 ? allCourseLessons[globalIndex - 1] : null;
   const canGoNext = currentCompletion && currentAssignmentsApproved && nextLesson;
 
   return (
