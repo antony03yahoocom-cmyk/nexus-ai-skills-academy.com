@@ -276,23 +276,28 @@ const CourseDetailPage = () => {
           </div>
 
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6">Course Curriculum</h2>
-            <div className="space-y-4">
-              {modules.map((mod: any) => {
+            <div className="flex items-center gap-2 mb-6">
+              <Clock className="w-5 h-5 text-primary" />
+              <h2 className="text-2xl md:text-3xl font-bold">Course Breakdown</h2>
+            </div>
+            <div className="space-y-3">
+              {modules.map((mod: any, mi: number) => {
                 const modLessons = lessons.filter((l: any) => l.module_id === mod.id);
                 return (
-                  <div key={mod.id} className="glass-card overflow-hidden">
-                    <div className="p-5 border-b border-border flex items-center justify-between gap-3 flex-wrap">
-                      <h3 className="font-semibold">{mod.title}</h3>
+                  <div key={mod.id} className="glass-card p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                        {mi + 1}
+                      </div>
+                      <h3 className="font-semibold flex-1">{mod.title}</h3>
                       <span className="text-xs text-muted-foreground">{modLessons.length} lesson{modLessons.length !== 1 ? "s" : ""}</span>
                     </div>
-                    <div className="divide-y divide-border">
+                    <ul className="space-y-1.5 pl-11">
                       {modLessons.map((lesson: any) => {
                         const globalIdx = allLessonsOrdered.findIndex((l) => l.id === lesson.id);
                         const isCompleted = completions.includes(lesson.id);
                         const trialPreviewAccess = trialActive && profile?.trial_course_id === courseId && !isFree && globalIdx < 5;
-                        const canAccess = !!user && (isAdmin || isFree || trialPreviewAccess || (!!enrollment && (() => {
-                          // Sequential after trial preview: previous must be completed (or it's the first)
+                        const canAccess = !!user && (isAdmin || (isFree && !!enrollment) || trialPreviewAccess || (!!enrollment && (() => {
                           if (globalIdx === 0) return canAccessLesson(courseId!, globalIdx);
                           const prevCompleted = completions.includes(allLessonsOrdered[globalIdx - 1]?.id);
                           return prevCompleted && canAccessLesson(courseId!, globalIdx);
@@ -300,29 +305,28 @@ const CourseDetailPage = () => {
                         const isLocked = !canAccess;
 
                         return (
-                          <div
+                          <li
                             key={lesson.id}
-                            className={`flex items-center gap-3 p-4 ${canAccess ? "hover:bg-secondary/50 cursor-pointer" : "opacity-50"}`}
+                            className={`text-sm flex items-center gap-2 py-1 rounded ${
+                              canAccess ? "cursor-pointer hover:text-primary text-muted-foreground" : "opacity-60 text-muted-foreground"
+                            }`}
                             onClick={() => canAccess && navigate(`/lesson/${lesson.id}`)}
                           >
                             {isCompleted ? (
-                              <CheckCircle className="w-5 h-5 text-success shrink-0" />
-                            ) : lesson.content_type === "video" ? (
-                              <PlayCircle className={`w-5 h-5 shrink-0 ${canAccess ? "text-primary" : "text-muted-foreground"}`} />
-                            ) : lesson.content_type === "pdf" ? (
-                              <FileText className="w-5 h-5 text-accent shrink-0" />
+                              <CheckCircle className="w-3.5 h-3.5 text-success shrink-0" />
+                            ) : isLocked ? (
+                              <Lock className="w-3 h-3 shrink-0" />
                             ) : (
-                              <CheckCircle className="w-5 h-5 text-muted-foreground shrink-0" />
+                              <span className="w-1 h-1 rounded-full bg-muted-foreground shrink-0" />
                             )}
-                            <span className="flex-1 text-sm">{lesson.title}</span>
-                            {trialActive && globalIdx >= 5 && profile?.trial_course_id === courseId && !isCompleted && !isFree && (
-                              <span className="text-xs text-muted-foreground">Trial limit</span>
-                            )}
-                            {isLocked && <Lock className="w-4 h-4 text-muted-foreground" />}
-                          </div>
+                            <span className="flex-1">{lesson.title}</span>
+                            {lesson.week_number && lesson.day_number ? (
+                              <span className="text-xs text-primary/70 font-medium shrink-0">W{lesson.week_number} D{lesson.day_number}</span>
+                            ) : null}
+                          </li>
                         );
                       })}
-                    </div>
+                    </ul>
                   </div>
                 );
               })}
