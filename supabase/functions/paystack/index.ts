@@ -148,74 +148,144 @@ serve(async (req) => {
         });
       }
 
-      if (data.data?.status === "success") {
-        const metadata = data.data?.metadata || {};
-        const planType = metadata.plan_type;
-        const courseId = metadata.course_id;
-        const expectedAmount = metadata.expected_amount;
-        const paidAmount = data.data.amount;
-        const metaUserId = metadata.user_id;
-
-        // SECURITY: Ensure the payment reference belongs to the authenticated user
-        if (metaUserId && metaUserId !== userId) {
-          return new Response(JSON.stringify({ error: "Payment reference does not belong to this account" }), {
-            status: 403,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        // Verify the paid amount matches expected
-        if (expectedAmount && paidAmount < expectedAmount) {
-          console.error(`Amount mismatch: paid ${paidAmount}, expected ${expectedAmount}`);
-          return new Response(JSON.stringify({ error: "Payment amount mismatch" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        if (planType === "premium") {
-          await adminClient
-            .from("profiles")
-            .update({ is_premium: true, subscription_status: "paid" })
-            .eq("user_id", userId);
-        } else if (courseId) {
-          await adminClient
-            .from("course_purchases")
-            .upsert({
-              user_id: userId,
-              course_id: courseId,
-              amount: paidAmount,
-              reference: reference,
-              status: "paid",
-              purchased_at: new Date().toISOString(),
-            }, { onConflict: "user_id,course_id" });
-
-          // Auto-enroll user if not already enrolled
-          const { data: existingEnrollment } = await adminClient
-            .from("enrollments")
-            .select("id")
-            .eq("user_id", userId)
-            .eq("course_id", courseId)
-            .maybeSingle();
-          
-          if (!existingEnrollment) {
-            await adminClient
-              .from("enrollments")
-              .insert({ user_id: userId, course_id: courseId });
-          }
-
-          await adminClient
-            .from("profiles")
-            .update({ subscription_status: "paid" })
-            .eq("user_id", userId);
-        }
-
-        return new Response(JSON.stringify({ success: true, plan_type: planType, course_id: courseId }), {
+      const txStatus = data.data?.status;
+      if (txStatus !== "success") {
+        const message =
+          txStatus === "failed" ? "Payment failed. No charges were made — please try again." :
+          txStatus === "abandoned" ? "Payment was not completed. Please try again." :
+          txStatus === "reversed" ? "Payment was reversed by the provider." :
+          `Payment not successful (status: ${txStatus || "unknown"}).`;
+        return new Response(JSON.stringify({ success: false, status: txStatus, message }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(JSON.stringify({ success: false, status: data.data?.status }), {
+      const metadata = data.data?.metadata || {};
+      const planType = metadata.plan_type;
+      const courseId = metadata.course_id;
+      const expectedAmount = metadata.expected_amount;
+      const paidAmount = data.data.amount;
+      const metaUserId = metadata.user_id;
+
+      // SECURITY: Ensure the payment reference belongs to the authenticated user
+      if (metaUserId && metaUserId !== userId) {
+        return new Response(JSON.stringify({ success: false, error: "This payment reference does not belong to your account." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify the paid amount matches expected
+      if (expectedAmount && paidAmount < expectedAmount) {
+        console.error(`Amount mismatch: paid ${paidAmount}, expected ${expectedAmount}`);
+        return new Response(JSON.stringify({ success: false, error: "Payment amount did not match the expected price. Please contact support." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // IDEMPOTENCY: skip side effects if this reference was already processed
+      if (planType === "premium") {
+        const { data: profileRow } = await adminClient
+          .from("profiles")
+          .select("is_premium")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (profileRow?.is_premium) {
+          return new Response(JSON.stringify({ success: true, plan_type: "premium", already_processed: true, message: "You're already on Premium — all courses unlocked." }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { error: premErr } = await adminClient
+          .from("profiles")
+          .update({ is_premium: true, subscription_status: "paid" })
+          .eq("user_id", userId);
+        if (premErr) {
+          console.error("Premium upgrade error:", premErr);
+          return new Response(JSON.stringify({ success: false, error: "Could not activate Premium. Please contact support with your reference." }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Send Premium confirmation message (one-time)
+        const { data: adminRow } = await adminClient
+          .from("user_roles").select("user_id").eq("role", "admin").limit(1).maybeSingle();
+        if (adminRow?.user_id) {
+          await adminClient.from("private_messages").insert({
+            sender_id: adminRow.user_id,
+            receiver_id: userId,
+            content: `👑 Welcome to Premium!\n\nYour KES ${(paidAmount/100).toLocaleString()} payment has been confirmed. You now have lifetime access to ALL courses (current and future). Head to your dashboard to start exploring! 🚀`,
+            is_read: false,
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true, plan_type: "premium", message: "Premium activated! All courses unlocked." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (courseId) {
+        // Check if already paid for this course (idempotency)
+        const { data: existingPurchase } = await adminClient
+          .from("course_purchases")
+          .select("id, status, reference")
+          .eq("user_id", userId)
+          .eq("course_id", courseId)
+          .maybeSingle();
+
+        if (existingPurchase?.status === "paid") {
+          // Ensure enrolled, return success without re-firing trigger
+          const { data: existingEnrollment } = await adminClient
+            .from("enrollments").select("id").eq("user_id", userId).eq("course_id", courseId).maybeSingle();
+          if (!existingEnrollment) {
+            await adminClient.from("enrollments").insert({ user_id: userId, course_id: courseId });
+          }
+          return new Response(JSON.stringify({ success: true, plan_type: "course", course_id: courseId, already_processed: true, message: "This course is already unlocked on your account." }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { error: purchaseErr } = await adminClient
+          .from("course_purchases")
+          .upsert({
+            user_id: userId,
+            course_id: courseId,
+            amount: paidAmount,
+            reference: reference,
+            status: "paid",
+            purchased_at: new Date().toISOString(),
+          }, { onConflict: "user_id,course_id" });
+
+        if (purchaseErr) {
+          console.error("Purchase upsert error:", purchaseErr);
+          return new Response(JSON.stringify({ success: false, error: "Payment received but we couldn't unlock the course automatically. Please contact support with your reference." }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Auto-enroll
+        const { data: existingEnrollment } = await adminClient
+          .from("enrollments").select("id").eq("user_id", userId).eq("course_id", courseId).maybeSingle();
+        if (!existingEnrollment) {
+          await adminClient.from("enrollments").insert({ user_id: userId, course_id: courseId });
+        }
+
+        await adminClient
+          .from("profiles")
+          .update({ subscription_status: "paid" })
+          .eq("user_id", userId);
+
+        return new Response(JSON.stringify({ success: true, plan_type: "course", course_id: courseId, message: "Payment confirmed! Course unlocked." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: false, error: "Payment metadata is missing — cannot determine what to unlock. Contact support." }), {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

@@ -1,0 +1,1 @@
+ALTER TABLE public.user_presence ENABLE ROW LEVEL SECURITY;

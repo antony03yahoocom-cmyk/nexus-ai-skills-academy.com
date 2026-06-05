@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import CourseReviews from "@/components/courses/CourseReviews";
 
 const CourseDetailPage = () => {
   const { courseId } = useParams();
@@ -95,6 +96,8 @@ const CourseDetailPage = () => {
 
   const courseAccess = courseId ? hasCourseAccess(courseId) : false;
   const isFree = course?.price === 0;
+  // ✅ Enrollment-first: free courses still require an enrollment record before access.
+  const canOpenFreeCourse = !!user && isFree && !!enrollment;
 
   const handleBuyCourse = async () => {
     if (!user || !session || !course) {
@@ -131,14 +134,21 @@ const CourseDetailPage = () => {
     setPayLoading(false);
   };
 
-  // Payment verification on callback
+  // Payment verification on callback (guarded against double-fire in StrictMode)
+  const [verifying, setVerifying] = useState(false);
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const verifyRef = searchParams.get("reference");
     const shouldVerify = searchParams.get("verify");
 
-    if (shouldVerify === "true" && verifyRef && session) {
+    if (shouldVerify === "true" && verifyRef && session && !verifying) {
+      const key = `paystack-verified-${verifyRef}`;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      setVerifying(true);
+
       (async () => {
+        const loadingToast = toast.loading("Verifying your payment...");
         try {
           const resp = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paystack?action=verify`,
@@ -153,23 +163,26 @@ const CourseDetailPage = () => {
             }
           );
           const result = await resp.json();
+          toast.dismiss(loadingToast);
           if (result.success) {
-            toast.success("Payment successful! You now have full access to this course.");
+            toast.success(result.message || "Payment successful! Course unlocked.");
             await refreshProfile();
             queryClient.invalidateQueries({ queryKey: ["enrollment"] });
             queryClient.invalidateQueries({ queryKey: ["course-purchases"] });
-            // Clean URL
-            window.history.replaceState({}, "", `/courses/${courseId}`);
           } else {
-            toast.error("Payment verification failed. Please try again.");
+            toast.error(result.message || result.error || "Payment verification failed. Please try again.");
           }
+          window.history.replaceState({}, "", `/courses/${courseId}`);
         } catch (error) {
+          toast.dismiss(loadingToast);
           console.error("Verification error:", error);
-          toast.error("Verification error. Please contact support.");
+          toast.error("Could not reach our servers to verify payment. Please refresh or contact support.");
+        } finally {
+          setVerifying(false);
         }
       })();
     }
-  }, [session, courseId, queryClient]);
+  }, [session, courseId, queryClient, refreshProfile]);
 
   // Build flat lesson list with global index for sequential access
   const allLessonsOrdered: any[] = [];
@@ -207,12 +220,12 @@ const CourseDetailPage = () => {
             {/* Trial banner - only for paid courses */}
             {user && trialActive && profile?.trial_course_id === courseId && !courseAccess && !isFree && (
               <div className="glass-card p-3 mb-4 border-accent/30 bg-accent/5 text-sm">
-                🕐 Trial: {trialDaysLeft} days left · First 7 lessons accessible
+                🕐 Trial: {trialDaysLeft} days left · First 5 lessons accessible
               </div>
             )}
 
-            {/* No access banner */}
-            {user && !courseAccess && !trialActive && !isFree && (
+            {/* No access banner - only after enrollment */}
+            {user && enrollment && !courseAccess && !trialActive && !isFree && (
               <div className="glass-card p-4 mb-6 border-destructive/30 bg-destructive/5 flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-destructive" />
@@ -235,8 +248,8 @@ const CourseDetailPage = () => {
             )}
 
             <div className="flex flex-wrap gap-3">
-              {enrollment ? (
-                courseAccess ? (
+              {enrollment || canOpenFreeCourse ? (
+                courseAccess || canOpenFreeCourse ? (
                   <Button variant="hero" size="lg" asChild>
                     <Link to={firstAccessibleLesson ? `/lesson/${firstAccessibleLesson.id}` : (allLessonsOrdered[0] ? `/lesson/${allLessonsOrdered[0].id}` : "#")}>
                       Continue Learning
@@ -263,55 +276,65 @@ const CourseDetailPage = () => {
           </div>
 
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6">Course Curriculum</h2>
-            <div className="space-y-4">
-              {modules.map((mod: any) => {
+            <div className="flex items-center gap-2 mb-6">
+              <Clock className="w-5 h-5 text-primary" />
+              <h2 className="text-2xl md:text-3xl font-bold">Course Breakdown</h2>
+            </div>
+            <div className="space-y-3">
+              {modules.map((mod: any, mi: number) => {
                 const modLessons = lessons.filter((l: any) => l.module_id === mod.id);
                 return (
-                  <div key={mod.id} className="glass-card overflow-hidden">
-                    <div className="p-5 border-b border-border">
-                      <h3 className="font-semibold">{mod.title}</h3>
+                  <div key={mod.id} className="glass-card p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                        {mi + 1}
+                      </div>
+                      <h3 className="font-semibold flex-1">{mod.title}</h3>
+                      <span className="text-xs text-muted-foreground">{modLessons.length} lesson{modLessons.length !== 1 ? "s" : ""}</span>
                     </div>
-                    <div className="divide-y divide-border">
+                    <ul className="space-y-1.5 pl-11">
                       {modLessons.map((lesson: any) => {
                         const globalIdx = allLessonsOrdered.findIndex((l) => l.id === lesson.id);
                         const isCompleted = completions.includes(lesson.id);
-                        const canAccess = enrollment && (isAdmin || (() => {
-                          // Sequential: previous must be completed (or it's the first)
+                        const trialPreviewAccess = trialActive && profile?.trial_course_id === courseId && !isFree && globalIdx < 5;
+                        const canAccess = !!user && (isAdmin || (isFree && !!enrollment) || trialPreviewAccess || (!!enrollment && (() => {
                           if (globalIdx === 0) return canAccessLesson(courseId!, globalIdx);
                           const prevCompleted = completions.includes(allLessonsOrdered[globalIdx - 1]?.id);
                           return prevCompleted && canAccessLesson(courseId!, globalIdx);
-                        })());
+                        })()));
                         const isLocked = !canAccess;
 
                         return (
-                          <div
+                          <li
                             key={lesson.id}
-                            className={`flex items-center gap-3 p-4 ${canAccess ? "hover:bg-secondary/50 cursor-pointer" : "opacity-50"}`}
+                            className={`text-sm flex items-center gap-2 py-1 rounded ${
+                              canAccess ? "cursor-pointer hover:text-primary text-muted-foreground" : "opacity-60 text-muted-foreground"
+                            }`}
                             onClick={() => canAccess && navigate(`/lesson/${lesson.id}`)}
                           >
                             {isCompleted ? (
-                              <CheckCircle className="w-5 h-5 text-success shrink-0" />
-                            ) : lesson.content_type === "video" ? (
-                              <PlayCircle className={`w-5 h-5 shrink-0 ${canAccess ? "text-primary" : "text-muted-foreground"}`} />
-                            ) : lesson.content_type === "pdf" ? (
-                              <FileText className="w-5 h-5 text-accent shrink-0" />
+                              <CheckCircle className="w-3.5 h-3.5 text-success shrink-0" />
+                            ) : isLocked ? (
+                              <Lock className="w-3 h-3 shrink-0" />
                             ) : (
-                              <CheckCircle className="w-5 h-5 text-muted-foreground shrink-0" />
+                              <span className="w-1 h-1 rounded-full bg-muted-foreground shrink-0" />
                             )}
-                            <span className="flex-1 text-sm">{lesson.title}</span>
-                            {trialActive && globalIdx >= 7 && profile?.trial_course_id === courseId && !isCompleted && !isFree && (
-                              <span className="text-xs text-muted-foreground">Trial limit</span>
-                            )}
-                            {isLocked && <Lock className="w-4 h-4 text-muted-foreground" />}
-                          </div>
+                            <span className="flex-1">{lesson.title}</span>
+                            {lesson.week_number && lesson.day_number ? (
+                              <span className="text-xs text-primary/70 font-medium shrink-0">W{lesson.week_number} D{lesson.day_number}</span>
+                            ) : null}
+                          </li>
                         );
                       })}
-                    </div>
+                    </ul>
                   </div>
                 );
               })}
             </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto mt-12">
+            <CourseReviews courseId={courseId!} />
           </div>
         </div>
       </div>

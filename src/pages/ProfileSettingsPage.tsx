@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,17 +6,46 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
-import { Camera, Save, User } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Camera, Save, User, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const ProfileSettingsPage = () => {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, signOut } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState(profile?.full_name || "");
+  const [phone, setPhone] = useState(user?.phone || "");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const reasonWordCount = deleteReason.trim().split(/\s+/).filter(Boolean).length;
+
+  const handleDeleteAccount = async () => {
+    if (reasonWordCount < 10) {
+      toast.error("Please share at least 10 words about why you're leaving.");
+      return;
+    }
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-account", {
+        body: { reason: deleteReason.trim() },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success("Your account has been deleted. We're sorry to see you go.");
+      await signOut();
+      window.location.href = "/";
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete account");
+      setDeleting(false);
+    }
+  };
 
   const currentAvatar = avatarUrl || (profile as any)?.avatar_url || null;
 
@@ -45,6 +74,10 @@ const ProfileSettingsPage = () => {
     if (!user) return;
     setSaving(true);
     try {
+      if (phone && phone !== user.phone) {
+        const { error: phoneError } = await supabase.auth.updateUser({ phone });
+        if (phoneError) throw phoneError;
+      }
       const { error } = await supabase
         .from("profiles")
         .update({ full_name: fullName })
@@ -58,6 +91,12 @@ const ProfileSettingsPage = () => {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (user?.phone) {
+      setPhone(user.phone);
+    }
+  }, [user?.phone]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -114,6 +153,19 @@ const ProfileSettingsPage = () => {
               <p className="text-xs text-muted-foreground">Email cannot be changed</p>
             </div>
 
+            {/* Phone number */}
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone number</Label>
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+254712345678"
+                className="bg-secondary border-border"
+              />
+              <p className="text-xs text-muted-foreground">Add your phone number to complete your profile and receive important updates.</p>
+            </div>
+
             {/* Account info */}
             <div className="space-y-2">
               <Label>Account Status</Label>
@@ -128,6 +180,53 @@ const ProfileSettingsPage = () => {
               <Save className="w-4 h-4 mr-2" />
               {saving ? "Saving..." : "Save Changes"}
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card border-destructive/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" /> Danger Zone
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Permanently delete your account and all of your data. This action cannot be undone.
+            </p>
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <DialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="w-4 h-4 mr-2" /> Delete My Account
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete your account?</DialogTitle>
+                  <DialogDescription>
+                    Before you go, please tell us why you're leaving (at least 10 words). Your feedback helps us improve.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <Label htmlFor="reason">Reason for leaving</Label>
+                  <Textarea
+                    id="reason"
+                    rows={5}
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                    placeholder="Tell us why you're deleting your account..."
+                  />
+                  <p className={`text-xs ${reasonWordCount >= 10 ? "text-success" : "text-muted-foreground"}`}>
+                    {reasonWordCount} / 10 words minimum
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+                  <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleting || reasonWordCount < 10}>
+                    {deleting ? "Deleting..." : "Permanently Delete"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
       </div>

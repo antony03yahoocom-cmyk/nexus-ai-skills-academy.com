@@ -17,11 +17,15 @@ useEffect(() => {
   const reference = searchParams.get("reference");
   
   if (verify === "true" && reference && session) {
+    const key = `paystack-verified-${reference}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
     verifyPayment(reference);
   }
 }, [searchParams, session]);
   const verifyPayment = async (reference: string) => {
     setLoading(true);
+    const loadingToast = toast.loading("Verifying your payment...");
     try {
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paystack?action=verify`,
@@ -36,14 +40,17 @@ useEffect(() => {
         }
       );
       const result = await resp.json();
+      toast.dismiss(loadingToast);
       if (result.success) {
-        toast.success("Payment successful! You now have full access.");
+        toast.success(result.message || "Payment successful! You now have full access.");
         await refreshProfile();
       } else {
-        toast.error("Payment verification failed. Please contact support.");
+        toast.error(result.message || result.error || "Payment verification failed. Please contact support.");
       }
+      window.history.replaceState({}, "", "/subscribe");
     } catch (e) {
-      toast.error("Failed to verify payment.");
+      toast.dismiss(loadingToast);
+      toast.error("Failed to verify payment. Please refresh or contact support.");
     }
     setLoading(false);
   };
@@ -111,7 +118,7 @@ useEffect(() => {
             </h1>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
               {trialActive
-                ? `Your trial has ${trialDaysLeft} days left (1 course, first 7 lessons).`
+                ? `Your trial has ${trialDaysLeft} days left (1 course, first 5 lessons).`
                 : "Unlock all courses with a single payment."}
             </p>
             <p className="text-sm text-muted-foreground mt-2">

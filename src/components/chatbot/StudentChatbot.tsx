@@ -1,13 +1,26 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle, X, Send, Bot, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/student-chatbot`;
+
+// Default drag position (px from right, px from bottom)
+const DEFAULT_POS = { right: 24, bottom: 24 };
+
+type DragState = {
+  active: boolean;
+  startX: number;
+  startY: number;
+  startRight: number;
+  startBottom: number;
+  moved: boolean;
+};
 
 function MarkdownText({ text }: { text: string }) {
   // Simple markdown: bold, italic, code, links, lists
@@ -79,7 +92,17 @@ function renderInline(text: string) {
 }
 
 export default function StudentChatbot() {
+  const { session, user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ right: number; bottom: number }>(() => {
+    try {
+      const raw = localStorage.getItem("nexus_chatbot_pos");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return DEFAULT_POS;
+  });
+  const dragStateRef = useRef<DragState | null>(null);
+
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: "Hi! 👋 I'm your **NEXUS AI ACADEMY** assistant. I can help you understand difficult concepts, navigate the platform, or guide you through assignments. What would you like help with?" },
   ]);
@@ -94,6 +117,47 @@ export default function StudentChatbot() {
     }
   }, [messages, open]);
 
+  // pointer events for dragging
+  useEffect(() => {
+    const onMove = (e: MouseEvent | TouchEvent) => {
+      if (!dragStateRef.current?.active) return;
+      const isTouch = (e as TouchEvent).touches !== undefined;
+      const clientX = isTouch ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+      const clientY = isTouch ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
+      if (isTouch) e.preventDefault();
+
+      const d = dragStateRef.current;
+      if (!d) return;
+      const dx = clientX - d.startX;
+      const dy = clientY - d.startY;
+      const newRight = Math.max(8, Math.round(d.startRight - dx));
+      const newBottom = Math.max(8, Math.round(d.startBottom - dy));
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        d.moved = true;
+      }
+      setPos({ right: newRight, bottom: newBottom });
+    };
+    const onUp = () => {
+      if (!dragStateRef.current?.active) return;
+      if (dragStateRef.current.moved) {
+        try { localStorage.setItem("nexus_chatbot_pos", JSON.stringify(pos)); } catch {}
+      }
+      if (dragStateRef.current) {
+        dragStateRef.current.active = false;
+      }
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("touchmove", onMove, { passive: false } as any);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchend", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("touchmove", onMove as any);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [pos]);
+
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -106,11 +170,18 @@ export default function StudentChatbot() {
     let assistantSoFar = "";
 
     try {
+      const token = session?.access_token;
+      if (!user || !token) {
+        setMessages((prev) => [...prev, { role: "assistant", content: "Unauthorized — please sign in to use the chat." }]);
+        setLoading(false);
+        return;
+      }
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })) }),
       });
@@ -181,8 +252,24 @@ export default function StudentChatbot() {
       {/* Floating button */}
       {!open && (
         <button
-          onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform"
+          onMouseDown={(e) => {
+            dragStateRef.current = { active: true, startX: (e as any).clientX, startY: (e as any).clientY, startRight: pos.right, startBottom: pos.bottom, moved: false };
+          }}
+          onTouchStart={(e) => {
+            const t = e.touches[0];
+            dragStateRef.current = { active: true, startX: t.clientX, startY: t.clientY, startRight: pos.right, startBottom: pos.bottom, moved: false };
+          }}
+          onClick={(e) => {
+            if (dragStateRef.current?.moved) {
+              e.preventDefault();
+              e.stopPropagation();
+              dragStateRef.current.moved = false;
+              return;
+            }
+            setOpen(true);
+          }}
+          style={{ right: pos.right, bottom: pos.bottom }}
+          className="fixed z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform touch-none"
           aria-label="Open chatbot"
         >
           <MessageCircle className="h-6 w-6" />
@@ -191,9 +278,21 @@ export default function StudentChatbot() {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-4 right-4 z-50 w-[360px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-2rem)] flex flex-col rounded-2xl border bg-background shadow-2xl overflow-hidden">
+        <div
+          style={{ right: pos.right, bottom: pos.bottom }}
+          className="fixed z-50 w-[360px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-2rem)] flex flex-col rounded-2xl border bg-background shadow-2xl overflow-hidden touch-none"
+        >
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 bg-primary text-primary-foreground shrink-0">
+          <div
+            onMouseDown={(e) => {
+              dragStateRef.current = { active: true, startX: (e as any).clientX, startY: (e as any).clientY, startRight: pos.right, startBottom: pos.bottom, moved: false };
+            }}
+            onTouchStart={(e) => {
+              const t = e.touches[0];
+              dragStateRef.current = { active: true, startX: t.clientX, startY: t.clientY, startRight: pos.right, startBottom: pos.bottom, moved: false };
+            }}
+            className="flex items-center gap-3 px-4 py-3 bg-primary text-primary-foreground shrink-0 cursor-grab"
+          >
             <Bot className="h-5 w-5" />
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm">NEXUS AI Assistant</p>

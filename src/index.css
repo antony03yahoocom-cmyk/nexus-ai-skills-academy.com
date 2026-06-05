@@ -6,52 +6,52 @@
 
 @layer base {
   :root {
-    --background: 240 6% 4%;
-    --foreground: 210 20% 98%;
+    --background: 221 52% 10%;
+    --foreground: 210 16% 96%;
 
-    --card: 240 5% 9%;
-    --card-foreground: 210 20% 98%;
+    --card: 221 45% 14%;
+    --card-foreground: 210 16% 96%;
 
-    --popover: 240 5% 9%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 221 45% 16%;
+    --popover-foreground: 210 16% 96%;
 
-    --primary: 263 70% 58%;
-    --primary-foreground: 210 20% 98%;
+    --primary: 183 100% 58%;
+    --primary-foreground: 221 52% 12%;
 
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 210 20% 98%;
+    --secondary: 214 13% 45%;
+    --secondary-foreground: 210 16% 94%;
 
-    --muted: 240 4% 16%;
-    --muted-foreground: 215 14% 55%;
+    --muted: 214 15% 63%;
+    --muted-foreground: 210 16% 76%;
 
-    --accent: 187 92% 43%;
-    --accent-foreground: 240 6% 4%;
+    --accent: 183 100% 60%;
+    --accent-foreground: 221 52% 12%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 20% 98%;
+    --destructive-foreground: 210 16% 96%;
 
     --success: 160 68% 40%;
-    --success-foreground: 210 20% 98%;
+    --success-foreground: 210 16% 96%;
 
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 263 70% 58%;
+    --border: 214 12% 29%;
+    --input: 214 12% 18%;
+    --ring: 183 100% 60%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 240 5% 7%;
-    --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 263 70% 58%;
-    --sidebar-primary-foreground: 210 20% 98%;
-    --sidebar-accent: 240 4% 12%;
-    --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 240 4% 14%;
-    --sidebar-ring: 263 70% 58%;
+    --sidebar-background: 221 48% 12%;
+    --sidebar-foreground: 210 16% 88%;
+    --sidebar-primary: 183 100% 58%;
+    --sidebar-primary-foreground: 221 52% 12%;
+    --sidebar-accent: 214 13% 38%;
+    --sidebar-accent-foreground: 210 16% 96%;
+    --sidebar-border: 214 12% 26%;
+    --sidebar-ring: 183 100% 60%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(263, 70%, 58%), hsl(187, 92%, 43%));
-    --gradient-hero: radial-gradient(ellipse at 30% 20%, hsla(263, 70%, 58%, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, hsla(187, 92%, 43%, 0.1) 0%, transparent 50%);
-    --shadow-glow-primary: 0 0 40px -10px hsla(263, 70%, 58%, 0.4);
-    --shadow-glow-accent: 0 0 40px -10px hsla(187, 92%, 43%, 0.3);
+    --gradient-primary: linear-gradient(135deg, hsl(183 100% 58%), hsl(221 45% 14%));
+    --gradient-hero: radial-gradient(circle at 10% 20%, hsla(183 100% 70%, 0.18) 0%, transparent 30%), radial-gradient(circle at 90% 80%, hsla(210 100% 95%, 0.08) 0%, transparent 20%);
+    --shadow-glow-primary: 0 0 40px -10px hsla(183 100% 58%, 0.5);
+    --shadow-glow-accent: 0 0 60px -18px hsla(183 100% 58%, 0.22);
   }
 }
 
@@ -62,6 +62,42 @@
 
   body {
     @apply bg-background text-foreground font-body antialiased;
+    min-height: 100%;
+    min-height: 100dvh;
+    overflow-y: auto;
+    background-image: radial-gradient(circle at 10% 12%, hsla(183 100% 80%, 0.12), transparent 20%), radial-gradient(circle at 85% 90%, hsla(210 100% 95%, 0.06), transparent 25%);
+    color: hsl(var(--foreground));
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  html {
+    /* ✅ FIX: Prevent layout shifts on iOS Safari when address bar collapses/expands */
+    height: 100%;
+    height: 100dvh;
+  }
+
+  body::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
+  }
+
+  button,
+  input,
+  textarea,
+  select,
+  a {
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  a {
+    color: hsl(var(--foreground));
+    text-decoration-color: transparent;
+  }
+
+  a:hover,
+  a:focus-visible {
+    color: hsl(var(--primary));
+    text-decoration-color: hsl(var(--primary));
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -89,5 +125,58 @@
 
   .glow-accent {
     box-shadow: var(--shadow-glow-accent);
+  }
+
+  /* ✅ FIX: Scroll container — properly handle overflow without creating gaps */
+  .scroll-container {
+    @apply overflow-y-auto overflow-x-hidden;
+    -webkit-overflow-scrolling: touch; /* Smooth momentum scrolling on iOS */
+    overscroll-behavior: contain; /* Prevent rubber-band bounce on iOS */
+  }
+
+  /* ✅ FIX: Sticky header — prevent gap when scrolling on iOS Safari */
+  .sticky-header {
+    @apply sticky top-0 z-40;
+    position: sticky;
+    top: 0;
+    /* Ensure no gap between header and content */
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  /* ✅ FIX: Fixed header — prevent jitter and gaps on mobile */
+  .fixed-header {
+    @apply fixed top-0 left-0 right-0 z-50;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    /* Prevent flicker on iOS Safari address bar change */
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  /* ✅ FIX: Main content area offset for fixed headers */
+  .main-with-fixed-header {
+    @apply pt-14 lg:pt-0;
+    /* Use safe-area-inset for notches/home indicators */
+    padding-top: max(3.5rem, env(safe-area-inset-top));
+  }
+
+  /* ✅ FIX: Bottom spacing for fixed bottom bars */
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+
+@layer base {
+  html, body, #root {
+    min-height: 100%;
+  }
+
+  html, body {
+    overflow-x: hidden;
   }
 }

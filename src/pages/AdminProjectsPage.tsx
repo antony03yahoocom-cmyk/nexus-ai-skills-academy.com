@@ -19,7 +19,7 @@ const AdminProjectsPage = () => {
       const { data } = await supabase
         .from("projects")
         .select("*, courses(title)")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).limit(100);
       return data ?? [];
     },
   });
