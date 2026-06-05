@@ -501,6 +501,13 @@ dangerouslySetInnerHTML={{
 
           {/* Actions */}
           <div className="flex flex-wrap gap-3 mb-8">
+            {prevLesson && (
+              <Button variant="outline" asChild className="w-full sm:w-auto">
+                <Link to={`/lesson/${prevLesson.id}`}>
+                  <ArrowLeft className="w-4 h-4 mr-1" /> Previous Lesson
+                </Link>
+              </Button>
+            )}
             {canComplete && (
               <Button variant="hero" onClick={() => markComplete.mutate()} disabled={markComplete.isPending} className="w-full sm:w-auto">
                 <CheckCircle className="w-4 h-4 mr-1" />
