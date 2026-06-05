@@ -64,6 +64,32 @@ const LessonViewerPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ✅ Realtime: refresh submission/completion state instantly when admin approves
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`lesson-${lessonId}-submissions-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "submissions", filter: `user_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["my-submissions"] });
+          queryClient.invalidateQueries({ queryKey: ["all-submissions"] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "lesson_completions", filter: `user_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["all-completions"] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, lessonId, queryClient]);
+
   const { data: lesson } = useQuery({
     queryKey: ["lesson", lessonId],
     queryFn: async () => {
