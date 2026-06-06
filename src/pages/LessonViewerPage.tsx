@@ -680,19 +680,21 @@ dangerouslySetInnerHTML={{
                   const completed = allCompletions.includes(l.id);
                   const trialPreviewAccess = trialActive && profile?.trial_course_id === courseId && idx < 5;
                   const prevApproved = idx === 0 || (allCompletions.includes(allCourseLessons[idx - 1]?.id) && isLessonAssignmentApproved(allCourseLessons[idx - 1]?.id));
-                  const accessible = isAdmin || (hasCourseAccess(courseId) && canAccessLesson(courseId, idx) && (trialPreviewAccess || prevApproved));
+                  const unlocked = isAdmin || (hasCourseAccess(courseId) && canAccessLesson(courseId, idx) && (trialPreviewAccess || prevApproved));
+                  // ✅ Clickable if completed (re-watch) or currently unlocked. Locked lessons stay non-clickable.
+                  const clickable = isAdmin || completed || unlocked;
                   return (
                     <div
                       key={l.id}
                       className={`flex items-center gap-3 px-4 py-3 text-sm transition-all duration-200 ${
                         l.id === lessonId ? "bg-primary/10 border-l-2 border-l-primary" :
-                        accessible ? "hover:bg-secondary/50 cursor-pointer" : "opacity-40"
+                        clickable ? "hover:bg-secondary/50 cursor-pointer" : "opacity-40"
                       }`}
-                      onClick={() => accessible && navigate(`/lesson/${l.id}`)}
+                      onClick={() => clickable && navigate(`/lesson/${l.id}`)}
                     >
                       {completed
                         ? <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                        : accessible
+                        : clickable
                           ? l.content_type === "video"
                             ? <PlayCircle className={`w-4 h-4 shrink-0 ${l.id === lessonId ? "text-primary" : "text-muted-foreground"}`} />
                             : <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
