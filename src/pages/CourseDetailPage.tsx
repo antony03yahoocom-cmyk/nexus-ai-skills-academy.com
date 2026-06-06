@@ -294,28 +294,14 @@ const CourseDetailPage = () => {
                     </div>
                     <ul className="space-y-1.5 pl-11">
                       {modLessons.map((lesson: any) => {
-                        const globalIdx = allLessonsOrdered.findIndex((l) => l.id === lesson.id);
                         const isCompleted = completions.includes(lesson.id);
-                        const trialPreviewAccess = trialActive && profile?.trial_course_id === courseId && !isFree && globalIdx < 5;
-                        const canAccess = !!user && (isAdmin || (isFree && !!enrollment) || trialPreviewAccess || (!!enrollment && (() => {
-                          if (globalIdx === 0) return canAccessLesson(courseId!, globalIdx);
-                          const prevCompleted = completions.includes(allLessonsOrdered[globalIdx - 1]?.id);
-                          return prevCompleted && canAccessLesson(courseId!, globalIdx);
-                        })()));
-                        const isLocked = !canAccess;
-
                         return (
                           <li
                             key={lesson.id}
-                            className={`text-sm flex items-center gap-2 py-1 rounded ${
-                              canAccess ? "cursor-pointer hover:text-primary text-muted-foreground" : "opacity-60 text-muted-foreground"
-                            }`}
-                            onClick={() => canAccess && navigate(`/lesson/${lesson.id}`)}
+                            className="text-sm flex items-center gap-2 py-1 text-muted-foreground"
                           >
                             {isCompleted ? (
                               <CheckCircle className="w-3.5 h-3.5 text-success shrink-0" />
-                            ) : isLocked ? (
-                              <Lock className="w-3 h-3 shrink-0" />
                             ) : (
                               <span className="w-1 h-1 rounded-full bg-muted-foreground shrink-0" />
                             )}
