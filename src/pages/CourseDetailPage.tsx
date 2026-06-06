@@ -27,21 +27,21 @@ const CourseDetailPage = () => {
   });
 
   const { data: modules = [] } = useQuery({
-    queryKey: ["course-modules", courseId],
+    queryKey: ["course-modules-public", courseId],
     queryFn: async () => {
-      const { data } = await supabase.from("modules").select("*").eq("course_id", courseId!).order("sort_order");
-      return data ?? [];
+      const { data } = await supabase.from("modules_public" as any).select("*").eq("course_id", courseId!).order("sort_order");
+      return (data as any[]) ?? [];
     },
     enabled: !!courseId,
   });
 
   const { data: lessons = [] } = useQuery({
-    queryKey: ["course-lessons", courseId],
+    queryKey: ["course-lessons-public", courseId],
     queryFn: async () => {
       const moduleIds = modules.map((m: any) => m.id);
       if (moduleIds.length === 0) return [];
-      const { data } = await supabase.from("lessons").select("*").in("module_id", moduleIds).order("sort_order");
-      return data ?? [];
+      const { data } = await supabase.from("lessons_public" as any).select("*").in("module_id", moduleIds).order("sort_order");
+      return (data as any[]) ?? [];
     },
     enabled: modules.length > 0,
   });
