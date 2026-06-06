@@ -132,6 +132,13 @@ export type Database = {
             referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "assignments_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       certificates: {
@@ -678,6 +685,13 @@ export type Database = {
             referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lesson_completions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       lesson_progress: {
@@ -760,6 +774,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1685,6 +1706,42 @@ export type Database = {
         }
         Relationships: []
       }
+      lessons_public: {
+        Row: {
+          content_type: string | null
+          created_at: string | null
+          day_number: number | null
+          id: string | null
+          module_id: string | null
+          order_index: number | null
+          sort_order: number | null
+          title: string | null
+          week_number: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules_with_lessons"
+            referencedColumns: ["module_id"]
+          },
+          {
+            foreignKeyName: "lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_student_profiles_public: {
         Row: {
           availability_status: string | null
@@ -1735,6 +1792,25 @@ export type Database = {
           xp_points?: number | null
         }
         Relationships: []
+      }
+      modules_public: {
+        Row: {
+          course_id: string | null
+          created_at: string | null
+          id: string | null
+          order_index: number | null
+          sort_order: number | null
+          title: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles_public: {
         Row: {
