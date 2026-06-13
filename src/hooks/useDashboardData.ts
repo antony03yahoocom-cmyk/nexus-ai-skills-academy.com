@@ -9,6 +9,7 @@ export interface DashboardData {
   submissions: any[];
   announcements: any[];
   unreadCount: number;
+  unreadNotificationsCount: number;
   openOpportunitiesCount: number;
   myMarketplaceProfile: any;
 }
@@ -33,6 +34,7 @@ export function useDashboardData(userId: string | undefined) {
         submissionsRes,
         announcementsRes,
         unreadRes,
+        unreadNotificationsRes,
         opportunitiesRes,
         marketplaceRes,
       ] = await Promise.all([
@@ -77,6 +79,11 @@ export function useDashboardData(userId: string | undefined) {
           .eq('receiver_id', userId)
           .eq('is_read', false),
         supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('is_read', false),
+        supabase
           .from('marketplace_opportunities')
           .select('id', { count: 'exact', head: true })
           .eq('status', 'open'),
@@ -95,6 +102,7 @@ export function useDashboardData(userId: string | undefined) {
         submissions: submissionsRes.data ?? [],
         announcements: announcementsRes.data ?? [],
         unreadCount: unreadRes.count ?? 0,
+        unreadNotificationsCount: unreadNotificationsRes.count ?? 0,
         openOpportunitiesCount: opportunitiesRes.count ?? 0,
         myMarketplaceProfile: marketplaceRes.data ?? null,
       };
