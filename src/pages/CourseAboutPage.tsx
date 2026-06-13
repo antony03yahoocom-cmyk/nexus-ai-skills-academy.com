@@ -135,6 +135,8 @@ const CourseAboutPage = () => {
   // ✅ Enrollment-first: students must enroll (free or paid) before they can open lessons or pay.
   const canOpenFreeCourse = !!user && isFree && !!enrollment;
   const needsEnroll = !!user && !enrollment;
+  // ✅ Trial students get into their selected trial course (first 5 lessons) even without paying.
+  const trialAccess = !!(user && trialActive && profile?.trial_course_id === courseId && !isFree);
   const priceFormatted = isFree ? "Free" : `KES ${course.price.toLocaleString()}`;
   const achievements: string[] = Array.isArray(course.what_you_achieve) ? (course.what_you_achieve as any[]).map(String) : [];
   const audience: string[] = Array.isArray(course.who_is_for) ? (course.who_is_for as any[]).map(String) : [];
@@ -219,7 +221,7 @@ const CourseAboutPage = () => {
                   <Button variant="hero" size="lg" onClick={() => enroll.mutate()} disabled={enroll.isPending}>
                     {enroll.isPending ? "Enrolling…" : isFree ? "Enroll for Free" : "Enroll Now"}
                   </Button>
-                ) : isFree ? (
+                ) : isFree || trialAccess ? (
                   <Button variant="hero" size="lg" asChild>
                     <Link to={`/courses/${courseId}`}>Start Learning <ArrowRight className="w-4 h-4 ml-1" /></Link>
                   </Button>
@@ -376,7 +378,7 @@ const CourseAboutPage = () => {
               <Button variant="hero" size="lg" onClick={() => enroll.mutate()} disabled={enroll.isPending}>
                 {enroll.isPending ? "Enrolling…" : isFree ? "Enroll for Free" : "Enroll Now"}
               </Button>
-            ) : isFree ? (
+            ) : isFree || trialAccess ? (
               <Button variant="hero" size="lg" asChild>
                 <Link to={`/courses/${courseId}`}>Start Learning <ArrowRight className="w-4 h-4 ml-1" /></Link>
               </Button>
