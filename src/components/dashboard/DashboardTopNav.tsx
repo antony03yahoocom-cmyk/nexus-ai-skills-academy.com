@@ -1,8 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell, Users, Sparkles, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const WHATSAPP_URL = "https://chat.whatsapp.com/GdHfJutCYlX7xitn3gC71o";
@@ -11,6 +11,7 @@ const DashboardTopNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, profile, user } = useAuth();
+  const qc = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const showBack = location.pathname !== "/dashboard" && location.pathname !== "/";
   const handleBack = () => (window.history.length > 1 ? navigate(-1) : navigate("/dashboard"));
@@ -51,6 +52,36 @@ const DashboardTopNav = () => {
     refetchInterval: 30000,
   });
 
+  // Unread notifications (assignment reviews, opportunities, announcements, etc.)
+  const { data: unreadNotifications = 0 } = useQuery({
+    queryKey: ["unread-notifications", user?.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user!.id)
+        .eq("is_read", false);
+      if (error) return 0;
+      return count ?? 0;
+    },
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
+
+  // Live-update the notification bell as new notifications arrive
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("topnav-notifications-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => qc.invalidateQueries({ queryKey: ["unread-notifications", user.id] })
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, qc]);
+
   const navLinks = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/courses", icon: BookOpen, label: "Courses" },
@@ -63,7 +94,7 @@ const DashboardTopNav = () => {
     { to: "/subscribe", icon: CreditCard, label: "Premium" },
   ];
 
-  const totalUnread = unreadMessages + unreadGroups;
+  const totalUnread = unreadMessages + unreadGroups + unreadNotifications;
 
   return (
     <>
