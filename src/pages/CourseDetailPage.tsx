@@ -98,6 +98,8 @@ const CourseDetailPage = () => {
   const isFree = course?.price === 0;
   // ✅ Enrollment-first: free courses still require an enrollment record before access.
   const canOpenFreeCourse = !!user && isFree && !!enrollment;
+  // ✅ Trial students get into their selected trial course (first 5 lessons) even without paying.
+  const trialAccess = !!(user && trialActive && profile?.trial_course_id === courseId && !isFree);
 
   const handleBuyCourse = async () => {
     if (!user || !session || !course) {
@@ -249,7 +251,7 @@ const CourseDetailPage = () => {
 
             <div className="flex flex-wrap gap-3">
               {enrollment || canOpenFreeCourse ? (
-                courseAccess || canOpenFreeCourse ? (
+                courseAccess || canOpenFreeCourse || trialAccess ? (
                   <Button variant="hero" size="lg" asChild>
                     <Link to={firstAccessibleLesson ? `/lesson/${firstAccessibleLesson.id}` : (allLessonsOrdered[0] ? `/lesson/${allLessonsOrdered[0].id}` : "#")}>
                       Continue Learning
