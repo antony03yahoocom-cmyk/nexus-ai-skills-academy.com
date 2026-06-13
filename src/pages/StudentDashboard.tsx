@@ -146,10 +146,43 @@ const StudentDashboard = () => {
                 </Button>
               </Link>
             )}
-            <Link to="/dashboard/notifications">
+            <Link to="/dashboard/notifications" className="relative">
               <Button variant="outline" size="sm"><Bell className="w-4 h-4" /></Button>
+              {dashboardData?.unreadNotificationsCount! > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
+                  {dashboardData?.unreadNotificationsCount! > 9 ? "9+" : dashboardData?.unreadNotificationsCount}
+                </span>
+              )}
             </Link>
           </div>
+        </div>
+
+        {/* ── Quick Actions ── */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <Button variant="hero" size="sm" asChild>
+            <Link to={
+              activeEnrollment
+                ? `/courses/${activeEnrollment.course_id}`
+                : (dashboardData?.enrollments?.[0]?.course_id
+                    ? `/courses/${dashboardData.enrollments[0].course_id}`
+                    : "/courses")
+            }>
+              <Play className="w-4 h-4 mr-2" />
+              Continue Learning
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/courses">
+              <BookOpen className="w-4 h-4 mr-2" />
+              Browse Courses
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/community">
+              <Sparkles className="w-4 h-4 mr-2" />
+              Join Community
+            </Link>
+          </Button>
         </div>
 
         {/* ── Subscription banner ── */}
@@ -160,9 +193,16 @@ const StudentDashboard = () => {
           </div>
         ) : trialActive ? (
           <div className="glass-card p-4 mb-6 border-accent/30 bg-accent/5 flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <span className="text-sm font-medium text-accent">Free Trial Active</span>
-              <p className="text-xs text-muted-foreground">{trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""} remaining · 1 course · First 5 lessons</p>
+            <div className="flex items-start gap-3">
+              <Clock className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-accent">
+                  Only {trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""} left in your free trial
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Unlock all courses before your trial expires.
+                </p>
+              </div>
             </div>
             <Button variant="hero" size="sm" asChild><Link to="/subscribe">Upgrade to Premium</Link></Button>
           </div>
@@ -228,7 +268,10 @@ const StudentDashboard = () => {
                 <TrendingUp className="w-4 h-4 text-primary" />
                 <h3 className="font-semibold text-sm">Overall Progress</h3>
               </div>
-              <span className="text-sm font-bold gradient-text">{totalProgress}%</span>
+              <div className="text-right">
+                <p className="text-sm font-bold gradient-text">{totalProgress}% Complete</p>
+                <p className="text-xs text-muted-foreground">{100 - totalProgress}% Remaining</p>
+              </div>
             </div>
             <Progress value={totalProgress} className="h-2.5 bg-secondary" />
             {totalProgress === 100 && (
