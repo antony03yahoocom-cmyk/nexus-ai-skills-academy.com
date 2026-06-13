@@ -680,7 +680,7 @@ dangerouslySetInnerHTML={{
                   const completed = allCompletions.includes(l.id);
                   const trialPreviewAccess = trialActive && profile?.trial_course_id === courseId && idx < 5;
                   const prevApproved = idx === 0 || (allCompletions.includes(allCourseLessons[idx - 1]?.id) && isLessonAssignmentApproved(allCourseLessons[idx - 1]?.id));
-                  const unlocked = isAdmin || (hasCourseAccess(courseId) && canAccessLesson(courseId, idx) && (trialPreviewAccess || prevApproved));
+                  const unlocked = isAdmin || trialPreviewAccess || (hasCourseAccess(courseId) && prevApproved);
                   // ✅ Clickable if completed (re-watch) or currently unlocked. Locked lessons stay non-clickable.
                   const clickable = isAdmin || completed || unlocked;
                   return (
