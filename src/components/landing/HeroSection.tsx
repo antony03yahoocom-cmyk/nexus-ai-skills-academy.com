@@ -22,21 +22,15 @@ const HeroSection = () => {
   const { data: stats } = useQuery({
     queryKey: ["landing-social-proof-stats"],
     queryFn: async () => {
-      const [studentsRes, coursesRes, reviewsRes] = await Promise.all([
-        supabase.from("profiles_public").select("*", { count: "exact", head: true }),
-        supabase.from("courses").select("*", { count: "exact", head: true }).eq("is_published", true),
-        supabase.from("course_reviews").select("rating"),
-      ]);
-
-      const reviews = reviewsRes.data ?? [];
-      const avgRating = reviews.length > 0
-        ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
-        : null;
-
+      // Use a SECURITY DEFINER RPC so anon visitors on the landing page
+      // get real counts — direct table queries on `profiles` return 0 for
+      // unauthenticated callers because the view is security_invoker = true.
+      const { data, error } = await supabase.rpc("get_platform_stats" as any);
+      if (error || !data) return { students: 0, courses: 0, avgRating: null };
       return {
-        students: studentsRes.count ?? 0,
-        courses: coursesRes.count ?? 0,
-        avgRating,
+        students: (data as any).student_count ?? 0,
+        courses: (data as any).course_count ?? 0,
+        avgRating: (data as any).avg_rating ? Number((data as any).avg_rating) : null,
       };
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
