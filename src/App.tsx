@@ -49,6 +49,8 @@ const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 const AdminMessagesPage = lazy(() => import("./pages/AdminMessagesPage"));
 const BlogPage = lazy(() => import("./pages/BlogPage"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
+const TermsOfServicePage = lazy(() => import("./pages/TermsOfServicePage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const ClassmatesPage = lazy(() => import("./pages/ClassmatesPage"));
 const MarketplaceHubPage = lazy(() => import("./pages/MarketplaceHubPage"));
@@ -133,6 +135,8 @@ const App = () => (
               <Route path="/admin/feedback" element={<AdminRoute><AdminFeedbackPage /></AdminRoute>} />
               <Route path="/admin/deletion-feedback" element={<AdminRoute><AdminDeletionFeedbackPage /></AdminRoute>} />
               <Route path="/admin/blog" element={<AdminRoute><AdminBlogPage /></AdminRoute>} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
               <Route path="/banned" element={<BannedPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
