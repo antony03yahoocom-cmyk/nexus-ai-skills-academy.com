@@ -26,6 +26,7 @@ type AuthContextType = {
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
+  isEmployer: boolean;
   isBanned: boolean;
   purchases: CoursePurchase[];
   trialActive: boolean;
@@ -46,6 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [purchases, setPurchases] = useState<CoursePurchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isEmployer, setIsEmployer] = useState(false);
 
   const loadAdminRole = useCallback(async (userId: string) => {
     try {
@@ -60,6 +62,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return !!data;
     } catch (error) {
       console.error("[AuthContext] Failed to load admin role:", error);
+      return false;
+    }
+  }, []);
+
+  const loadEmployerRole = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "employer" as any)
+        .maybeSingle();
+      if (error && error.code !== "PGRST116") return false;
+      // Also check for an existing employer profile as fallback
+      if (!data) {
+        const { data: ep } = await supabase
+          .from("marketplace_employer_profiles" as any)
+          .select("id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        return !!ep;
+      }
+      return !!data;
+    } catch {
       return false;
     }
   }, []);
@@ -112,23 +138,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         if (nextSession?.user) {
-          const [profileResult, adminResult] = await Promise.all([
+          const [profileResult, adminResult, employerResult] = await Promise.all([
             loadProfile(nextSession.user),
             loadAdminRole(nextSession.user.id),
+            loadEmployerRole(nextSession.user.id),
           ]);
           if (mounted) {
             setIsAdmin(adminResult && !!profileResult);
+            setIsEmployer(!!employerResult);
           }
         } else {
           setProfile(null);
           setPurchases([]);
           setIsAdmin(false);
+          setIsEmployer(false);
         }
       } catch (error) {
         console.error("[AuthContext] syncSession error:", error);
         setProfile(null);
         setPurchases([]);
         setIsAdmin(false);
+        setIsEmployer(false);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -146,7 +176,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, [loadProfile, loadAdminRole]);
+  }, [loadProfile, loadAdminRole, loadEmployerRole]);
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
@@ -209,6 +239,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profile,
         loading,
         isAdmin,
+        isEmployer,
         isBanned: !!profile?.is_banned,
         purchases,
         trialActive,
