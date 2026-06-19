@@ -84,7 +84,11 @@ const Footer = () => (
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} NEXUS AI Skills Academy. All rights reserved. · Made in Africa 🌍
         </p>
-        <div className="flex gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-4 text-xs text-muted-foreground items-center">
+          <Link to="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+          <span>·</span>
+          <Link to="/terms-of-service" className="hover:text-foreground transition-colors">Terms of Service</Link>
+          <span>·</span>
           <span>Secured by Paystack</span>
           <span>·</span>
           <span>M-Pesa Supported</span>
