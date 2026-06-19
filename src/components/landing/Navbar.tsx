@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Cpu, Menu, X, LayoutDashboard, ShieldCheck, LogOut, MessageCircle } from "lucide-react";
+import { Cpu, Menu, X, LayoutDashboard, ShieldCheck, LogOut, MessageCircle, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +10,7 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const { user, isAdmin, isEmployer, loading, signOut } = useAuth();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -80,6 +80,14 @@ const Navbar = () => {
                     </Link>
                   </Button>
                 )}
+                {isEmployer && (
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/employer/dashboard">
+                      <Briefcase className="w-4 h-4 mr-1" />
+                      Employer
+                    </Link>
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/dashboard">
                     <LayoutDashboard className="w-4 h-4 mr-1" />
@@ -95,6 +103,12 @@ const Navbar = () => {
               <>
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/login">Login</Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild className="border-primary/30 text-primary hover:bg-primary/5">
+                  <Link to="/employer/signup">
+                    <Briefcase className="w-3.5 h-3.5 mr-1" />
+                    Hire Talent
+                  </Link>
                 </Button>
                 <Button variant="hero" size="sm" asChild>
                   <Link to="/signup">Get Started</Link>
@@ -145,6 +159,14 @@ const Navbar = () => {
                     </Link>
                   </Button>
                 )}
+                {isEmployer && (
+                  <Button variant="ghost" size="sm" asChild className="justify-start">
+                    <Link to="/employer/dashboard" onClick={() => setIsOpen(false)}>
+                      <Briefcase className="w-4 h-4 mr-2" />
+                      Employer Dashboard
+                    </Link>
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" asChild className="justify-start">
                   <Link to="/dashboard" onClick={() => setIsOpen(false)}>
                     <LayoutDashboard className="w-4 h-4 mr-2" />
@@ -160,6 +182,12 @@ const Navbar = () => {
               <>
                 <Button variant="ghost" size="sm" asChild className="justify-start">
                   <Link to="/login" onClick={() => setIsOpen(false)}>Login</Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild className="justify-start border-primary/30 text-primary">
+                  <Link to="/employer/signup" onClick={() => setIsOpen(false)}>
+                    <Briefcase className="w-4 h-4 mr-2" />
+                    Hire Talent
+                  </Link>
                 </Button>
                 <Button variant="hero" size="sm" asChild>
                   <Link to="/signup" onClick={() => setIsOpen(false)}>Get Started — Free Trial</Link>
