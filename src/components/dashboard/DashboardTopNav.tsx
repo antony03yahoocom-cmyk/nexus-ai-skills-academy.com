@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell, Users, Sparkles, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, CreditCard, LogOut, Cpu, Menu, X, MessageCircle, Settings, Mail, Bell, Users, Sparkles, ArrowLeft, Briefcase } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,7 +10,7 @@ const WHATSAPP_URL = "https://chat.whatsapp.com/GdHfJutCYlX7xitn3gC71o";
 const DashboardTopNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, profile, user } = useAuth();
+  const { signOut, profile, user, isEmployer } = useAuth();
   const qc = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const showBack = location.pathname !== "/dashboard" && location.pathname !== "/";
@@ -92,6 +92,7 @@ const DashboardTopNav = () => {
     { to: "/discussions", icon: MessageCircle, label: "Discussions", badge: unreadGroups },
     { to: "/dashboard/messages", icon: Mail, label: "Messages", badge: unreadMessages },
     { to: "/subscribe", icon: CreditCard, label: "Premium" },
+    ...(isEmployer ? [{ to: "/employer/dashboard", icon: Briefcase, label: "Employer" }] : []),
   ];
 
   const totalUnread = unreadMessages + unreadGroups + unreadNotifications;
