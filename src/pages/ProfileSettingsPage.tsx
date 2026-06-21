@@ -8,7 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Camera, Save, User, Trash2, AlertTriangle } from "lucide-react";
+import { Camera, Save, User, Trash2, AlertTriangle, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -17,6 +17,8 @@ const ProfileSettingsPage = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [phone, setPhone] = useState(user?.phone || "");
+  const [whatsappNumber, setWhatsappNumber]   = useState("");
+  const [whatsappOptedIn, setWhatsappOptedIn] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -80,7 +82,11 @@ const ProfileSettingsPage = () => {
       }
       const { error } = await supabase
         .from("profiles")
-        .update({ full_name: fullName })
+        .update({
+          full_name: fullName,
+          whatsapp_number:   whatsappNumber.trim() || null,
+          whatsapp_opted_in: whatsappOptedIn,
+        } as any)
         .eq("user_id", user.id);
       if (error) throw error;
       await refreshProfile();
@@ -93,10 +99,24 @@ const ProfileSettingsPage = () => {
   };
 
   useEffect(() => {
-    if (user?.phone) {
-      setPhone(user.phone);
-    }
+    if (user?.phone) setPhone(user.phone);
   }, [user?.phone]);
+
+  // Load WhatsApp settings from profiles table
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("whatsapp_number, whatsapp_opted_in")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setWhatsappNumber((data as any).whatsapp_number ?? "");
+          setWhatsappOptedIn((data as any).whatsapp_opted_in ?? false);
+        }
+      });
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -164,6 +184,33 @@ const ProfileSettingsPage = () => {
                 className="bg-secondary border-border"
               />
               <p className="text-xs text-muted-foreground">Add your phone number to complete your profile and receive important updates.</p>
+            </div>
+
+            {/* WhatsApp notifications */}
+            <div className="space-y-3 p-4 rounded-xl bg-success/5 border border-success/20">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-success" />
+                <Label className="mb-0">WhatsApp Notifications</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Get lesson unlocks, certificate alerts, trial reminders, and job opportunities sent
+                straight to your WhatsApp. No verification code needed — just enter your number.
+              </p>
+              <Input
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                placeholder="+254712345678"
+                className="bg-secondary border-border"
+              />
+              <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={whatsappOptedIn}
+                  onChange={(e) => setWhatsappOptedIn(e.target.checked)}
+                  className="w-4 h-4 rounded border-border accent-success"
+                />
+                Send me WhatsApp notifications
+              </label>
             </div>
 
             {/* Account info */}
