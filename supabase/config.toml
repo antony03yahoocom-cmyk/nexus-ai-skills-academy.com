@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.student-chatbot]
 verify_jwt = true
+
+[functions.send-whatsapp]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
