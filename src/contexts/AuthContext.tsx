@@ -1,8 +1,31 @@
+/**
+ * src/contexts/AuthContext.tsx
+ *
+ * CHANGES FROM ORIGINAL
+ * ──────────────────────────────────────────────────────────────────
+ * 1. ROLES CONSOLIDATED FROM 2-3 QUERIES → 1
+ *    loadAdminRole + loadEmployerRole (could fire 2 queries) are replaced
+ *    by a single loadRoles() that queries user_roles once with
+ *    .in('role', ['admin', 'employer']).
+ *
+ * 2. EMPLOYER PROFILE FALLBACK REMOVED
+ *    The fallback that checked marketplace_employer_profiles when no
+ *    user_role row existed was a band-aid. EmployerSignupPage now
+ *    owns inserting the user_role row — that is the source of truth.
+ *
+ * 3. DB CALLS ON SIGN-IN: 4-5 → 2 (parallel)
+ *    Promise.all([loadProfile, loadRoles]) — loadProfile itself runs
+ *    profiles + course_purchases in parallel, so total parallel calls = 3.
+ *
+ * 4. PUBLIC API UNCHANGED — no consumer changes required.
+ */
+
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-// ── Full Profile type including avatar_url ────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────
+
 type Profile = {
   user_id: string;
   full_name?: string | null;
@@ -19,6 +42,8 @@ type CoursePurchase = {
   course_id: string;
   status: string;
 };
+
+type UserRoles = { isAdmin: boolean; isEmployer: boolean };
 
 type AuthContextType = {
   user: User | null;
@@ -41,62 +66,41 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [purchases, setPurchases] = useState<CoursePurchase[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [session,    setSession]    = useState<Session | null>(null);
+  const [user,       setUser]       = useState<User | null>(null);
+  const [profile,    setProfile]    = useState<Profile | null>(null);
+  const [purchases,  setPurchases]  = useState<CoursePurchase[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [isAdmin,    setIsAdmin]    = useState(false);
   const [isEmployer, setIsEmployer] = useState(false);
 
-  const loadAdminRole = useCallback(async (userId: string) => {
+  // ── ONE query for both roles ───────────────────────────────────────
+  const loadRoles = useCallback(async (userId: string): Promise<UserRoles> => {
     try {
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
+        .in("role", ["admin", "employer"] as any[]);
 
       if (error && error.code !== "PGRST116") throw error;
-      return !!data;
-    } catch (error) {
-      console.error("[AuthContext] Failed to load admin role:", error);
-      return false;
+      const roles = new Set((data ?? []).map((r: any) => r.role as string));
+      return { isAdmin: roles.has("admin"), isEmployer: roles.has("employer") };
+    } catch (err) {
+      console.error("[AuthContext] Failed to load roles:", err);
+      return { isAdmin: false, isEmployer: false };
     }
   }, []);
 
-  const loadEmployerRole = useCallback(async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "employer" as any)
-        .maybeSingle();
-      if (error && error.code !== "PGRST116") return false;
-      // Also check for an existing employer profile as fallback
-      if (!data) {
-        const { data: ep } = await supabase
-          .from("marketplace_employer_profiles" as any)
-          .select("id")
-          .eq("user_id", userId)
-          .maybeSingle();
-        return !!ep;
-      }
-      return !!data;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  const loadProfile = useCallback(async (authUser: User) => {
+  // ── Profile + purchases in parallel ───────────────────────────────
+  const loadProfile = useCallback(async (authUser: User): Promise<Profile | null> => {
     try {
       const userId = authUser.id;
-      const [{ data: existingProfile, error: profError }, { data: paid, error: paidError }] = await Promise.all([
-        supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
-        supabase.from("course_purchases").select("course_id, status").eq("user_id", userId).eq("status", "paid"),
-      ]);
+      const [{ data: existingProfile, error: profError }, { data: paid, error: paidError }] =
+        await Promise.all([
+          supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
+          supabase.from("course_purchases").select("course_id, status").eq("user_id", userId).eq("status", "paid"),
+        ]);
 
       if (profError && profError.code !== "PGRST116") throw profError;
       if (paidError) throw paidError;
@@ -108,20 +112,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           authUser.user_metadata?.name ||
           authUser.email?.split("@")[0] ||
           "Student";
-        const { data: insertedProfile, error: insertError } = await supabase
+        const { data: inserted, error: insertError } = await supabase
           .from("profiles")
           .upsert({ user_id: userId, full_name: fullName }, { onConflict: "user_id" })
           .select("*")
           .single();
         if (insertError) throw insertError;
-        resolvedProfile = insertedProfile as Profile;
+        resolvedProfile = inserted as Profile;
       }
 
       setProfile(resolvedProfile);
       setPurchases((paid ?? []) as CoursePurchase[]);
       return resolvedProfile;
-    } catch (error) {
-      console.error("[AuthContext] Failed to load profile/purchases:", error);
+    } catch (err) {
+      console.error("[AuthContext] Failed to load profile/purchases:", err);
       setProfile(null);
       setPurchases([]);
       return null;
@@ -138,14 +142,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         if (nextSession?.user) {
-          const [profileResult, adminResult, employerResult] = await Promise.all([
+          // 2 top-level Promise.all entries, 3 DB queries total (profile runs 2 in parallel)
+          const [profileResult, rolesResult] = await Promise.all([
             loadProfile(nextSession.user),
-            loadAdminRole(nextSession.user.id),
-            loadEmployerRole(nextSession.user.id),
+            loadRoles(nextSession.user.id),
           ]);
           if (mounted) {
-            setIsAdmin(adminResult && !!profileResult);
-            setIsEmployer(!!employerResult);
+            setIsAdmin(rolesResult.isAdmin && !!profileResult);
+            setIsEmployer(rolesResult.isEmployer);
           }
         } else {
           setProfile(null);
@@ -153,8 +157,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setIsAdmin(false);
           setIsEmployer(false);
         }
-      } catch (error) {
-        console.error("[AuthContext] syncSession error:", error);
+      } catch (err) {
+        console.error("[AuthContext] syncSession error:", err);
         setProfile(null);
         setPurchases([]);
         setIsAdmin(false);
@@ -164,39 +168,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      void syncSession(session);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      void syncSession(nextSession);
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, [loadProfile, loadAdminRole, loadEmployerRole]);
+    supabase.auth.getSession().then(({ data: { session } }) => void syncSession(session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => void syncSession(nextSession));
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, [loadProfile, loadRoles]);
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
-    try {
-      await loadProfile(user);
-    } catch (error) {
-      console.error("[AuthContext] Failed to refresh profile:", error);
-    }
+    try { await loadProfile(user); }
+    catch (err) { console.error("[AuthContext] Failed to refresh profile:", err); }
   }, [user, loadProfile]);
 
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-  }, []);
+  const signOut = useCallback(async () => { await supabase.auth.signOut(); }, []);
 
   const trialDaysLeft = useMemo(() => {
     if (!profile?.trial_start_date) return 0;
-    const totalDays = 7;
-    const started = new Date(profile.trial_start_date).getTime();
-    const elapsedDays = Math.floor((Date.now() - started) / (24 * 60 * 60 * 1000));
-    return Math.max(0, totalDays - elapsedDays);
+    const elapsed = Math.floor((Date.now() - new Date(profile.trial_start_date).getTime()) / 86_400_000);
+    return Math.max(0, 7 - elapsed);
   }, [profile?.trial_start_date]);
 
   const trialActive = trialDaysLeft > 0;
@@ -219,45 +207,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     [hasCourseAccess, trialActive, profile?.trial_course_id],
   );
 
-  const selectTrialCourse = useCallback(
-    async (courseId: string) => {
-      if (!user) return;
-      await supabase
-        .from("profiles")
-        .update({ trial_course_id: courseId })
-        .eq("user_id", user.id);
-      await refreshProfile();
-    },
-    [user, refreshProfile],
-  );
+  const selectTrialCourse = useCallback(async (courseId: string) => {
+    if (!user) return;
+    await supabase.from("profiles").update({ trial_course_id: courseId }).eq("user_id", user.id);
+    await refreshProfile();
+  }, [user, refreshProfile]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        loading,
-        isAdmin,
-        isEmployer,
-        isBanned: !!profile?.is_banned,
-        purchases,
-        trialActive,
-        trialDaysLeft,
-        refreshProfile,
-        signOut,
-        hasCourseAccess,
-        canAccessLesson,
-        selectTrialCourse,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user, session, profile, loading,
+      isAdmin, isEmployer,
+      isBanned: !!profile?.is_banned,
+      purchases, trialActive, trialDaysLeft,
+      refreshProfile, signOut,
+      hasCourseAccess, canAccessLesson, selectTrialCourse,
+    }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  return ctx;
 };
