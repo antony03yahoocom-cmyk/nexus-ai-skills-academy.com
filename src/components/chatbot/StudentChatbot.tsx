@@ -184,7 +184,7 @@ export default function StudentChatbot() {
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      content: "Hi! 👋 I'm **NEXUS AI Assistant** — your personal learning guide.\n\nI can help you:\n- Understand course concepts\n- Work through assignments\n- Navigate the platform\n- Explore career opportunities\n\nWhat would you like to explore today?",
+      content: "Hi! 👋 I'm **NEXUS AI** — your personal tutor, career guide, and learning partner.\n\nI know your courses, your progress, your pending assignments, and the job opportunities that match your skills. I update in real time as you learn.\n\nTry asking me:\n- *\"What should I do next?\"*\n- *\"Help me understand this lesson\"*\n- *\"What jobs match my skills?\"*\n- *\"My assignment was rejected — help me fix it\"*\n\nWhat's on your mind?",
       ts: Date.now(),
     },
   ]);
@@ -298,10 +298,21 @@ export default function StudentChatbot() {
         return;
       }
 
+      // Extract current lesson ID from URL  e.g. /lesson/abc-123
+      const lessonMatch = window.location.pathname.match(/^\/lesson\/([\w-]+)/);
+      const currentLessonId = lessonMatch?.[1] ?? null;
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })) }),
+        body: JSON.stringify({
+          messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
+          // Send page context so the AI knows exactly what the student is looking at
+          context: {
+            current_lesson_id: currentLessonId,
+            current_path: window.location.pathname,
+          },
+        }),
       });
 
       if (!resp.ok) {
