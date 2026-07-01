@@ -141,6 +141,51 @@ export type Database = {
           },
         ]
       }
+      blog_posts: {
+        Row: {
+          category: string
+          content: string | null
+          created_at: string
+          emoji: string
+          excerpt: string
+          external_url: string | null
+          id: string
+          is_published: boolean
+          published_at: string
+          read_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          content?: string | null
+          created_at?: string
+          emoji?: string
+          excerpt: string
+          external_url?: string | null
+          id?: string
+          is_published?: boolean
+          published_at?: string
+          read_time?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string | null
+          created_at?: string
+          emoji?: string
+          excerpt?: string
+          external_url?: string | null
+          id?: string
+          is_published?: boolean
+          published_at?: string
+          read_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       certificates: {
         Row: {
           certificate_link: string | null
@@ -1354,6 +1399,8 @@ export type Database = {
           trial_start_date: string
           updated_at: string
           user_id: string
+          whatsapp_number: string | null
+          whatsapp_opted_in: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -1368,6 +1415,8 @@ export type Database = {
           trial_start_date?: string
           updated_at?: string
           user_id: string
+          whatsapp_number?: string | null
+          whatsapp_opted_in?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -1382,6 +1431,8 @@ export type Database = {
           trial_start_date?: string
           updated_at?: string
           user_id?: string
+          whatsapp_number?: string | null
+          whatsapp_opted_in?: boolean
         }
         Relationships: [
           {
@@ -1911,6 +1962,8 @@ export type Database = {
           trial_start_date: string
           updated_at: string
           user_id: string
+          whatsapp_number: string | null
+          whatsapp_opted_in: boolean
         }[]
         SetofOptions: {
           from: "*"
@@ -1967,6 +2020,18 @@ export type Database = {
       app_role: "admin" | "user"
       certificate_status: "Pending" | "Issued"
       group_status: "active" | "suspended"
+      notification_event_type:
+        | "new_message"
+        | "new_assignment"
+        | "assignment_due_date_reminder"
+        | "assignment_review_complete"
+        | "course_content_updated"
+        | "new_announcement"
+        | "application_update"
+        | "shortlisted"
+        | "hired"
+        | "new_opportunity"
+        | "profile_view"
       project_status: "Draft" | "Submitted" | "Approved" | "Rejected"
     }
     CompositeTypes: {
@@ -2098,6 +2163,19 @@ export const Constants = {
       app_role: ["admin", "user"],
       certificate_status: ["Pending", "Issued"],
       group_status: ["active", "suspended"],
+      notification_event_type: [
+        "new_message",
+        "new_assignment",
+        "assignment_due_date_reminder",
+        "assignment_review_complete",
+        "course_content_updated",
+        "new_announcement",
+        "application_update",
+        "shortlisted",
+        "hired",
+        "new_opportunity",
+        "profile_view",
+      ],
       project_status: ["Draft", "Submitted", "Approved", "Rejected"],
     },
   },
