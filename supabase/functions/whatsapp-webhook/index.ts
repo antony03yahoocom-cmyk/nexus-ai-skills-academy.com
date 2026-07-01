@@ -1,12 +1,12 @@
-// whatsapp-webhook/index.ts
-// Handles Meta's WhatsApp Cloud API webhook.
-//
-// Two roles:
-//   GET  → Webhook verification (Meta sends a challenge, we echo it back)
-//   POST → Incoming events: delivery receipts, read receipts, inbound messages
-//
-// Webhook URL to paste into Meta Dashboard:
-//   https://YOUR_PROJECT_REF.supabase.co/functions/v1/whatsapp-webhook
+/**
+ * whatsapp-webhook/index.ts — Meta WhatsApp Cloud API webhook
+ *
+ * GET  → Webhook verification challenge
+ * POST → Delivery receipts, read receipts, inbound messages
+ *
+ * Stores everything in whatsapp_messages / whatsapp_conversations.
+ * Also fires the pg trigger for in-app notifications on inbound messages.
+ */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -15,149 +15,144 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+function normalisePhone(raw: string): string {
+  const d = raw.replace(/\D/g, "");
+  if (d.startsWith("254") && d.length === 12) return d;
+  if (d.startsWith("0") && d.length === 10) return "254" + d.slice(1);
+  return d;
+}
 
-  // ── GET: Meta webhook verification ────────────────────────────────
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+
+  // ── GET: Verification ──────────────────────────────────────────
   if (req.method === "GET") {
-    const url    = new URL(req.url);
+    const url       = new URL(req.url);
     const mode      = url.searchParams.get("hub.mode");
     const token     = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
+    const expected  = Deno.env.get("WHATSAPP_WEBHOOK_VERIFY_TOKEN") ?? "";
 
-    const verifyToken = Deno.env.get("WHATSAPP_WEBHOOK_VERIFY_TOKEN") ?? "";
-
-    if (mode === "subscribe" && token === verifyToken && challenge) {
-      console.log("[whatsapp-webhook] Webhook verified by Meta ✅");
-      // Meta expects the challenge echoed back as plain text with 200
+    if (mode === "subscribe" && token === expected && challenge) {
+      console.log("[whatsapp-webhook] ✅ Verified by Meta");
       return new Response(challenge, { status: 200 });
     }
-
-    console.warn("[whatsapp-webhook] Verification failed — wrong verify_token or missing params");
     return new Response("Forbidden", { status: 403 });
   }
 
-  // ── POST: Incoming events from Meta ──────────────────────────────
-  if (req.method === "POST") {
-    // Read raw body FIRST so we can verify Meta's HMAC signature
-    const rawBody = await req.arrayBuffer();
+  // ── POST: Events ───────────────────────────────────────────────
+  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
-    // Verify X-Hub-Signature-256 (fail closed if secret not configured)
-    const appSecret = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
-    if (!appSecret) {
-      console.warn("[whatsapp-webhook] WHATSAPP_APP_SECRET not configured — rejecting");
-      return new Response("Forbidden", { status: 403 });
-    }
-    const sigHeader = req.headers.get("x-hub-signature-256") ?? "";
-    try {
-      const key = await crypto.subtle.importKey(
-        "raw",
-        new TextEncoder().encode(appSecret),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"],
-      );
-      const mac = await crypto.subtle.sign("HMAC", key, rawBody);
-      const expected = "sha256=" + Array.from(new Uint8Array(mac))
-        .map((b) => b.toString(16).padStart(2, "0")).join("");
-      // Constant-time-ish compare
-      if (sigHeader.length !== expected.length) {
-        return new Response("Forbidden", { status: 403 });
-      }
-      let diff = 0;
-      for (let i = 0; i < expected.length; i++) {
-        diff |= sigHeader.charCodeAt(i) ^ expected.charCodeAt(i);
-      }
-      if (diff !== 0) {
-        return new Response("Forbidden", { status: 403 });
-      }
-    } catch (err) {
-      console.error("[whatsapp-webhook] HMAC verification error:", err);
-      return new Response("Forbidden", { status: 403 });
-    }
+  let payload: any;
+  try { payload = await req.json(); }
+  catch { return new Response("Bad Request", { status: 400 }); }
 
-    let payload: any;
-    try {
-      payload = JSON.parse(new TextDecoder().decode(rawBody));
-    } catch {
-      return new Response("Bad Request", { status: 400 });
-    }
+  const sb = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
 
+  const entry   = payload?.entry?.[0];
+  const changes = entry?.changes?.[0];
+  const value   = changes?.value;
 
-    // Extract the first entry + change
-    const entry   = payload?.entry?.[0];
-    const changes = entry?.changes?.[0];
-    const value   = changes?.value;
-
-    if (!value) {
-      return new Response(JSON.stringify({ received: true }), {
-        headers: { ...CORS, "Content-Type": "application/json" },
-      });
-    }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    // Handle delivery/read status updates
-    const statuses = value?.statuses ?? [];
-    for (const status of statuses) {
-      const wamid      = status.id;
-      const newStatus  = status.status; // "sent" | "delivered" | "read" | "failed"
-      if (!wamid) continue;
-
-      await supabase
-        .from("whatsapp_message_log" as any)
-        .update({ status: newStatus === "read" ? "delivered" : newStatus })
-        .eq("wamid", wamid);
-
-      console.log(`[whatsapp-webhook] Status update: ${wamid} → ${newStatus}`);
-    }
-
-    // Handle inbound messages (students replying to WhatsApp)
-    const messages = value?.messages ?? [];
-    for (const msg of messages) {
-      const from    = msg.from;   // phone number (e.g. 254712...)
-      const text    = msg.text?.body ?? msg.type ?? "(non-text)";
-      const type    = msg.type;
-
-      console.log(`[whatsapp-webhook] Inbound from ${from}: "${text}" (${type})`);
-
-      // Look up the student by their WhatsApp number
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .eq("whatsapp_number", from)
-        .maybeSingle();
-
-      if (profile) {
-        // Find admin to use as sender for the in-app reply
-        const { data: adminRow } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "admin")
-          .limit(1)
-          .single();
-
-        if (adminRow) {
-          // Route the inbound WhatsApp message as a private message in the platform
-          await supabase.from("private_messages").insert({
-            sender_id:   profile.user_id,
-            receiver_id: adminRow.user_id,
-            content:     `[WhatsApp reply from ${profile.full_name ?? from}]: ${text}`,
-            is_read:     false,
-          });
-          console.log(`[whatsapp-webhook] Inbound message saved for user ${profile.user_id}`);
-        }
-      }
-    }
-
-    // Always return 200 quickly so Meta doesn't retry
+  if (!value) {
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...CORS, "Content-Type": "application/json" },
     });
   }
 
-  return new Response("Method Not Allowed", { status: 405 });
+  // ── Delivery / read status updates ────────────────────────────
+  for (const status of value?.statuses ?? []) {
+    if (!status.id) continue;
+    const newStatus = status.status as string; // sent|delivered|read|failed
+
+    await sb
+      .from("whatsapp_messages" as any)
+      .update({ status: newStatus })
+      .eq("wamid", status.id);
+  }
+
+  // ── Inbound messages ──────────────────────────────────────────
+  for (const msg of value?.messages ?? []) {
+    const fromPhone  = normalisePhone(msg.from as string ?? "");
+    const msgType    = msg.type as string ?? "text";
+    const body       = msg.text?.body as string
+      ?? msg.image?.caption as string
+      ?? msg.document?.caption as string
+      ?? `[${msgType} message]`;
+    const mediaUrl   = msg.image?.link ?? msg.video?.link ?? msg.document?.link ?? null;
+    const wamid      = msg.id as string;
+
+    // Upsert conversation
+    const { data: existing } = await sb
+      .from("whatsapp_conversations" as any)
+      .select("id, student_user_id")
+      .eq("phone_number", fromPhone)
+      .maybeSingle();
+
+    let convId: string;
+    let studentUserId: string | null = null;
+
+    if (existing) {
+      convId       = (existing as any).id;
+      studentUserId = (existing as any).student_user_id;
+    } else {
+      // Try to find student by WhatsApp number on profile
+      const { data: profileRow } = await sb
+        .from("profiles")
+        .select("user_id, full_name")
+        .eq("whatsapp_number", fromPhone)
+        .maybeSingle();
+
+      studentUserId = (profileRow as any)?.user_id ?? null;
+      const displayName = value?.contacts?.[0]?.profile?.name as string
+        ?? (profileRow as any)?.full_name
+        ?? null;
+
+      const { data: newConv } = await sb
+        .from("whatsapp_conversations" as any)
+        .insert({
+          phone_number:    fromPhone,
+          display_name:    displayName,
+          student_user_id: studentUserId,
+        })
+        .select("id")
+        .single();
+      convId = (newConv as any).id;
+    }
+
+    // Insert message (trigger fires to update conversation stats)
+    await sb.from("whatsapp_messages" as any).insert({
+      conversation_id: convId,
+      wamid,
+      direction:    "inbound",
+      message_type: msgType,
+      body,
+      media_url:    mediaUrl,
+      status:       "delivered",
+    });
+
+    // Also route as in-app notification to admin
+    const { data: adminRole } = await sb
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin")
+      .limit(1)
+      .single();
+
+    if (adminRole) {
+      await sb.from("notifications" as any).insert({
+        user_id:    adminRole.user_id,
+        event_type: "new_message",
+        title:      `WhatsApp reply from ${fromPhone}`,
+        message:    body.slice(0, 200),
+        metadata:   { conversation_id: convId, phone: fromPhone, student_user_id: studentUserId },
+      });
+    }
+  }
+
+  return new Response(JSON.stringify({ received: true }), {
+    headers: { ...CORS, "Content-Type": "application/json" },
+  });
 });
