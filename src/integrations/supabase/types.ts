@@ -513,6 +513,30 @@ export type Database = {
         }
         Relationships: []
       }
+      employer_shortlists: {
+        Row: {
+          created_at: string
+          employer_user_id: string
+          id: string
+          note: string | null
+          student_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          employer_user_id: string
+          id?: string
+          note?: string | null
+          student_user_id: string
+        }
+        Update: {
+          created_at?: string
+          employer_user_id?: string
+          id?: string
+          note?: string | null
+          student_user_id?: string
+        }
+        Relationships: []
+      }
       enrollments: {
         Row: {
           course_id: string
@@ -826,6 +850,7 @@ export type Database = {
           company_name: string
           created_at: string
           description: string | null
+          featured: boolean
           id: string
           logo_url: string | null
           updated_at: string
@@ -837,6 +862,7 @@ export type Database = {
           company_name: string
           created_at?: string
           description?: string | null
+          featured?: boolean
           id?: string
           logo_url?: string | null
           updated_at?: string
@@ -848,6 +874,7 @@ export type Database = {
           company_name?: string
           created_at?: string
           description?: string | null
+          featured?: boolean
           id?: string
           logo_url?: string | null
           updated_at?: string
@@ -875,6 +902,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          views_count: number
         }
         Insert: {
           budget_max?: number | null
@@ -893,6 +921,7 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          views_count?: number
         }
         Update: {
           budget_max?: number | null
@@ -911,6 +940,7 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          views_count?: number
         }
         Relationships: []
       }
@@ -1865,6 +1895,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_employer_analytics: { Args: { emp_user_id: string }; Returns: Json }
       get_my_profile: {
         Args: never
         Returns: {
@@ -1894,6 +1925,7 @@ export type Database = {
           next_lesson_id: string
         }[]
       }
+      get_platform_stats: { Args: never; Returns: Json }
       get_posts_for_user: {
         Args: { p_limit: number; p_user_id: string }
         Returns: {
@@ -1921,6 +1953,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_opportunity_views: {
+        Args: { opp_id: string }
+        Returns: undefined
       }
       is_lesson_assignment_approved: {
         Args: { p_lesson_id: string; p_user_id: string }
