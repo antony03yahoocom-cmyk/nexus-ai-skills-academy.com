@@ -34,6 +34,7 @@ const AdminTestimonialsPage = lazy(() => import("./pages/AdminTestimonialsPage")
 const AdminFeedbackPage = lazy(() => import("./pages/AdminFeedbackPage"));
 const AdminDeletionFeedbackPage = lazy(() => import("./pages/AdminDeletionFeedbackPage"));
 const AdminBlogPage = lazy(() => import("./pages/AdminBlogPage"));
+const AdminWhatsAppPage = lazy(() => import("./pages/AdminWhatsAppPage"));
 const AdminEmployersPage = lazy(() => import("./pages/AdminEmployersPage"));
 const AdminOpportunitiesPage = lazy(() => import("./pages/AdminOpportunitiesPage"));
 const AdminReportsPage = lazy(() => import("./pages/AdminReportsPage"));
@@ -135,6 +136,7 @@ const App = () => (
               <Route path="/admin/feedback" element={<AdminRoute><AdminFeedbackPage /></AdminRoute>} />
               <Route path="/admin/deletion-feedback" element={<AdminRoute><AdminDeletionFeedbackPage /></AdminRoute>} />
               <Route path="/admin/blog" element={<AdminRoute><AdminBlogPage /></AdminRoute>} />
+              <Route path="/admin/whatsapp" element={<AdminRoute><AdminWhatsAppPage /></AdminRoute>} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/terms-of-service" element={<TermsOfServicePage />} />
               <Route path="/banned" element={<BannedPage />} />
