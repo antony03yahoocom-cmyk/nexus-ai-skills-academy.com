@@ -1776,6 +1776,45 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_message_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          notification_id: string | null
+          phone_number: string
+          status: string
+          template_name: string
+          user_id: string
+          wamid: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          notification_id?: string | null
+          phone_number: string
+          status?: string
+          template_name: string
+          user_id: string
+          wamid?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          notification_id?: string | null
+          phone_number?: string
+          status?: string
+          template_name?: string
+          user_id?: string
+          wamid?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       course_modules_with_lessons: {
@@ -2015,6 +2054,10 @@ export type Database = {
         Args: { p_lesson_id: string; p_user_id: string }
         Returns: boolean
       }
+      resend_whatsapp_notification: {
+        Args: { p_notification_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "user"
@@ -2032,6 +2075,11 @@ export type Database = {
         | "hired"
         | "new_opportunity"
         | "profile_view"
+        | "lesson_unlocked"
+        | "certificate_earned"
+        | "trial_expiry"
+        | "payment_confirmed"
+        | "announcement"
       project_status: "Draft" | "Submitted" | "Approved" | "Rejected"
     }
     CompositeTypes: {
@@ -2175,6 +2223,11 @@ export const Constants = {
         "hired",
         "new_opportunity",
         "profile_view",
+        "lesson_unlocked",
+        "certificate_earned",
+        "trial_expiry",
+        "payment_confirmed",
+        "announcement",
       ],
       project_status: ["Draft", "Submitted", "Approved", "Rejected"],
     },
