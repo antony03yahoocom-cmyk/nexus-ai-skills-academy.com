@@ -25,6 +25,7 @@ import {
   Briefcase,
   Flag,
   ArrowLeft,
+  MessageSquareMore,
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -236,6 +237,12 @@ const useAdminNav = () => {
       icon: Mail,
       label: "Messages",
       badge: unreadMessages,
+    },
+
+    {
+      to: "/admin/whatsapp",
+      icon: MessageSquareMore,
+      label: "WhatsApp",
     },
 
     {
