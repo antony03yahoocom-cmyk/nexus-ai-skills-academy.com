@@ -207,8 +207,8 @@ Deno.serve(async (req) => {
     if (!rawPhone) rawPhone = profile?.whatsapp_number;
     if (profile?.full_name) userName = profile.full_name.split(" ")[0]; // first name only
 
-    // Double-check opt-in (safety net even if trigger already checked)
-    if (!profile?.whatsapp_opted_in && !phone_number) {
+    // Always require opt-in — never bypass based on request-supplied phone_number
+    if (!profile?.whatsapp_opted_in) {
       return new Response(JSON.stringify({ skipped: "User not opted in" }), {
         headers: { ...CORS, "Content-Type": "application/json" },
       });
