@@ -2060,7 +2060,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "employer"
       certificate_status: "Pending" | "Issued"
       group_status: "active" | "suspended"
       notification_event_type:
@@ -2208,7 +2208,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "employer"],
       certificate_status: ["Pending", "Issued"],
       group_status: ["active", "suspended"],
       notification_event_type: [
