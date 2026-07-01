@@ -157,10 +157,11 @@ function normalisePhone(raw: string): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
-  // Validate internal key (shared secret between DB trigger and this function)
+  // Validate internal key (shared secret between DB trigger and this function).
+  // Fail closed: reject when the key is missing or does not match.
   const internalKey = req.headers.get("x-whatsapp-internal-key") ?? "";
   const expectedKey = Deno.env.get("WHATSAPP_INTERNAL_KEY") ?? "";
-  if (expectedKey && internalKey !== expectedKey) {
+  if (!expectedKey || internalKey !== expectedKey) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...CORS, "Content-Type": "application/json" },
