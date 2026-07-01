@@ -157,10 +157,11 @@ function normalisePhone(raw: string): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
-  // Validate internal key (shared secret between DB trigger and this function)
+  // Validate internal key (shared secret between DB trigger and this function).
+  // Fail closed: reject when the key is missing or does not match.
   const internalKey = req.headers.get("x-whatsapp-internal-key") ?? "";
   const expectedKey = Deno.env.get("WHATSAPP_INTERNAL_KEY") ?? "";
-  if (expectedKey && internalKey !== expectedKey) {
+  if (!expectedKey || internalKey !== expectedKey) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...CORS, "Content-Type": "application/json" },
@@ -206,8 +207,8 @@ Deno.serve(async (req) => {
     if (!rawPhone) rawPhone = profile?.whatsapp_number;
     if (profile?.full_name) userName = profile.full_name.split(" ")[0]; // first name only
 
-    // Double-check opt-in (safety net even if trigger already checked)
-    if (!profile?.whatsapp_opted_in && !phone_number) {
+    // Always require opt-in — never bypass based on request-supplied phone_number
+    if (!profile?.whatsapp_opted_in) {
       return new Response(JSON.stringify({ skipped: "User not opted in" }), {
         headers: { ...CORS, "Content-Type": "application/json" },
       });
