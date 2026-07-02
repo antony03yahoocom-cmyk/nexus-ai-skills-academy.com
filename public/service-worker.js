@@ -1,4 +1,4 @@
-const CACHE_VERSION = "nexus-ai-v1";
+const CACHE_VERSION = "nexus-ai-v3-whatsapp";
 const APP_SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/favicon.ico", "/placeholder.svg"];
 
 self.addEventListener("install", (event) => {
