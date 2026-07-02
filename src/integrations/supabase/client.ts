@@ -5,6 +5,22 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// Fail with a CLEAR, diagnostic message instead of the cryptic
+// "TypeError: Invalid URL" that createClient() throws when passed
+// undefined. This still throws (main.tsx's bootstrap() catches it
+// and shows a readable error screen instead of a blank page), but
+// now whoever reads the console/error screen knows EXACTLY what's
+// missing instead of guessing.
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  throw new Error(
+    "Missing Supabase configuration: " +
+    (!SUPABASE_URL ? "VITE_SUPABASE_URL " : "") +
+    (!SUPABASE_PUBLISHABLE_KEY ? "VITE_SUPABASE_PUBLISHABLE_KEY " : "") +
+    "is not set for this deployment. Check the environment variables on the " +
+    "published site (they can differ from the preview environment)."
+  );
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
