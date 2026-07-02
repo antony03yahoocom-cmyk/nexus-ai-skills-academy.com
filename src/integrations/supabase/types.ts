@@ -2285,6 +2285,10 @@ export type Database = {
         Args: { p_lesson_id: string; p_user_id: string }
         Returns: boolean
       }
+      can_read_course_content_object: {
+        Args: { p_object_name: string; p_user_id: string }
+        Returns: boolean
+      }
       fetch_trending_posts: {
         Args: { p_limit: number }
         Returns: {
