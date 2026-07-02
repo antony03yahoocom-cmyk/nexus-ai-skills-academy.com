@@ -23,7 +23,7 @@ import {
   ArrowLeft, X, Calendar, MessageSquare, Settings, Bell, Globe,
 } from "lucide-react";
 
-const WA_ADMIN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-admin`;
+// Edge function called via supabase.functions.invoke() — no raw URL needed
 
 // ── Types ──────────────────────────────────────────────────────────
 type Tab = "overview" | "templates" | "send" | "inbox" | "automations" | "scheduled" | "logs";
@@ -86,15 +86,22 @@ const TRIGGER_LABELS: Record<string, string> = {
   welcome:               "Welcome Message",
 };
 
-function callAdmin(session: any, action: string, body?: object) {
-  return fetch(`${WA_ADMIN_URL}?action=${action}`, {
-    method: body ? "POST" : "GET",
-    headers: {
-      Authorization: `Bearer ${session?.access_token}`,
-      "Content-Type": "application/json",
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  }).then((r) => r.json());
+async function callAdmin(_session: any, action: string, body?: object) {
+  // supabase.functions.invoke() handles auth, CORS, and project URL automatically.
+  // Raw fetch() caused "Failed to fetch" because VITE_SUPABASE_URL may not be set
+  // as a Lovable env var, and manual CORS headers on GET requests fail preflight.
+  const { data, error } = await supabase.functions.invoke("whatsapp-admin", {
+    body: { action, ...(body ?? {}) },
+  });
+  if (error) {
+    // Distinguish "function not deployed" from "credentials missing"
+    const msg = error.message ?? String(error);
+    if (msg.includes("Failed to send") || msg.includes("404") || msg.includes("not found")) {
+      throw new Error("Edge function not deployed yet. Run: supabase functions deploy whatsapp-admin");
+    }
+    throw new Error(msg);
+  }
+  return data ?? {};
 }
 
 // ── Analytics card ─────────────────────────────────────────────────
@@ -256,9 +263,25 @@ const AdminWhatsAppPage = () => {
         toast.success(`Synced ${res.synced} templates from Meta`);
         qc.invalidateQueries({ queryKey: ["wa-templates"] });
       } else {
-        toast.error(res.error ?? "Sync failed");
+        const errMsg = res.error ?? "Sync failed";
+        if (errMsg.includes("WHATSAPP_BUSINESS_ACCOUNT_ID")) {
+          toast.error("Missing secret: add WHATSAPP_BUSINESS_ACCOUNT_ID in Supabase → Edge Functions → Secrets");
+        } else if (errMsg.includes("credentials")) {
+          toast.error("WhatsApp credentials not configured. Check WHATSAPP_PERMANENT_TOKEN in Supabase secrets.");
+        } else {
+          toast.error(errMsg);
+        }
       }
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e: any) {
+      const msg = e.message ?? "Unknown error";
+      if (msg.includes("not deployed")) {
+        toast.error("Run: supabase functions deploy whatsapp-admin — the edge function isn't live yet");
+      } else if (msg.includes("401") || msg.includes("Unauthorized")) {
+        toast.error("Session expired — please refresh the page and try again");
+      } else {
+        toast.error(`Sync failed: ${msg}`);
+      }
+    }
     setSyncing(false);
   };
 
@@ -391,6 +414,26 @@ const AdminWhatsAppPage = () => {
           ══════════════════════════════════════════════════════════ */}
           {tab === "overview" && (
             <div className="space-y-6">
+              {/* Credentials check banner */}
+              <div className="glass-card p-4 border-accent/20 bg-accent/5">
+                <p className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-accent" /> Required Supabase Secrets
+                  <span className="text-xs font-normal text-muted-foreground">(Supabase Dashboard → Edge Functions → Secrets)</span>
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {[
+                    "WHATSAPP_PHONE_NUMBER_ID",
+                    "WHATSAPP_PERMANENT_TOKEN",
+                    "WHATSAPP_BUSINESS_ACCOUNT_ID",
+                    "WHATSAPP_WEBHOOK_VERIFY_TOKEN",
+                  ].map((key) => (
+                    <div key={key} className="flex items-center gap-2 font-mono text-muted-foreground">
+                      <div className="w-2 h-2 rounded-full bg-accent/40 shrink-0" />
+                      {key}
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Sent Today"          value={analytics?.sent_today ?? 0}      icon={Send}         color="bg-green-500/10 text-green-500" />
                 <StatCard label="Templates Sent"      value={analytics?.templates_sent ?? 0}  icon={FileText}     color="bg-primary/10 text-primary" />
