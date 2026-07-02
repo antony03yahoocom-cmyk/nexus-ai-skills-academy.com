@@ -431,27 +431,11 @@ const LessonViewerPage = () => {
         {/* Content area */}
         <div className="bg-card">
           {lesson.content_type === "video" && lesson.file_url ? (
-            <div className="aspect-video">
-              {lesson.file_url.includes("youtube.com") || lesson.file_url.includes("youtu.be") ? (
-                <iframe
-                  src={lesson.file_url.replace("watch?v=", "embed/").replace("youtu.be/", "youtube.com/embed/")}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={lesson.title}
-                />
-              ) : (
-                <video controls controlsList="nodownload" className="w-full h-full" src={lesson.file_url} onContextMenu={(e) => e.preventDefault()} />
-              )}
-            </div>
+            <SignedLessonMedia url={lesson.file_url} kind="video" title={lesson.title} />
           ) : lesson.content_type === "pdf" && lesson.file_url ? (
-            <div className="aspect-video">
-              <iframe src={lesson.file_url} className="w-full h-full" title={lesson.title} />
-            </div>
+            <SignedLessonMedia url={lesson.file_url} kind="pdf" title={lesson.title} />
           ) : lesson.content_type === "image" && lesson.file_url ? (
-            <div className="flex items-center justify-center p-6">
-              <img src={lesson.file_url} alt={lesson.title} className="max-w-full max-h-[70vh] rounded-lg object-contain" />
-            </div>
+            <SignedLessonMedia url={lesson.file_url} kind="image" title={lesson.title} />
           ) : lesson.content_type === "url" && lesson.file_url ? (
             <div className="p-6">
               <a href={lesson.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary hover:underline text-lg mb-4">
