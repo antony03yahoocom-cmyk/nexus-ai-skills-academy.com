@@ -11,6 +11,44 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import FileDropzone from "@/components/shared/FileDropzone";
+import { useSignedCourseUrl } from "@/hooks/useSignedCourseUrl";
+
+// ── Renders lesson media, signing the URL when it points at the private
+//    "course-content" bucket. External URLs (YouTube etc.) render as-is.
+function SignedLessonMedia({ url, kind, title }: { url: string; kind: "video" | "pdf" | "image"; title: string }) {
+  const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
+  const signed = useSignedCourseUrl(isYouTube ? null : url);
+  const src = isYouTube
+    ? url.replace("watch?v=", "embed/").replace("youtu.be/", "youtube.com/embed/")
+    : signed;
+
+  if (!src) {
+    return (
+      <div className="aspect-video flex items-center justify-center bg-muted/20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (kind === "video") {
+    return (
+      <div className="aspect-video">
+        {isYouTube ? (
+          <iframe src={src} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={title} />
+        ) : (
+          <video controls controlsList="nodownload" className="w-full h-full" src={src} onContextMenu={(e) => e.preventDefault()} />
+        )}
+      </div>
+    );
+  }
+  if (kind === "pdf") {
+    return <div className="aspect-video"><iframe src={src} className="w-full h-full" title={title} /></div>;
+  }
+  return (
+    <div className="flex items-center justify-center p-6">
+      <img src={src} alt={title} className="max-w-full max-h-[70vh] rounded-lg object-contain" />
+    </div>
+  );
+}
 
 const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -431,27 +469,11 @@ const LessonViewerPage = () => {
         {/* Content area */}
         <div className="bg-card">
           {lesson.content_type === "video" && lesson.file_url ? (
-            <div className="aspect-video">
-              {lesson.file_url.includes("youtube.com") || lesson.file_url.includes("youtu.be") ? (
-                <iframe
-                  src={lesson.file_url.replace("watch?v=", "embed/").replace("youtu.be/", "youtube.com/embed/")}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={lesson.title}
-                />
-              ) : (
-                <video controls controlsList="nodownload" className="w-full h-full" src={lesson.file_url} onContextMenu={(e) => e.preventDefault()} />
-              )}
-            </div>
+            <SignedLessonMedia url={lesson.file_url} kind="video" title={lesson.title} />
           ) : lesson.content_type === "pdf" && lesson.file_url ? (
-            <div className="aspect-video">
-              <iframe src={lesson.file_url} className="w-full h-full" title={lesson.title} />
-            </div>
+            <SignedLessonMedia url={lesson.file_url} kind="pdf" title={lesson.title} />
           ) : lesson.content_type === "image" && lesson.file_url ? (
-            <div className="flex items-center justify-center p-6">
-              <img src={lesson.file_url} alt={lesson.title} className="max-w-full max-h-[70vh] rounded-lg object-contain" />
-            </div>
+            <SignedLessonMedia url={lesson.file_url} kind="image" title={lesson.title} />
           ) : lesson.content_type === "url" && lesson.file_url ? (
             <div className="p-6">
               <a href={lesson.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary hover:underline text-lg mb-4">
