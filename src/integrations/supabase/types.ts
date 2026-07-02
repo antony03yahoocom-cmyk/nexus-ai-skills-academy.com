@@ -1776,6 +1776,142 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_automation_logs: {
+        Row: {
+          automation_id: string | null
+          created_at: string
+          error_message: string | null
+          event_trigger: string
+          id: string
+          phone_number: string | null
+          status: string
+          student_user_id: string | null
+          template_name: string | null
+        }
+        Insert: {
+          automation_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_trigger: string
+          id?: string
+          phone_number?: string | null
+          status?: string
+          student_user_id?: string | null
+          template_name?: string | null
+        }
+        Update: {
+          automation_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_trigger?: string
+          id?: string
+          phone_number?: string | null
+          status?: string
+          student_user_id?: string | null
+          template_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_automation_logs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_automations: {
+        Row: {
+          conditions: Json
+          created_at: string
+          created_by: string | null
+          delay_minutes: number
+          enabled: boolean
+          event_trigger: string
+          id: string
+          last_run_at: string | null
+          name: string
+          runs_count: number
+          template_id: string | null
+          template_vars: Json
+        }
+        Insert: {
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          delay_minutes?: number
+          enabled?: boolean
+          event_trigger: string
+          id?: string
+          last_run_at?: string | null
+          name: string
+          runs_count?: number
+          template_id?: string | null
+          template_vars?: Json
+        }
+        Update: {
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          delay_minutes?: number
+          enabled?: boolean
+          event_trigger?: string
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          runs_count?: number
+          template_id?: string | null
+          template_vars?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_automations_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_conversations: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          last_message_at: string | null
+          last_message_text: string | null
+          phone_number: string
+          status: string
+          student_user_id: string | null
+          unread_count: number
+          window_expires_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          last_message_at?: string | null
+          last_message_text?: string | null
+          phone_number: string
+          status?: string
+          student_user_id?: string | null
+          unread_count?: number
+          window_expires_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          last_message_at?: string | null
+          last_message_text?: string | null
+          phone_number?: string
+          status?: string
+          student_user_id?: string | null
+          unread_count?: number
+          window_expires_at?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_message_log: {
         Row: {
           created_at: string
@@ -1812,6 +1948,185 @@ export type Database = {
           template_name?: string
           user_id?: string
           wamid?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_messages: {
+        Row: {
+          automation_id: string | null
+          body: string | null
+          conversation_id: string
+          created_at: string
+          direction: string
+          error_message: string | null
+          id: string
+          media_caption: string | null
+          media_url: string | null
+          message_type: string
+          sent_by_user_id: string | null
+          status: string
+          template_name: string | null
+          template_vars: Json | null
+          wamid: string | null
+        }
+        Insert: {
+          automation_id?: string | null
+          body?: string | null
+          conversation_id: string
+          created_at?: string
+          direction: string
+          error_message?: string | null
+          id?: string
+          media_caption?: string | null
+          media_url?: string | null
+          message_type?: string
+          sent_by_user_id?: string | null
+          status?: string
+          template_name?: string | null
+          template_vars?: Json | null
+          wamid?: string | null
+        }
+        Update: {
+          automation_id?: string | null
+          body?: string | null
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          error_message?: string | null
+          id?: string
+          media_caption?: string | null
+          media_url?: string | null
+          message_type?: string
+          sent_by_user_id?: string | null
+          status?: string
+          template_name?: string | null
+          template_vars?: Json | null
+          wamid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_wa_msg_automation"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_scheduled: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          failed_count: number
+          id: string
+          recipients: Json
+          schedule_type: string
+          scheduled_at: string
+          sent_count: number
+          status: string
+          template_id: string
+          template_vars: Json
+          timezone: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          recipients?: Json
+          schedule_type?: string
+          scheduled_at: string
+          sent_count?: number
+          status?: string
+          template_id: string
+          template_vars?: Json
+          timezone?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          recipients?: Json
+          schedule_type?: string
+          scheduled_at?: string
+          sent_count?: number
+          status?: string
+          template_id?: string
+          template_vars?: Json
+          timezone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_scheduled_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          body_text: string | null
+          body_variables: Json
+          buttons: Json
+          category: string
+          created_at: string
+          footer_text: string | null
+          header_example: string | null
+          header_text: string | null
+          header_type: string | null
+          id: string
+          language: string
+          last_synced_at: string
+          media_type: string | null
+          meta_id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          body_text?: string | null
+          body_variables?: Json
+          buttons?: Json
+          category: string
+          created_at?: string
+          footer_text?: string | null
+          header_example?: string | null
+          header_text?: string | null
+          header_type?: string | null
+          id?: string
+          language?: string
+          last_synced_at?: string
+          media_type?: string | null
+          meta_id: string
+          name: string
+          status?: string
+        }
+        Update: {
+          body_text?: string | null
+          body_variables?: Json
+          buttons?: Json
+          category?: string
+          created_at?: string
+          footer_text?: string | null
+          header_example?: string | null
+          header_text?: string | null
+          header_type?: string | null
+          id?: string
+          language?: string
+          last_synced_at?: string
+          media_type?: string | null
+          meta_id?: string
+          name?: string
+          status?: string
         }
         Relationships: []
       }
@@ -2035,6 +2350,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_whatsapp_analytics: { Args: never; Returns: Json }
       has_course_access: {
         Args: { _course_id: string; _user_id: string }
         Returns: boolean
