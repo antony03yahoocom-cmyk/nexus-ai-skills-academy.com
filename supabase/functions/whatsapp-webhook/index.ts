@@ -43,8 +43,40 @@ Deno.serve(async (req) => {
   // ── POST: Events ───────────────────────────────────────────────
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
+  // Verify Meta X-Hub-Signature-256 HMAC against raw body
+  const rawBody = await req.arrayBuffer();
+  const appSecret = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
+  if (!appSecret) {
+    console.error("[whatsapp-webhook] WHATSAPP_APP_SECRET not configured");
+    return new Response("Server misconfigured", { status: 500 });
+  }
+  const sigHeader = req.headers.get("x-hub-signature-256") ?? "";
+  try {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(appSecret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const mac = await crypto.subtle.sign("HMAC", key, rawBody);
+    const expected = "sha256=" + Array.from(new Uint8Array(mac))
+      .map((b) => b.toString(16).padStart(2, "0")).join("");
+    if (sigHeader.length !== expected.length) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    let diff = 0;
+    for (let i = 0; i < expected.length; i++) {
+      diff |= sigHeader.charCodeAt(i) ^ expected.charCodeAt(i);
+    }
+    if (diff !== 0) return new Response("Forbidden", { status: 403 });
+  } catch (e) {
+    console.error("[whatsapp-webhook] signature verification error", e);
+    return new Response("Forbidden", { status: 403 });
+  }
+
   let payload: any;
-  try { payload = await req.json(); }
+  try { payload = JSON.parse(new TextDecoder().decode(rawBody)); }
   catch { return new Response("Bad Request", { status: 400 }); }
 
   const sb = createClient(
