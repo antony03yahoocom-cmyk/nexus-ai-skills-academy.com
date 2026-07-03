@@ -323,11 +323,11 @@ Deno.serve(async (req) => {
 
   if (!TOKEN || !PHONE_ID) return json({ error: "WhatsApp credentials not configured" }, 500);
 
-  const url    = new URL(req.url);
-  const action = url.searchParams.get("action");
-
+  const url = new URL(req.url);
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const action = url.searchParams.get("action") ?? (body as any)?.action ?? null;
+
 
     // ── sync_templates ───────────────────────────────────────────
     if (action === "sync_templates") {
