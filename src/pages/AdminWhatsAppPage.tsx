@@ -1,6 +1,6 @@
 /**
  * AdminWhatsAppPage.tsx — WhatsApp Business Communications Center
- * Tabs: Overview | Templates | Send | Inbox | Automations | Scheduled | Logs
+ * Tabs: Overview | Templates | Send | Contacts | Inbox | Automations | Scheduled | Logs
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,13 +20,13 @@ import {
   LayoutDashboard, RefreshCw, Send, MessageCircle, Zap, Clock, FileText,
   Search, Filter, CheckCircle, XCircle, AlertCircle, Eye, Users, TrendingUp,
   BarChart3, ChevronRight, Plus, Trash2, Play, Pause, Phone, Check, CheckCheck,
-  ArrowLeft, X, Calendar, MessageSquare, Settings, Bell, Globe,
+  ArrowLeft, X, Calendar, MessageSquare, Settings, Bell, Globe, Contacts,
 } from "lucide-react";
 
 // Edge function called via supabase.functions.invoke() — no raw URL needed
 
 // ── Types ──────────────────────────────────────────────────────────
-type Tab = "overview" | "templates" | "send" | "inbox" | "automations" | "scheduled" | "logs";
+type Tab = "overview" | "templates" | "send" | "contacts" | "inbox" | "automations" | "scheduled" | "logs";
 
 type Template = {
   id: string; meta_id: string; name: string; category: string;
@@ -41,6 +41,7 @@ type Conversation = {
   last_message_text: string | null; last_message_at: string | null;
   unread_count: number; window_expires_at: string | null;
   status: string; student_user_id: string | null;
+  is_manual_contact?: boolean;
 };
 
 type WaMessage = {
@@ -54,6 +55,16 @@ type Automation = {
   template_id: string | null; template_vars: Record<string, string>;
   delay_minutes: number; enabled: boolean;
   runs_count: number; last_run_at: string | null;
+};
+
+type ManualContact = {
+  id: string;
+  full_name: string;
+  phone_number: string;
+  email?: string;
+  notes?: string;
+  created_at: string;
+  created_by?: string;
 };
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
@@ -134,6 +145,9 @@ const AdminWhatsAppPage = () => {
   const [newAuto, setNewAuto] = useState<Partial<Automation> | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [sendProgress, setSendProgress] = useState<null | { total: number; sent: number; failed: number }>(null);
+  const [showNewContactForm, setShowNewContactForm] = useState(false);
+  const [newContact, setNewContact] = useState({ full_name: "", phone_number: "", email: "", notes: "" });
+  const [contactSearch, setContactSearch] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // ── Analytics ──────────────────────────────────────────────────
@@ -187,6 +201,22 @@ const AdminWhatsAppPage = () => {
   const filteredStudents = students.filter((s: any) =>
     !recipientSearch || s.full_name?.toLowerCase().includes(recipientSearch.toLowerCase())
   ).filter((s: any) => s.whatsapp_number);
+
+  // ── Manual Contacts ─────────────────────────────────────────────
+  const { data: manualContacts = [] } = useQuery({
+    queryKey: ["wa-manual-contacts"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("whatsapp_manual_contacts" as any)
+        .select("*")
+        .order("created_at", { ascending: false });
+      return (data ?? []) as unknown as ManualContact[];
+    },
+  });
+
+  const filteredContacts = manualContacts.filter((c: ManualContact) =>
+    !contactSearch || c.full_name?.toLowerCase().includes(contactSearch.toLowerCase()) || c.phone_number?.includes(contactSearch)
+  );
 
   // ── Conversations ──────────────────────────────────────────────
   const { data: conversations = [] } = useQuery({
@@ -285,6 +315,62 @@ const AdminWhatsAppPage = () => {
     setSyncing(false);
   };
 
+  const addManualContact = async () => {
+    if (!newContact.full_name.trim() || !newContact.phone_number.trim()) {
+      toast.error("Name and phone number are required");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("whatsapp_manual_contacts" as any).insert({
+        full_name: newContact.full_name.trim(),
+        phone_number: newContact.phone_number.trim(),
+        email: newContact.email.trim() || null,
+        notes: newContact.notes.trim() || null,
+        created_by: session?.user?.id,
+      });
+
+      if (error) throw error;
+
+      toast.success("Contact added successfully");
+      setNewContact({ full_name: "", phone_number: "", email: "", notes: "" });
+      setShowNewContactForm(false);
+      qc.invalidateQueries({ queryKey: ["wa-manual-contacts"] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to add contact");
+    }
+  };
+
+  const deleteManualContact = async (contactId: string) => {
+    try {
+      const { error } = await supabase.from("whatsapp_manual_contacts" as any).delete().eq("id", contactId);
+      if (error) throw error;
+      toast.success("Contact deleted");
+      qc.invalidateQueries({ queryKey: ["wa-manual-contacts"] });
+      // Close conversation if it's the active one
+      if (activeConv?.id === `manual_${contactId}`) setActiveConv(null);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete contact");
+    }
+  };
+
+  const startConversationWithContact = (contact: ManualContact) => {
+    const conv: Conversation = {
+      id: `manual_${contact.id}`,
+      phone_number: contact.phone_number,
+      display_name: contact.full_name,
+      last_message_text: null,
+      last_message_at: null,
+      unread_count: 0,
+      window_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      status: "active",
+      student_user_id: null,
+      is_manual_contact: true,
+    };
+    setActiveConv(conv);
+    setTab("inbox");
+  };
+
   const doSend = async () => {
     if (!selectedTemplate) return;
     let recipients: { user_id?: string; phone: string; name?: string }[] = [];
@@ -319,7 +405,8 @@ const AdminWhatsAppPage = () => {
   const sendFreeform = async () => {
     if (!activeConv || !freeformText.trim()) return;
     const windowActive = activeConv.window_expires_at && new Date(activeConv.window_expires_at) > new Date();
-    if (!windowActive) { toast.error("24-hour window expired — use a template instead"); return; }
+    if (!windowActive && !activeConv.is_manual_contact) { toast.error("24-hour window expired — use a template instead"); return; }
+    
     const res = await callAdmin(session, "send_freeform", {
       phone: activeConv.phone_number,
       text: freeformText,
@@ -328,6 +415,7 @@ const AdminWhatsAppPage = () => {
     if (res.success) {
       setFreeformText("");
       qc.invalidateQueries({ queryKey: ["wa-messages", activeConv.id] });
+      qc.invalidateQueries({ queryKey: ["wa-conversations"] });
     } else { toast.error(res.error ?? "Send failed"); }
   };
 
@@ -363,6 +451,7 @@ const AdminWhatsAppPage = () => {
     { id: "overview",    label: "Overview",    icon: LayoutDashboard },
     { id: "templates",   label: "Templates",   icon: FileText },
     { id: "send",        label: "Send",        icon: Send },
+    { id: "contacts",    label: "Contacts",    icon: Contacts },
     { id: "inbox",       label: "Inbox",       icon: MessageCircle },
     { id: "automations", label: "Automations", icon: Zap },
     { id: "scheduled",   label: "Scheduled",   icon: Clock },
@@ -384,7 +473,7 @@ const AdminWhatsAppPage = () => {
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-green-500"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-green-500"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.398-.534.598-.188.198-.389.158-.686-.05-.297-.198-1.256-.491-2.386-1.468-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.447-.52.149-.174.198-.298.297-.497.099-.198.05-.371-.025-.52-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004a9.87 9.87 0 00-5.031 1.378c-3.055 2.27-4.555 5.783-3.506 8.986 1.05 3.203 4.057 5.45 7.503 5.45h.642c3.777 0 7.213-2.949 7.776-6.665.59-3.957-1.02-7.846-4.414-9.584-1.429-.738-3.017-1.12-4.687-1.12zm11.642-1.424c-3.923-3.923-10.285-3.923-14.208 0-3.923 3.923-3.923 10.285 0 14.208 3.923 3.923 10.285 3.923 14.208 0 3.922-3.923 3.922-10.285 0-14.208z" /></svg>
               </div>
               <div>
                 <h1 className="text-xl font-bold">WhatsApp Business</h1>
@@ -612,7 +701,7 @@ const AdminWhatsAppPage = () => {
                       { value: "all",        label: "All Students with WhatsApp" },
                     ].map(m => (
                       <button key={m.value} onClick={() => setBulkMode(m.value)}
-                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${bulkMode === m.value ? "bg-primary/10 border-primary/40 text-primary font-medium" : "border-border/40 text-muted-foreground hover:border-primary/20"}`}>
+                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${bulkMode === m.value ? "bg-primary/10 border-primary/40 text-primary font-medium" : "border-border/40 text-muted-foreground"}`}>
                         {m.label}
                       </button>
                     ))}
@@ -681,6 +770,136 @@ const AdminWhatsAppPage = () => {
           )}
 
           {/* ══════════════════════════════════════════════════════════
+              CONTACTS
+          ══════════════════════════════════════════════════════════ */}
+          {tab === "contacts" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-bold">Manual Contacts</h2>
+                <Button variant="hero" size="sm" onClick={() => setShowNewContactForm(!showNewContactForm)}>
+                  <Plus className="w-4 h-4 mr-1" /> Add Contact
+                </Button>
+              </div>
+
+              {/* New contact form */}
+              {showNewContactForm && (
+                <div className="glass-card p-5 border-primary/20 space-y-4">
+                  <h3 className="font-semibold text-sm">New Contact</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Full Name *</label>
+                      <Input 
+                        value={newContact.full_name} 
+                        onChange={e => setNewContact({...newContact, full_name: e.target.value})}
+                        placeholder="e.g. John Doe"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Phone Number *</label>
+                      <Input 
+                        value={newContact.phone_number} 
+                        onChange={e => setNewContact({...newContact, phone_number: e.target.value})}
+                        placeholder="e.g. +1234567890"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Email</label>
+                      <Input 
+                        value={newContact.email} 
+                        onChange={e => setNewContact({...newContact, email: e.target.value})}
+                        placeholder="e.g. john@example.com"
+                        type="email"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Notes</label>
+                      <Input 
+                        value={newContact.notes} 
+                        onChange={e => setNewContact({...newContact, notes: e.target.value})}
+                        placeholder="Add any notes..."
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="hero" size="sm" onClick={addManualContact}>
+                      Save Contact
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setShowNewContactForm(false);
+                      setNewContact({ full_name: "", phone_number: "", email: "", notes: "" });
+                    }}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Search contacts */}
+              {manualContacts.length > 0 && (
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input 
+                    className="pl-9" 
+                    placeholder="Search contacts by name or phone..." 
+                    value={contactSearch} 
+                    onChange={e => setContactSearch(e.target.value)} 
+                  />
+                </div>
+              )}
+
+              {filteredContacts.length === 0 ? (
+                <div className="glass-card p-12 text-center">
+                  <Contacts className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="font-medium mb-1">No contacts yet</p>
+                  <p className="text-sm text-muted-foreground">Add manual contacts to start messaging people who haven't provided their WhatsApp number.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredContacts.map(contact => (
+                    <div key={contact.id} className="glass-card p-5 flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm">{contact.full_name}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <Phone className="w-3 h-3" />
+                            {contact.phone_number}
+                          </div>
+                          {contact.email && (
+                            <p className="text-xs text-muted-foreground mt-1">{contact.email}</p>
+                          )}
+                          {contact.notes && (
+                            <p className="text-xs text-muted-foreground mt-2 italic">"{contact.notes}"</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-2">Added {formatDistanceToNow(new Date(contact.created_at))} ago</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="hero" 
+                          className="flex-1"
+                          onClick={() => startConversationWithContact(contact)}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 mr-1" /> Message
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="text-destructive"
+                          onClick={() => deleteManualContact(contact.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
               INBOX
           ══════════════════════════════════════════════════════════ */}
           {tab === "inbox" && (
@@ -695,7 +914,7 @@ const AdminWhatsAppPage = () => {
                 ) : (
                   conversations.map(conv => (
                     <button key={conv.id} onClick={() => { setActiveConv(conv); setFreeformText(""); }}
-                      className={`w-full flex items-start gap-3 p-3 border-b border-border/20 hover:bg-muted/30 transition-colors text-left ${activeConv?.id === conv.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}>
+                      className={`w-full flex items-start gap-3 p-3 border-b border-border/20 hover:bg-muted/30 transition-colors text-left ${activeConv?.id === conv.id ? "bg-primary/5 border-l-2 border-primary" : ""}`}>
                       <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-600 font-semibold text-sm">
                         {(conv.display_name ?? conv.phone_number)?.[0]?.toUpperCase() ?? "?"}
                       </div>
@@ -708,6 +927,7 @@ const AdminWhatsAppPage = () => {
                         </div>
                         <p className="text-xs text-muted-foreground truncate">{conv.last_message_text ?? "No messages"}</p>
                         {conv.last_message_at && <p className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(conv.last_message_at))} ago</p>}
+                        {conv.is_manual_contact && <p className="text-[10px] text-accent font-medium mt-0.5">● Manual Contact</p>}
                       </div>
                     </button>
                   ))
@@ -729,7 +949,7 @@ const AdminWhatsAppPage = () => {
                           <Phone className="w-3 h-3" /> {activeConv.phone_number}
                           {activeConv.window_expires_at && new Date(activeConv.window_expires_at) > new Date()
                             ? <span className="text-success ml-2">● Window active</span>
-                            : <span className="text-destructive ml-2">● Window closed</span>
+                            : activeConv.is_manual_contact ? <span className="text-accent ml-2">● Manual Contact</span> : <span className="text-destructive ml-2">● Window closed</span>
                           }
                         </p>
                       </div>
@@ -766,9 +986,19 @@ const AdminWhatsAppPage = () => {
                           <Send className="w-4 h-4" />
                         </Button>
                       </div>
+                    ) : activeConv.is_manual_contact ? (
+                      <div className="flex gap-2">
+                        <Textarea className="resize-none min-h-[40px] text-sm" rows={1} value={freeformText}
+                          onChange={e => setFreeformText(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendFreeform(); }}}
+                          placeholder="Type a message… (Enter to send)" />
+                        <Button size="icon" onClick={sendFreeform} disabled={!freeformText.trim()} className="h-10 w-10 shrink-0 bg-green-600 hover:bg-green-700">
+                          <Send className="w-4 h-4" />
+                        </Button>
+                      </div>
                     ) : (
                       <div className="text-center">
-                        <p className="text-xs text-muted-foreground mb-2">24-hour window expired — use a template</p>
+                        <p className="text-xs text-muted-foreground mb-2">24-hour window expired — use a template instead</p>
                         <Button size="sm" variant="outline" onClick={() => setTab("send")}>
                           <FileText className="w-4 h-4 mr-1" /> Send Template
                         </Button>
@@ -906,7 +1136,9 @@ const AdminWhatsAppPage = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`px-2 py-0.5 rounded-full text-xs border ${s.status === "queued" ? "bg-accent/10 text-accent border-accent/20" : s.status === "sent" ? "bg-success/10 text-success border-success/20" : "bg-muted/20 text-muted-foreground border-muted"}`}>{s.status}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs border ${s.status === "queued" ? "bg-accent/10 text-accent border-accent/20" : s.status === "sent" ? "bg-success/10 text-success border-success/20" : "bg-destructive/10 text-destructive border-destructive/20"}`}>
+                          {s.status}
+                        </span>
                         {s.status === "queued" && (
                           <Button size="sm" variant="ghost" className="text-destructive" onClick={async () => {
                             await supabase.from("whatsapp_scheduled" as any).update({ status: "cancelled" }).eq("id", s.id);
@@ -951,7 +1183,7 @@ const AdminWhatsAppPage = () => {
                           <td className="px-4 py-3 text-xs font-mono">{log.phone_number ?? "—"}</td>
                           <td className="px-4 py-3 text-xs">{log.template_name ?? "—"}</td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] ${log.status === "sent" ? "bg-success/10 text-success" : log.status === "failed" ? "bg-destructive/10 text-destructive" : "bg-muted/20 text-muted-foreground"}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] ${log.status === "sent" ? "bg-success/10 text-success" : log.status === "failed" ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
                               {log.status}
                             </span>
                           </td>
