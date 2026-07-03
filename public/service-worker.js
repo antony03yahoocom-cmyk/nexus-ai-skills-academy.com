@@ -1,7 +1,7 @@
 // NEXUS AI Skills Academy — Service Worker
 // v4: switched scripts/styles to network-first to prevent stale-shell blank screens.
 // Bump this string any time you need all clients to get fresh assets immediately.
-const CACHE_VERSION = "nexus-ai-v5-react-chunk-fix";
+const CACHE_VERSION = "nexus-ai-v6-prod-vendor-cycle-fix";
 
 const APP_SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/favicon.ico"];
 
