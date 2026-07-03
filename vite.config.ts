@@ -3,27 +3,16 @@
  *
  * CHANGES FROM ORIGINAL
  * ──────────────────────────────────────────────────────────────────
- * 1. VENDOR CHUNK SPLITTING
- *    Before: everything landed in one 613 KB (gzip: 184 KB) index.js
- *    chunk. This violates the most basic performance contract: a
- *    one-character change to any app file invalidated the browser
- *    cache for React, Supabase, all Radix primitives, recharts, and
- *    date-fns at once.
+ * 1. SAFE VENDOR CHUNKING
+ *    Production blank-screen root cause (confirmed from deployed bundles):
+ *    vendor-react imported symbols from vendor-misc, while vendor-misc also
+ *    imported React from vendor-react. That circular vendor split let
+ *    vendor-misc evaluate before React exports were initialized, triggering
+ *    "Cannot read properties of undefined (reading
+ *    '__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED')".
  *
- *    After: vendors are split into stable chunks that change only
- *    when their own package version changes:
- *
- *      vendor-react      ~45 KB gz  (react, react-dom, react-router)
- *      vendor-query      ~15 KB gz  (tanstack/react-query)
- *      vendor-supabase   ~28 KB gz  (@supabase/supabase-js)
- *      vendor-radix      ~35 KB gz  (all @radix-ui/* primitives)
- *      vendor-charts     ~40 KB gz  (recharts)
- *      vendor-utils       ~8 KB gz  (clsx, tailwind-merge, cva, sonner)
- *      app chunks                   (lazy-loaded page code)
- *
- *    The app's own pages remain lazy-loaded so initial JS stays small.
- *    Users who already visited the site re-download only app chunks
- *    when you ship; vendor chunks are served from cache.
+ *    Fix: keep all third-party dependencies in one vendor chunk. This removes
+ *    cross-vendor circular evaluation while preserving app-code lazy loading.
  *
  * 2. SOURCEMAPS IN PRODUCTION
  *    Disabled by default (add VITE_SOURCEMAP=true to env if needed).
@@ -61,49 +50,12 @@ export default defineConfig(({ mode }) => ({
 
   build: {
     sourcemap: process.env.VITE_SOURCEMAP === "true",
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 1200,
 
     rollupOptions: {
       output: {
         manualChunks(id: string) {
-          if (!id.includes("node_modules/")) return;
-
-          // ── React ecosystem — MUST stay in ONE chunk ─────────────
-          // Anything that reads React internals (scheduler, react-is,
-          // use-sync-external-store, jsx-runtime, react-dom, router,
-          // react-query, radix) has to live in the same chunk as React.
-          // Otherwise a sibling chunk can evaluate first and throw
-          // "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED".
-          if (
-            /node_modules\/(react|react-dom|react-router|react-router-dom|react-is|scheduler|use-sync-external-store|@tanstack\/react-query|@tanstack\/query-core|@radix-ui\/)/.test(id)
-          ) {
-            return "vendor-react";
-          }
-
-          if (id.includes("node_modules/recharts") ||
-              id.includes("node_modules/d3-") ||
-              id.includes("node_modules/victory-")) {
-            return "vendor-charts";
-          }
-
-          if (id.includes("node_modules/@supabase/") ||
-              id.includes("node_modules/@realtime-js/")) {
-            return "vendor-supabase";
-          }
-
-          if (id.includes("node_modules/clsx") ||
-              id.includes("node_modules/tailwind-merge") ||
-              id.includes("node_modules/class-variance-authority") ||
-              id.includes("node_modules/sonner") ||
-              id.includes("node_modules/lucide-react")) {
-            return "vendor-utils";
-          }
-
-          if (id.includes("node_modules/date-fns")) {
-            return "vendor-dates";
-          }
-
-          return "vendor-misc";
+          if (id.includes("node_modules/")) return "vendor";
         },
       },
     },
