@@ -473,7 +473,7 @@ const AdminWhatsAppPage = () => {
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-green-500"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.398-.534.598-.188.198-.389.158-.686-.05-.297-.198-1.256-.491-2.386-1.468-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.447-.52.149-.174.198-.298.297-.497.099-.198.05-.371-.025-.52-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004a9.87 9.87 0 00-5.031 1.378c-3.055 2.27-4.555 5.783-3.506 8.986 1.05 3.203 4.057 5.45 7.503 5.45h.642c3.777 0 7.213-2.949 7.776-6.665.59-3.957-1.02-7.846-4.414-9.584-1.429-.738-3.017-1.12-4.687-1.12zm11.642-1.424c-3.923-3.923-10.285-3.923-14.208 0-3.923 3.923-3.923 10.285 0 14.208 3.923 3.923 10.285 3.923 14.208 0 3.922-3.923 3.922-10.285 0-14.208z" /></svg>
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-green-500"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-1.327-.787-2.432-2.025-3.023-3.21-.608-1.2-.239-1.782.36-2.368.36-.365.801-.954.12-1.804-.68-1.157-1.584-2.035-3.131-2.157-.731-.069-1.401.1-1.97.6-.521.461-.857 1.079-.857 1.845 0 .738.213 1.409.581 1.996.191.31.424.599.689.857.143.131.273.268.38.412.107.144.192.31.247.492l.029.1c.045.16.041.324-.012.48-.052.155-.147.295-.272.405-.125.11-.275.19-.435.23-.16.04-.326.034-.483-.018-.157-.052-.299-.143-.412-.265-.113-.122-.197-.27-.248-.428-.05-.159-.068-.323-.05-.483.018-.16.058-.312.12-.455.062-.143.144-.278.242-.4.098-.122.21-.232.33-.33.12-.098.245-.183.373-.255.128-.072.256-.13.381-.176.125-.046.246-.08.361-.103.115-.023.222-.036.32-.04.098-.004.186.003.263.022.077.019.143.052.195.098.052.046.09.107.113.177.023.07.03.151.02.234-.01.083-.037.164-.082.237-.045.073-.107.137-.18.189-.073.052-.156.093-.244.119-.088.026-.182.034-.276.023-.094-.011-.184-.05-.263-.109-.079-.059-.145-.141-.193-.238-.048-.097-.075-.206-.08-.317-.005-.111.005-.222.03-.327.025-.105.066-.206.12-.298.054-.092.122-.175.198-.245.076-.07.161-.126.251-.167.09-.041.185-.068.281-.078.096-.01.192.003.282.039.09.036.172.093.242.167.07.074.126.164.165.263.039.099.061.206.062.315 0 .109-.021.216-.062.315-.041.099-.103.188-.18.262l-.265.246c-.135.125-.27.267-.402.424l-.01.013c-.262.31-.547.593-.849.844-.065.055-.127.118-.183.187-.056.069-.104.146-.14.228-.036.082-.06.168-.069.256-.009.088 0 .177.026.262.026.085.069.165.123.236.054.071.121.133.197.182.076.049.162.084.252.103.09.019.182.022.273.01.091-.012.179-.052.258-.117.079-.065.147-.152.201-.256.054-.104.092-.222.112-.343.02-.121.022-.246.006-.369-.016-.123-.05-.241-.099-.352-.049-.111-.115-.213-.192-.304-.077-.091-.168-.168-.269-.228-.101-.06-.21-.104-.322-.13-.112-.026-.226-.035-.338-.025-.112.01-.222.045-.324.103-.102.058-.193.138-.268.236-.075.098-.133.21-.171.329-.038.119-.056.244-.053.37.003.126.023.251.058.37.035.119.087.23.151.327.064.097.143.178.232.242.089.064.187.11.288.137.101.027.206.035.308.023.102-.012.2-.052.286-.117.086-.065.158-.152.213-.255.055-.103.092-.219.109-.338.017-.119.014-.24-.009-.358-.023-.118-.062-.231-.112-.337-.05-.106-.113-.204-.185-.291.127-.179.267-.342.416-.488.149-.146.308-.276.474-.389l.203-.14c.152-.105.315-.18.483-.222.168-.042.341-.05.512-.025.171.025.337.088.493.183.156.095.3.22.427.367.127.147.235.314.32.493.085.179.144.368.174.562.03.194.032.388.006.578-.026.19-.084.373-.168.543-.084.17-.195.325-.327.458z"/></svg>
               </div>
               <div>
                 <h1 className="text-xl font-bold">WhatsApp Business</h1>
@@ -489,7 +489,10 @@ const AdminWhatsAppPage = () => {
           {/* ── Tabs ──────────────────────────────────────────────── */}
           <div className="flex gap-1 overflow-x-auto pb-1 mb-6 border-b border-border/40">
             {TABS.map((t) => (
-              <button key={t.id} onClick={() => setTab(t.id)}
+              <button key={t.id} onClick={() => {
+                console.log("Clicking tab:", t.id);
+                setTab(t.id);
+              }}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-t-lg border-b-2 -mb-px transition-all ${
                   tab === t.id ? "border-primary text-primary bg-primary/5" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
                 }`}>
@@ -775,7 +778,7 @@ const AdminWhatsAppPage = () => {
           {tab === "contacts" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="font-bold">Manual Contacts</h2>
+                <h2 className="font-bold text-lg">Manual Contacts</h2>
                 <Button variant="hero" size="sm" onClick={() => setShowNewContactForm(!showNewContactForm)}>
                   <Plus className="w-4 h-4 mr-1" /> Add Contact
                 </Button>
@@ -914,7 +917,7 @@ const AdminWhatsAppPage = () => {
                 ) : (
                   conversations.map(conv => (
                     <button key={conv.id} onClick={() => { setActiveConv(conv); setFreeformText(""); }}
-                      className={`w-full flex items-start gap-3 p-3 border-b border-border/20 hover:bg-muted/30 transition-colors text-left ${activeConv?.id === conv.id ? "bg-primary/5 border-l-2 border-primary" : ""}`}>
+                      className={`w-full flex items-start gap-3 p-3 border-b border-border/20 hover:bg-muted/30 transition-colors text-left ${activeConv?.id === conv.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}>
                       <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-600 font-semibold text-sm">
                         {(conv.display_name ?? conv.phone_number)?.[0]?.toUpperCase() ?? "?"}
                       </div>
@@ -1136,7 +1139,7 @@ const AdminWhatsAppPage = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`px-2 py-0.5 rounded-full text-xs border ${s.status === "queued" ? "bg-accent/10 text-accent border-accent/20" : s.status === "sent" ? "bg-success/10 text-success border-success/20" : "bg-destructive/10 text-destructive border-destructive/20"}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs border ${s.status === "queued" ? "bg-accent/10 text-accent border-accent/20" : s.status === "sent" ? "bg-success/10 text-success border-success/20" : "bg-muted/20 text-muted-foreground border-muted/30"}`}>
                           {s.status}
                         </span>
                         {s.status === "queued" && (
@@ -1183,7 +1186,7 @@ const AdminWhatsAppPage = () => {
                           <td className="px-4 py-3 text-xs font-mono">{log.phone_number ?? "—"}</td>
                           <td className="px-4 py-3 text-xs">{log.template_name ?? "—"}</td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] ${log.status === "sent" ? "bg-success/10 text-success" : log.status === "failed" ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] ${log.status === "sent" ? "bg-success/10 text-success" : log.status === "failed" ? "bg-destructive/10 text-destructive" : "bg-muted/20 text-muted-foreground"}`}>
                               {log.status}
                             </span>
                           </td>
