@@ -66,9 +66,19 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id: string) {
-          // ── Stable vendor chunks ─────────────────────────────────
-          // Keyed so Rollup creates predictable file names.
-          // Order matters: more specific matches first.
+          if (!id.includes("node_modules/")) return;
+
+          // ── React ecosystem — MUST stay in ONE chunk ─────────────
+          // Anything that reads React internals (scheduler, react-is,
+          // use-sync-external-store, jsx-runtime, react-dom, router,
+          // react-query, radix) has to live in the same chunk as React.
+          // Otherwise a sibling chunk can evaluate first and throw
+          // "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED".
+          if (
+            /node_modules\/(react|react-dom|react-router|react-router-dom|react-is|scheduler|use-sync-external-store|@tanstack\/react-query|@tanstack\/query-core|@radix-ui\/)/.test(id)
+          ) {
+            return "vendor-react";
+          }
 
           if (id.includes("node_modules/recharts") ||
               id.includes("node_modules/d3-") ||
@@ -76,23 +86,9 @@ export default defineConfig(({ mode }) => ({
             return "vendor-charts";
           }
 
-          if (id.includes("node_modules/@radix-ui/")) {
-            return "vendor-radix";
-          }
-
           if (id.includes("node_modules/@supabase/") ||
               id.includes("node_modules/@realtime-js/")) {
             return "vendor-supabase";
-          }
-
-          if (id.includes("node_modules/@tanstack/")) {
-            return "vendor-query";
-          }
-
-          if (id.includes("node_modules/react-router") ||
-              id.includes("node_modules/react-dom") ||
-              (id.includes("node_modules/react/") && !id.includes("react-"))) {
-            return "vendor-react";
           }
 
           if (id.includes("node_modules/clsx") ||
@@ -103,18 +99,11 @@ export default defineConfig(({ mode }) => ({
             return "vendor-utils";
           }
 
-          // date-fns is large; isolate it
           if (id.includes("node_modules/date-fns")) {
             return "vendor-dates";
           }
 
-          // Everything else in node_modules goes into a catch-all
-          // so it's still cached separately from app code.
-          if (id.includes("node_modules/")) {
-            return "vendor-misc";
-          }
-
-          // App code: Rollup's default lazy-chunk splitting handles pages.
+          return "vendor-misc";
         },
       },
     },
