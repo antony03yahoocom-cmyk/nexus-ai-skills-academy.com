@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Service can upload certificates" ON storage.objects;
