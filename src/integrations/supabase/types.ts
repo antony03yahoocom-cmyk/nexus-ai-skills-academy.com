@@ -1776,6 +1776,27 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_admin_config: {
+        Row: {
+          id: boolean
+          internal_key: string | null
+          supabase_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          internal_key?: string | null
+          supabase_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          internal_key?: string | null
+          supabase_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_automation_logs: {
         Row: {
           automation_id: string | null
