@@ -39,7 +39,7 @@ const AdminOpportunitiesPage = () => {
 
   const updateOpportunity = useMutation({
     mutationFn: async ({ id, changes }: { id: string; changes: Record<string, any> }) => {
-      const { error } = await supabase.from("marketplace_opportunities").update(changes).eq("id", id);
+      const { error } = await supabase.from("marketplace_opportunities").update(changes as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
