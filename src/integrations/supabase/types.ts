@@ -1776,6 +1776,27 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_admin_config: {
+        Row: {
+          id: boolean
+          internal_key: string | null
+          supabase_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          internal_key?: string | null
+          supabase_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          internal_key?: string | null
+          supabase_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_automation_logs: {
         Row: {
           automation_id: string | null
@@ -1909,6 +1930,39 @@ export type Database = {
           student_user_id?: string | null
           unread_count?: number
           window_expires_at?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_manual_contacts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          phone_number: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone_number: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone_number?: string
+          updated_at?: string
         }
         Relationships: []
       }

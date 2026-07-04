@@ -354,22 +354,54 @@ const AdminWhatsAppPage = () => {
     }
   };
 
-  const startConversationWithContact = (contact: ManualContact) => {
-    const conv: Conversation = {
-      id: `manual_${contact.id}`,
-      phone_number: contact.phone_number,
-      display_name: contact.full_name,
-      last_message_text: null,
-      last_message_at: null,
-      unread_count: 0,
-      window_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      status: "active",
-      student_user_id: null,
-      is_manual_contact: true,
-    };
-    setActiveConv(conv);
-    setTab("inbox");
+  const startConversationWithContact = async (contact: ManualContact) => {
+    try {
+      // Normalise phone the same way the edge function does
+      const digits = contact.phone_number.replace(/\D/g, "");
+      let phone = digits;
+      if (digits.startsWith("0") && digits.length === 10) phone = "254" + digits.slice(1);
+      else if (digits.startsWith("7") && digits.length === 9) phone = "254" + digits;
+
+      // Upsert a real conversation row so freeform sends have a valid conversation_id
+      let convId: string | null = null;
+      const { data: existing } = await supabase
+        .from("whatsapp_conversations" as any)
+        .select("id, phone_number, display_name, last_message_text, last_message_at, unread_count, window_expires_at, status, student_user_id")
+        .eq("phone_number", phone)
+        .maybeSingle();
+
+      if (existing) {
+        convId = (existing as any).id;
+      } else {
+        const { data: created, error } = await supabase
+          .from("whatsapp_conversations" as any)
+          .insert({ phone_number: phone, display_name: contact.full_name })
+          .select("id")
+          .single();
+        if (error) throw error;
+        convId = (created as any).id;
+      }
+
+      const conv: Conversation = {
+        id: convId!,
+        phone_number: phone,
+        display_name: contact.full_name,
+        last_message_text: (existing as any)?.last_message_text ?? null,
+        last_message_at: (existing as any)?.last_message_at ?? null,
+        unread_count: (existing as any)?.unread_count ?? 0,
+        window_expires_at: (existing as any)?.window_expires_at ?? null,
+        status: (existing as any)?.status ?? "open",
+        student_user_id: null,
+        is_manual_contact: true,
+      };
+      setActiveConv(conv);
+      setTab("inbox");
+      qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to open conversation");
+    }
   };
+
 
   const doSend = async () => {
     if (!selectedTemplate) return;

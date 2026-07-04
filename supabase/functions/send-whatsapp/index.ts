@@ -160,8 +160,10 @@ Deno.serve(async (req) => {
   // Validate internal key (shared secret between DB trigger and this function).
   // Fail closed: reject when the key is missing or does not match.
   const internalKey = req.headers.get("x-whatsapp-internal-key") ?? "";
-  const expectedKey = Deno.env.get("WHATSAPP_INTERNAL_KEY") ?? "";
-  if (!expectedKey || internalKey !== expectedKey) {
+  const expectedKey  = Deno.env.get("WHATSAPP_INTERNAL_KEY") ?? "";
+  const triggerKey   = Deno.env.get("WHATSAPP_TRIGGER_KEY") ?? "";
+  const validKey     = (expectedKey && internalKey === expectedKey) || (triggerKey && internalKey === triggerKey);
+  if (!validKey) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...CORS, "Content-Type": "application/json" },
