@@ -331,8 +331,8 @@ const EmployerDashboard = () => {
         budget_max: oppForm.budget_max ? Number(oppForm.budget_max) : null,
         currency: oppForm.currency,
         required_skills: oppForm.required_skills.split(",").map(s => s.trim()).filter(Boolean),
-        duration: oppForm.duration.trim() || null,
-        deadline: oppForm.deadline || null,
+        // duration/deadline stored in metadata jsonb when column exists; skip if not present
+
         status: "open",
       });
       if (error) throw error;
