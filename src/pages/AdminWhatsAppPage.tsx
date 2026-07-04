@@ -1,6 +1,6 @@
 /**
  * AdminWhatsAppPage.tsx — WhatsApp Business Communications Center
- * Tabs: Overview | Templates | Send | Contacts | Inbox | Automations | Scheduled | Logs
+ * Tabs: Overview | Templates | Send | ContactRound | Inbox | Automations | Scheduled | Logs
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,7 +20,7 @@ import {
   LayoutDashboard, RefreshCw, Send, MessageCircle, Zap, Clock, FileText,
   Search, Filter, CheckCircle, XCircle, AlertCircle, Eye, Users, TrendingUp,
   BarChart3, ChevronRight, Plus, Trash2, Play, Pause, Phone, Check, CheckCheck,
-  ArrowLeft, X, Calendar, MessageSquare, Settings, Bell, Globe, Contacts,
+  ArrowLeft, X, Calendar, MessageSquare, Settings, Bell, Globe, ContactRound,
 } from "lucide-react";
 
 // Edge function called via supabase.functions.invoke() — no raw URL needed
@@ -451,7 +451,7 @@ const AdminWhatsAppPage = () => {
     { id: "overview",    label: "Overview",    icon: LayoutDashboard },
     { id: "templates",   label: "Templates",   icon: FileText },
     { id: "send",        label: "Send",        icon: Send },
-    { id: "contacts",    label: "Contacts",    icon: Contacts },
+    { id: "contacts",    label: "Contacts",    icon: ContactRound },
     { id: "inbox",       label: "Inbox",       icon: MessageCircle },
     { id: "automations", label: "Automations", icon: Zap },
     { id: "scheduled",   label: "Scheduled",   icon: Clock },
@@ -852,7 +852,7 @@ const AdminWhatsAppPage = () => {
 
               {filteredContacts.length === 0 ? (
                 <div className="glass-card p-12 text-center">
-                  <Contacts className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                  <ContactRound className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="font-medium mb-1">No contacts yet</p>
                   <p className="text-sm text-muted-foreground">Add manual contacts to start messaging people who haven't provided their WhatsApp number.</p>
                 </div>
