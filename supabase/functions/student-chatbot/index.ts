@@ -368,15 +368,23 @@ Deno.serve(async (req) => {
         .limit(20),
 
       // If student is viewing a lesson, fetch its full content + assignment
+      // SECURITY: verify access first via can_access_lesson RPC so gated lessons never leak into the AI prompt
       currentLessonId
-        ? sb.from("lessons")
-            .select("title, content_text, content_type, modules(title, courses(title))")
-            .eq("id", currentLessonId).maybeSingle()
+        ? (async () => {
+            const { data: accessible } = await sb.rpc("can_access_lesson", {
+              p_user_id: userId,
+              p_lesson_id: currentLessonId,
+            });
+            if (!accessible) return { data: null };
+            return await sb.from("lessons")
+              .select("title, content_text, content_type, modules(title, courses(title))")
+              .eq("id", currentLessonId).maybeSingle();
+          })()
         : Promise.resolve({ data: null }),
     ]);
 
-    // Fetch assignment for current lesson if there is one
-    const currentAssignmentRes = currentLessonId
+    // Fetch assignment for current lesson if there is one — gated by lesson access
+    const currentAssignmentRes = currentLessonId && currentLessonRes.data
       ? await sb.from("assignments")
           .select("title, objective, task, description, deliverable")
           .eq("lesson_id", currentLessonId).maybeSingle()
