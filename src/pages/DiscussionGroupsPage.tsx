@@ -46,15 +46,10 @@ const DiscussionGroupsPage = () => {
   const { data: memberCounts = {} } = useQuery({
     queryKey: ["group-member-counts"],
     queryFn: async () => {
-      // Get counts for all groups the user can see
-      const groupIds = groups.map((g: any) => g.id);
-      if (groupIds.length === 0) return {};
-      const { data } = await supabase
-        .from("group_members")
-        .select("group_id").limit(500);
+      const { data } = await supabase.rpc("get_group_member_counts" as any);
       const counts: Record<string, number> = {};
-      (data ?? []).forEach((m: any) => {
-        counts[m.group_id] = (counts[m.group_id] || 0) + 1;
+      (data ?? []).forEach((row: any) => {
+        counts[row.group_id] = Number(row.member_count) || 0;
       });
       return counts;
     },
