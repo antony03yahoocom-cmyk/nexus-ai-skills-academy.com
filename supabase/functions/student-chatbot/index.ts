@@ -383,8 +383,8 @@ Deno.serve(async (req) => {
         : Promise.resolve({ data: null }),
     ]);
 
-    // Fetch assignment for current lesson if there is one
-    const currentAssignmentRes = currentLessonId
+    // Fetch assignment for current lesson if there is one — gated by lesson access
+    const currentAssignmentRes = currentLessonId && currentLessonRes.data
       ? await sb.from("assignments")
           .select("title, objective, task, description, deliverable")
           .eq("lesson_id", currentLessonId).maybeSingle()
