@@ -320,9 +320,12 @@ Deno.serve(async (req) => {
     user = { id: authedUser.id };
   }
 
-  const TOKEN    = Deno.env.get("WHATSAPP_PERMANENT_TOKEN") ?? "";
-  const PHONE_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
-  const WABA_ID  = Deno.env.get("WHATSAPP_BUSINESS_ACCOUNT_ID") ?? "";
+  // Trim whitespace/newlines — secrets pasted from the Meta dashboard often
+  // include a trailing space, which corrupts the Graph API URL and yields
+  // GraphMethodException code 100 subcode 33 ("Object with ID '… ' does not exist").
+  const TOKEN    = (Deno.env.get("WHATSAPP_PERMANENT_TOKEN") ?? "").trim();
+  const PHONE_ID = (Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "").trim();
+  const WABA_ID  = (Deno.env.get("WHATSAPP_BUSINESS_ACCOUNT_ID") ?? "").trim();
   if (!TOKEN || !PHONE_ID) return json({ error: "WhatsApp credentials not configured" }, 500);
 
   const url = new URL(req.url);
