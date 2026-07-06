@@ -2443,6 +2443,7 @@ export type Database = {
         Args: { p_notification_id: string }
         Returns: Json
       }
+      url_decode: { Args: { txt: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user" | "employer"
