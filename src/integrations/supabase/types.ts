@@ -2359,6 +2359,13 @@ export type Database = {
         }[]
       }
       get_employer_analytics: { Args: { emp_user_id: string }; Returns: Json }
+      get_group_member_counts: {
+        Args: never
+        Returns: {
+          group_id: string
+          member_count: number
+        }[]
+      }
       get_my_profile: {
         Args: never
         Returns: {
@@ -2423,6 +2430,10 @@ export type Database = {
       increment_opportunity_views: {
         Args: { opp_id: string }
         Returns: undefined
+      }
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
       }
       is_lesson_assignment_approved: {
         Args: { p_lesson_id: string; p_user_id: string }
