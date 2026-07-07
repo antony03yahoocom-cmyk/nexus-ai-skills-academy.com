@@ -70,6 +70,51 @@ const CommunityPage = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const parsedMediaList = useMemo(() => parseMediaUrls(mediaUrls), [mediaUrls]);
+
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || !files.length || !user) return;
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith("image/")) {
+          toast.error(`${file.name} is not an image.`);
+          continue;
+        }
+        if (file.size > 8 * 1024 * 1024) {
+          toast.error(`${file.name} is larger than 8MB.`);
+          continue;
+        }
+        const ext = file.name.split(".").pop() || "png";
+        const path = `community/${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error } = await supabase.storage.from("project-files").upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
+        if (error) throw error;
+        const { data } = supabase.storage.from("project-files").getPublicUrl(path);
+        uploaded.push(data.publicUrl);
+      }
+      if (uploaded.length) {
+        setMediaUrls((prev) => (prev ? prev.trim() + "\n" : "") + uploaded.join("\n"));
+        toast.success(`${uploaded.length} image${uploaded.length > 1 ? "s" : ""} uploaded.`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Image upload failed.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removeMediaUrl = (target: string) => {
+    setMediaUrls(parsedMediaList.filter((u) => u !== target).join("\n"));
+  };
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["community-profiles"],
