@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Cpu, ArrowRight } from "lucide-react";
+import { Cpu, ArrowRight, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ const SignupPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,12 +22,17 @@ const SignupPage = () => {
       toast.error("Password must be at least 6 characters");
       return;
     }
+    const trimmedWa = whatsapp.trim();
+    if (!trimmedWa) {
+      toast.error("Please enter your WhatsApp number so we can keep you updated.");
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: name, phone },
+        data: { full_name: name, whatsapp_number: trimmedWa, phone: trimmedWa },
         emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     });
@@ -91,12 +96,22 @@ const SignupPage = () => {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="phone">Phone number</Label>
-                <span className="text-xs text-muted-foreground">Optional</span>
-              </div>
-              <Input id="phone" placeholder="+2547..." value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-secondary border-border" />
-              <p className="text-xs text-muted-foreground">Your phone number helps us keep your account secure and makes it easier for the academy to contact you.</p>
+              <Label htmlFor="whatsapp" className="flex items-center gap-1.5">
+                <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                WhatsApp Number
+              </Label>
+              <Input
+                id="whatsapp"
+                type="tel"
+                placeholder="+2547..."
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                className="bg-secondary border-border"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                We'll use your WhatsApp number to send course updates, assignment notifications, and community announcements.
+              </p>
             </div>
 
             <div className="space-y-2">
