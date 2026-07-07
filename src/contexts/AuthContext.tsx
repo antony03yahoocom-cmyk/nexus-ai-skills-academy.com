@@ -36,6 +36,8 @@ type Profile = {
   trial_start_date?: string | null;
   trial_course_id?: string | null;
   is_banned?: boolean | null;
+  whatsapp_number?: string | null;
+  whatsapp_opted_in?: boolean | null;
 };
 
 type CoursePurchase = {

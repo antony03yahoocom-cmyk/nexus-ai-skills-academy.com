@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Cpu, Sparkles, Heart, MessageCircle, ArrowLeft, UserPlus, UserMinus, Trophy, ChevronRight } from "lucide-react";
+import { Cpu, Sparkles, Heart, MessageCircle, ArrowLeft, UserPlus, UserMinus, Trophy, ChevronRight, ImagePlus, Loader2, X, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
@@ -46,6 +46,19 @@ const formatMediaLabel = (url: string) => {
   }
 };
 
+const getYouTubeId = (url: string): string | null => {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtu.be")) return u.pathname.slice(1) || null;
+    if (u.hostname.includes("youtube.com")) {
+      if (u.pathname === "/watch") return u.searchParams.get("v");
+      if (u.pathname.startsWith("/embed/")) return u.pathname.split("/")[2] || null;
+      if (u.pathname.startsWith("/shorts/")) return u.pathname.split("/")[2] || null;
+    }
+  } catch { /* noop */ }
+  return null;
+};
+
 const CommunityPage = () => {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
@@ -57,6 +70,51 @@ const CommunityPage = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const parsedMediaList = useMemo(() => parseMediaUrls(mediaUrls), [mediaUrls]);
+
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || !files.length || !user) return;
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith("image/")) {
+          toast.error(`${file.name} is not an image.`);
+          continue;
+        }
+        if (file.size > 8 * 1024 * 1024) {
+          toast.error(`${file.name} is larger than 8MB.`);
+          continue;
+        }
+        const ext = file.name.split(".").pop() || "png";
+        const path = `community/${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error } = await supabase.storage.from("project-files").upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
+        if (error) throw error;
+        const { data } = supabase.storage.from("project-files").getPublicUrl(path);
+        uploaded.push(data.publicUrl);
+      }
+      if (uploaded.length) {
+        setMediaUrls((prev) => (prev ? prev.trim() + "\n" : "") + uploaded.join("\n"));
+        toast.success(`${uploaded.length} image${uploaded.length > 1 ? "s" : ""} uploaded.`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Image upload failed.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removeMediaUrl = (target: string) => {
+    setMediaUrls(parsedMediaList.filter((u) => u !== target).join("\n"));
+  };
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["community-profiles"],
@@ -320,14 +378,73 @@ const CommunityPage = () => {
                   placeholder="Tell the community what you built or what progress you’re celebrating."
                   className="bg-secondary border-border h-28"
                 />
-                <Textarea
-                  value={mediaUrls}
-                  onChange={(e) => setMediaUrls(e.target.value)}
-                  placeholder="Links to designs, websites, videos, or screenshots (comma or line separated)."
-                  className="bg-secondary border-border h-24"
-                />
+                <div className="space-y-2">
+                  <Textarea
+                    value={mediaUrls}
+                    onChange={(e) => setMediaUrls(e.target.value)}
+                    placeholder="Paste image URLs, YouTube videos, or any link (one per line). Links auto-preview below."
+                    className="bg-secondary border-border h-24"
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleImageUpload(e.target.files)}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Uploading...</>
+                      ) : (
+                        <><ImagePlus className="w-4 h-4 mr-1" /> Upload images</>
+                      )}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">JPG / PNG / GIF up to 8MB each</span>
+                  </div>
+                  {parsedMediaList.length > 0 && (
+                    <div className="grid gap-2 sm:grid-cols-2 mt-2">
+                      {parsedMediaList.map((url) => {
+                        const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url.split("?")[0]);
+                        const ytId = getYouTubeId(url);
+                        return (
+                          <div key={url} className="relative rounded-xl border border-border bg-secondary/60 overflow-hidden group">
+                            {isImage ? (
+                              <img src={url} alt="Preview" className="h-24 w-full object-cover" />
+                            ) : ytId ? (
+                              <div className="h-24 w-full flex items-center gap-2 px-3 bg-red-500/10">
+                                <div className="w-10 h-10 rounded-lg bg-red-500 text-white flex items-center justify-center text-xs font-bold">YT</div>
+                                <p className="text-xs truncate">{formatMediaLabel(url)}</p>
+                              </div>
+                            ) : (
+                              <div className="h-24 w-full flex items-center gap-2 px-3">
+                                <Link2 className="w-4 h-4 text-primary shrink-0" />
+                                <p className="text-xs truncate">{formatMediaLabel(url)}</p>
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeMediaUrl(url)}
+                              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/80 hover:bg-destructive hover:text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              aria-label="Remove"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-muted-foreground">Add at least one supporting link or screenshot to help your peers engage.</p>
+                  <p className="text-sm text-muted-foreground">Add at least one image or link to help your peers engage.</p>
                   <Button variant="hero" onClick={() => createPost.mutate()}>
                     Post to community
                   </Button>
@@ -402,16 +519,39 @@ const CommunityPage = () => {
                             {post.media_urls.map((url: string, index: number) => {
                               const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url.split("?")[0]);
                               const isVideo = /\.(mp4|webm|mov)$/i.test(url.split("?")[0]);
-                              const isYouTube = /youtu\.be|youtube\.com/.test(url);
+                              const ytId = getYouTubeId(url);
                               return (
                                 <div key={index} className="rounded-2xl border border-border overflow-hidden bg-secondary">
                                   {isImage ? (
-                                    <img src={url} alt={`Media ${index + 1}`} className="h-40 w-full object-cover" />
+                                    <a href={url} target="_blank" rel="noreferrer">
+                                      <img src={url} alt={`Media ${index + 1}`} loading="lazy" className="h-56 w-full object-cover hover:opacity-90 transition-opacity" />
+                                    </a>
                                   ) : isVideo ? (
-                                    <video controls src={url} className="h-40 w-full object-cover" />
+                                    <video controls src={url} className="h-56 w-full object-cover" />
+                                  ) : ytId ? (
+                                    <div className="aspect-video w-full bg-black">
+                                      <iframe
+                                        src={`https://www.youtube.com/embed/${ytId}`}
+                                        title="YouTube video"
+                                        className="w-full h-full"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                      />
+                                    </div>
                                   ) : (
-                                    <a href={url} target="_blank" rel="noreferrer" className="block p-4 text-sm text-primary hover:underline">
-                                      {formatMediaLabel(url)}
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="flex items-center gap-3 p-4 hover:bg-secondary/80 transition-colors"
+                                    >
+                                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                        <Link2 className="w-5 h-5 text-primary" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium text-foreground truncate">{formatMediaLabel(url)}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{url}</p>
+                                      </div>
                                     </a>
                                   )}
                                 </div>
