@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute, AdminRoute } from "@/components/auth/ProtectedRoute";
 import StudentChatbot from "@/components/chatbot/StudentChatbot";
+import WhatsAppPrompt from "@/components/WhatsAppPrompt";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import LoginPage from "./pages/LoginPage.tsx";
