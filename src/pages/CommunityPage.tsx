@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Cpu, Sparkles, Heart, MessageCircle, ArrowLeft, UserPlus, UserMinus, Trophy, ChevronRight } from "lucide-react";
+import { Cpu, Sparkles, Heart, MessageCircle, ArrowLeft, UserPlus, UserMinus, Trophy, ChevronRight, ImagePlus, Loader2, X, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import DashboardTopNav from "@/components/dashboard/DashboardTopNav";
