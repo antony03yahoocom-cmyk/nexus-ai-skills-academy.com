@@ -378,14 +378,73 @@ const CommunityPage = () => {
                   placeholder="Tell the community what you built or what progress you’re celebrating."
                   className="bg-secondary border-border h-28"
                 />
-                <Textarea
-                  value={mediaUrls}
-                  onChange={(e) => setMediaUrls(e.target.value)}
-                  placeholder="Links to designs, websites, videos, or screenshots (comma or line separated)."
-                  className="bg-secondary border-border h-24"
-                />
+                <div className="space-y-2">
+                  <Textarea
+                    value={mediaUrls}
+                    onChange={(e) => setMediaUrls(e.target.value)}
+                    placeholder="Paste image URLs, YouTube videos, or any link (one per line). Links auto-preview below."
+                    className="bg-secondary border-border h-24"
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleImageUpload(e.target.files)}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Uploading...</>
+                      ) : (
+                        <><ImagePlus className="w-4 h-4 mr-1" /> Upload images</>
+                      )}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">JPG / PNG / GIF up to 8MB each</span>
+                  </div>
+                  {parsedMediaList.length > 0 && (
+                    <div className="grid gap-2 sm:grid-cols-2 mt-2">
+                      {parsedMediaList.map((url) => {
+                        const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url.split("?")[0]);
+                        const ytId = getYouTubeId(url);
+                        return (
+                          <div key={url} className="relative rounded-xl border border-border bg-secondary/60 overflow-hidden group">
+                            {isImage ? (
+                              <img src={url} alt="Preview" className="h-24 w-full object-cover" />
+                            ) : ytId ? (
+                              <div className="h-24 w-full flex items-center gap-2 px-3 bg-red-500/10">
+                                <div className="w-10 h-10 rounded-lg bg-red-500 text-white flex items-center justify-center text-xs font-bold">YT</div>
+                                <p className="text-xs truncate">{formatMediaLabel(url)}</p>
+                              </div>
+                            ) : (
+                              <div className="h-24 w-full flex items-center gap-2 px-3">
+                                <Link2 className="w-4 h-4 text-primary shrink-0" />
+                                <p className="text-xs truncate">{formatMediaLabel(url)}</p>
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeMediaUrl(url)}
+                              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/80 hover:bg-destructive hover:text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              aria-label="Remove"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-muted-foreground">Add at least one supporting link or screenshot to help your peers engage.</p>
+                  <p className="text-sm text-muted-foreground">Add at least one image or link to help your peers engage.</p>
                   <Button variant="hero" onClick={() => createPost.mutate()}>
                     Post to community
                   </Button>
