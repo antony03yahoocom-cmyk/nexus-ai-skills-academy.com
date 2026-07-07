@@ -519,16 +519,39 @@ const CommunityPage = () => {
                             {post.media_urls.map((url: string, index: number) => {
                               const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url.split("?")[0]);
                               const isVideo = /\.(mp4|webm|mov)$/i.test(url.split("?")[0]);
-                              const isYouTube = /youtu\.be|youtube\.com/.test(url);
+                              const ytId = getYouTubeId(url);
                               return (
                                 <div key={index} className="rounded-2xl border border-border overflow-hidden bg-secondary">
                                   {isImage ? (
-                                    <img src={url} alt={`Media ${index + 1}`} className="h-40 w-full object-cover" />
+                                    <a href={url} target="_blank" rel="noreferrer">
+                                      <img src={url} alt={`Media ${index + 1}`} loading="lazy" className="h-56 w-full object-cover hover:opacity-90 transition-opacity" />
+                                    </a>
                                   ) : isVideo ? (
-                                    <video controls src={url} className="h-40 w-full object-cover" />
+                                    <video controls src={url} className="h-56 w-full object-cover" />
+                                  ) : ytId ? (
+                                    <div className="aspect-video w-full bg-black">
+                                      <iframe
+                                        src={`https://www.youtube.com/embed/${ytId}`}
+                                        title="YouTube video"
+                                        className="w-full h-full"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                      />
+                                    </div>
                                   ) : (
-                                    <a href={url} target="_blank" rel="noreferrer" className="block p-4 text-sm text-primary hover:underline">
-                                      {formatMediaLabel(url)}
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="flex items-center gap-3 p-4 hover:bg-secondary/80 transition-colors"
+                                    >
+                                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                        <Link2 className="w-5 h-5 text-primary" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium text-foreground truncate">{formatMediaLabel(url)}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{url}</p>
+                                      </div>
                                     </a>
                                   )}
                                 </div>
