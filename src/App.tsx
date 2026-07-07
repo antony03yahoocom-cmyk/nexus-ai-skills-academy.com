@@ -219,6 +219,7 @@ const App = () => (
               </Routes>
             </Suspense>
             <StudentChatbot />
+            <WhatsAppPrompt />
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
