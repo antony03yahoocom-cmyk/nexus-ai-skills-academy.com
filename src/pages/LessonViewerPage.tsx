@@ -566,23 +566,10 @@ dangerouslySetInnerHTML={{
 
                 return (
                   <div key={a.id} className="glass-card p-4 sm:p-5 space-y-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold">{a.title}</h4>
-                        {a.objective && <p className="text-sm text-muted-foreground mt-1"><strong>Objective:</strong> {a.objective}</p>}
-                        {a.task && <p className="text-sm text-muted-foreground mt-1"><strong>Task:</strong> {a.task}</p>}
-                        {a.deliverable && <p className="text-sm text-muted-foreground mt-1"><strong>Deliverable:</strong> {a.deliverable}</p>}
-                        {a.description && <p className="text-sm text-muted-foreground mt-1">{a.description}</p>}
-                        {Array.isArray(a.attachment_files) && a.attachment_files.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <span className="text-xs text-muted-foreground">Attachments:</span>
-                            {a.attachment_files.map((url: string, i: number) => (
-                              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">
-                                File {i + 1}
-                              </a>
-                            ))}
-                          </div>
-                        )}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Assignment</p>
+                        <h4 className="text-lg font-bold leading-tight">{a.title}</h4>
                       </div>
                       {subStatus && (
                         <Badge className={
@@ -590,6 +577,51 @@ dangerouslySetInnerHTML={{
                           subStatus === "Rejected" ? "bg-destructive/10 text-destructive border-destructive/20 shrink-0" :
                           "bg-accent/10 text-accent border-accent/20 shrink-0"
                         }>{subStatus}</Badge>
+                      )}
+                    </div>
+
+                    <div className="grid gap-3">
+                      {a.objective && (
+                        <div className="rounded-xl border border-border/70 bg-secondary/60 p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary mb-1">🎯 Objective</p>
+                          <p className="text-sm text-foreground whitespace-pre-line">{a.objective}</p>
+                        </div>
+                      )}
+                      {a.task && (
+                        <div className="rounded-xl border border-border/70 bg-secondary/60 p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent mb-1">📝 Task</p>
+                          <p className="text-sm text-foreground whitespace-pre-line">{a.task}</p>
+                        </div>
+                      )}
+                      {a.deliverable && (
+                        <div className="rounded-xl border border-border/70 bg-secondary/60 p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-success mb-1">📦 Deliverable</p>
+                          <p className="text-sm text-foreground whitespace-pre-line">{a.deliverable}</p>
+                        </div>
+                      )}
+                      {a.description && (
+                        <div className="rounded-xl border border-border/70 bg-secondary/40 p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1">Additional details</p>
+                          <p className="text-sm text-muted-foreground whitespace-pre-line">{a.description}</p>
+                        </div>
+                      )}
+                      {Array.isArray(a.attachment_files) && a.attachment_files.length > 0 && (
+                        <div className="rounded-xl border border-border/70 bg-secondary/40 p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">📎 Reference attachments</p>
+                          <div className="flex flex-wrap gap-2">
+                            {a.attachment_files.map((url: string, i: number) => (
+                              <a
+                                key={i}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                              >
+                                File {i + 1}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
 
