@@ -36,29 +36,20 @@ function normalisePhone(raw: string): string | null {
 }
 
 
-function buildComponents(template: Record<string, any>, vars: Record<string, string>): object[] {
-  const components: object[] = [];
-  if (template.header_type === "TEXT" && template.header_text) {
-    const headerVars = Object.keys(vars).filter((k) => k.startsWith("header_"));
-    if (headerVars.length) {
-      components.push({
-        type: "header",
-        parameters: headerVars.map((k) => ({ type: "text", text: vars[k] })),
-      });
-    }
-  }
+/**
+ * The gateway takes an ordered variable array instead of Meta components.
+ * vars are keyed "1", "2", … (matching the {{n}} placeholders in the body).
+ */
+function buildVariables(template: Record<string, any>, vars: Record<string, string>): string[] {
   const bodyVarKeys = (template.body_variables as string[] ?? []);
-  if (bodyVarKeys.length) {
-    components.push({
-      type: "body",
-      parameters: bodyVarKeys.map((_, i) => ({
-        type: "text",
-        text: vars[String(i + 1)] ?? `{{${i + 1}}}`,
-      })),
-    });
-  }
-  return components;
+  const count = bodyVarKeys.length
+    ? bodyVarKeys.length
+    : Object.keys(vars ?? {}).filter((k) => /^\d+$/.test(k)).length;
+  const out: string[] = [];
+  for (let i = 1; i <= count; i++) out.push(vars[String(i)] ?? "");
+  return out;
 }
+
 
 // Ensure a conversation exists for this phone, return its id.
 async function ensureConversation(
