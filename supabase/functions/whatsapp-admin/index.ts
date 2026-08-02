@@ -6,6 +6,15 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  extractWamid,
+  gatewayConfigured,
+  listTemplates,
+  optInContact,
+  sendWhatsAppTemplate,
+  sendWhatsAppText,
+  toDigits,
+} from "../_shared/nexusGateway.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -19,38 +28,13 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// ── Meta API helpers ───────────────────────────────────────────────
-
-async function metaGet(path: string, token: string) {
-  const res = await fetch(`https://graph.facebook.com/v20.0${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`Meta API ${res.status}: ${JSON.stringify(err)}`);
-  }
-  return res.json();
-}
-
-async function metaPost(path: string, body: object, token: string) {
-  const res = await fetch(`https://graph.facebook.com/v20.0${path}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Meta API ${res.status}: ${JSON.stringify(data)}`);
-  return data;
-}
-
+// All provider traffic now goes through the Nexus WhatsApp Gateway.
+// Phone numbers are stored digits-only for inbox continuity; the gateway
+// client converts to E.164 before sending.
 function normalisePhone(raw: string): string | null {
-  const d = String(raw ?? "").replace(/\D/g, "");
-  if (d.startsWith("254") && d.length === 12) return d;
-  if (d.startsWith("0") && d.length === 10) return "254" + d.slice(1);
-  if (d.startsWith("7") && d.length === 9) return "254" + d;
-  if (d.length >= 10) return d;
-  return null;
+  return toDigits(raw);
 }
+
 
 function buildComponents(template: Record<string, any>, vars: Record<string, string>): object[] {
   const components: object[] = [];
