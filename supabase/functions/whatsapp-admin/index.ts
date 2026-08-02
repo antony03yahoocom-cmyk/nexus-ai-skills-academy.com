@@ -122,8 +122,6 @@ async function syncTemplates(sb: ReturnType<typeof createClient>) {
 
 async function sendTemplate(
   sb: ReturnType<typeof createClient>,
-  phoneNumberId: string,
-  token: string,
   templateName: string,
   templateLanguage: string,
   recipients: { user_id?: string; phone: string; name?: string }[],
@@ -132,6 +130,7 @@ async function sendTemplate(
   sentByUserId: string | null,
   automationId: string | null,
 ) {
+
   const results: { phone: string; status: string; wamid?: string; error?: string }[] = [];
   const BATCH = 20;
   const batches: typeof recipients[] = [];
