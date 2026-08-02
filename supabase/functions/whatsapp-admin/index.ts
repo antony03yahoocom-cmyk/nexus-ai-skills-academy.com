@@ -156,14 +156,13 @@ async function sendTemplate(
       const convId = await ensureConversation(sb, phone, r.name ?? null, r.user_id ?? null);
 
       try {
-        const components = buildComponents(template, personalVars);
-        const metaData = await metaPost(`/${phoneNumberId}/messages`, {
-          messaging_product: "whatsapp",
-          to: phone,
-          type: "template",
-          template: { name: templateName, language: { code: templateLanguage }, components },
-        }, token);
-        const wamid = metaData?.messages?.[0]?.id ?? null;
+        // Register/refresh consent, then send through the Nexus Gateway.
+        await optInContact(phone, r.name ?? "Student");
+        const variables = buildVariables(template, personalVars);
+        const res = await sendWhatsAppTemplate(phone, templateName, templateLanguage, variables);
+        if (!res.success) throw new Error(res.error ?? "Gateway send failed");
+        const wamid = extractWamid(res.data);
+
 
         if (convId) {
           await sb.from("whatsapp_messages" as any).insert({
