@@ -78,32 +78,37 @@ async function ensureConversation(
 
 // ── SYNC TEMPLATES ─────────────────────────────────────────────────
 
-async function syncTemplates(sb: ReturnType<typeof createClient>, wabaId: string, token: string) {
-  const data = await metaGet(
-    `/${wabaId}/message_templates?fields=id,name,category,language,status,components&limit=100`,
-    token,
-  );
-  const templates = (data.data ?? []) as any[];
+async function syncTemplates(sb: ReturnType<typeof createClient>) {
+  const res = await listTemplates();
+  if (!res.success) throw new Error(res.error ?? "Gateway template fetch failed");
+
+  const raw = res.data as any;
+  const templates: any[] = Array.isArray(raw)
+    ? raw
+    : (raw?.data ?? raw?.templates ?? raw?.result ?? []);
+
   let upserted = 0;
   for (const tpl of templates) {
     const comps: any[] = tpl.components ?? [];
-    const header = comps.find((c: any) => c.type === "HEADER");
-    const body   = comps.find((c: any) => c.type === "BODY");
-    const footer = comps.find((c: any) => c.type === "FOOTER");
-    const buttons = comps.filter((c: any) => c.type === "BUTTONS");
-    const bodyText: string = body?.text ?? "";
-    const bodyVars = [...bodyText.matchAll(/\{\{(\d+)\}\}/g)].map((m) => `{{${m[1]}}}`);
+    const header = comps.find((c: any) => String(c.type).toUpperCase() === "HEADER");
+    const body = comps.find((c: any) => String(c.type).toUpperCase() === "BODY");
+    const footer = comps.find((c: any) => String(c.type).toUpperCase() === "FOOTER");
+    const buttons = comps.filter((c: any) => String(c.type).toUpperCase() === "BUTTONS");
+    const bodyText: string = body?.text ?? tpl.body_text ?? tpl.bodyText ?? "";
+    const bodyVars = [...String(bodyText).matchAll(/\{\{(\d+)\}\}/g)].map((m) => `{{${m[1]}}}`);
+    const id = String(tpl.id ?? tpl.meta_id ?? tpl.templateId ?? tpl.name);
+
     await sb.from("whatsapp_templates" as any).upsert({
-      meta_id:        tpl.id,
-      name:           tpl.name,
-      category:       tpl.category,
-      language:       tpl.language,
-      status:         tpl.status,
-      header_type:    header?.format ?? null,
-      header_text:    header?.text ?? null,
+      meta_id:        id,
+      name:           tpl.name ?? tpl.templateName,
+      category:       tpl.category ?? "UTILITY",
+      language:       tpl.language ?? tpl.languageCode ?? "en",
+      status:         String(tpl.status ?? "APPROVED").toUpperCase(),
+      header_type:    header?.format ?? tpl.header_type ?? null,
+      header_text:    header?.text ?? tpl.header_text ?? null,
       body_text:      bodyText,
       body_variables: bodyVars,
-      footer_text:    footer?.text ?? null,
+      footer_text:    footer?.text ?? tpl.footer_text ?? null,
       buttons:        buttons,
       last_synced_at: new Date().toISOString(),
     }, { onConflict: "meta_id" });
@@ -111,6 +116,7 @@ async function syncTemplates(sb: ReturnType<typeof createClient>, wabaId: string
   }
   return { synced: upserted, total: templates.length };
 }
+
 
 // ── SEND TEMPLATE ──────────────────────────────────────────────────
 
