@@ -1,24 +1,24 @@
 // send-whatsapp/index.ts
 // Called by the Postgres pg_net trigger on every notification insert.
-// Sends the appropriate WhatsApp template message via Meta Cloud API.
+// Sends the matching approved WhatsApp template through the Nexus WhatsApp Gateway.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  extractWamid,
+  gatewayConfigured,
+  optInContact,
+  sendWhatsAppTemplate,
+  toDigits,
+} from "../_shared/nexusGateway.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-whatsapp-internal-key",
 };
 
-// ── Template definitions ───────────────────────────────────────────
-// These MUST match the names you register in Meta Business Manager.
-// See WHATSAPP_TEMPLATES_GUIDE.md for the exact text to submit.
-
 const PLATFORM_URL = "https://nexus-ai-skills-academy.lovable.app";
 
-type TemplatePayload = {
-  name: string;
-  components: object[];
-};
+type TemplatePayload = { name: string; variables: string[] };
 
 function buildTemplate(
   eventType: string,
@@ -34,135 +34,61 @@ function buildTemplate(
     case "lesson_unlocked":
       return {
         name: "nexus_lesson_unlocked",
-        components: [{
-          type: "body",
-          parameters: [
-            { type: "text", text: userName },
-            { type: "text", text: title.replace("Lesson unlocked: ", "").replace("Next lesson unlocked: ", "") },
-            { type: "text", text: metadata.course_title ?? "your course" },
-            { type: "text", text: link },
-          ],
-        }],
+        variables: [
+          userName,
+          title.replace("Lesson unlocked: ", "").replace("Next lesson unlocked: ", ""),
+          metadata.course_title ?? "your course",
+          link,
+        ],
       };
 
     case "trial_expiry":
-      return {
-        name: "nexus_trial_expiry_reminder",
-        components: [{
-          type: "body",
-          parameters: [
-            { type: "text", text: userName },
-            { type: "text", text: `${PLATFORM_URL}/subscribe` },
-          ],
-        }],
-      };
+      return { name: "nexus_trial_expiry_reminder", variables: [userName, `${PLATFORM_URL}/subscribe`] };
 
     case "certificate_earned":
       return {
         name: "nexus_certificate_earned",
-        components: [{
-          type: "body",
-          parameters: [
-            { type: "text", text: userName },
-            { type: "text", text: metadata.course_name ?? "your course" },
-            { type: "text", text: link },
-          ],
-        }],
+        variables: [userName, metadata.course_name ?? "your course", link],
       };
 
     case "payment_confirmed":
-      return {
-        name: "nexus_payment_confirmed",
-        components: [{
-          type: "body",
-          parameters: [
-            { type: "text", text: userName },
-            { type: "text", text: dashboard },
-          ],
-        }],
-      };
+      return { name: "nexus_payment_confirmed", variables: [userName, dashboard] };
 
     case "new_message":
       return {
         name: "nexus_new_message",
-        components: [{
-          type: "body",
-          parameters: [
-            { type: "text", text: userName },
-            { type: "text", text: metadata.sender_name ?? "Someone" },
-            { type: "text", text: `${PLATFORM_URL}/dashboard/messages` },
-          ],
-        }],
+        variables: [userName, metadata.sender_name ?? "Someone", `${PLATFORM_URL}/dashboard/messages`],
       };
 
     case "new_opportunity":
     case "application_update":
     case "shortlisted":
     case "hired":
-      return {
-        name: "nexus_job_update",
-        components: [{
-          type: "body",
-          parameters: [
-            { type: "text", text: userName },
-            { type: "text", text: message || title },
-            { type: "text", text: link },
-          ],
-        }],
-      };
+      return { name: "nexus_job_update", variables: [userName, message || title, link] };
 
     case "announcement":
       return {
         name: "nexus_announcement",
-        components: [{
-          type: "body",
-          parameters: [
-            { type: "text", text: title },
-            { type: "text", text: userName },
-            { type: "text", text: message || "See the latest update on the platform." },
-            { type: "text", text: dashboard },
-          ],
-        }],
+        variables: [title, userName, message || "See the latest update on the platform.", dashboard],
       };
 
     default:
-      // Catch-all — works for comment, like, profile_view, etc.
       return {
         name: "nexus_general_update",
-        components: [{
-          type: "body",
-          parameters: [
-            { type: "text", text: userName },
-            { type: "text", text: title },
-            { type: "text", text: message || "You have a new update." },
-            { type: "text", text: link },
-          ],
-        }],
+        variables: [userName, title, message || "You have a new update.", link],
       };
   }
 }
 
-// ── Phone normaliser ───────────────────────────────────────────────
-// Accepts: +254712…, 0712…, 254712…  → returns 254712…
-function normalisePhone(raw: string): string | null {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("254") && digits.length === 12) return digits;
-  if (digits.startsWith("0") && digits.length === 10) return "254" + digits.slice(1);
-  if (digits.startsWith("7") && digits.length === 9) return "254" + digits;
-  if (digits.length >= 10) return digits; // other country codes
-  return null;
-}
-
-// ── Main handler ───────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   // Validate internal key (shared secret between DB trigger and this function).
   // Fail closed: reject when the key is missing or does not match.
   const internalKey = req.headers.get("x-whatsapp-internal-key") ?? "";
-  const expectedKey  = Deno.env.get("WHATSAPP_INTERNAL_KEY") ?? "";
-  const triggerKey   = Deno.env.get("WHATSAPP_TRIGGER_KEY") ?? "";
-  const validKey     = (expectedKey && internalKey === expectedKey) || (triggerKey && internalKey === triggerKey);
+  const expectedKey = (Deno.env.get("WHATSAPP_INTERNAL_KEY") ?? "").trim();
+  const triggerKey = (Deno.env.get("WHATSAPP_TRIGGER_KEY") ?? "").trim();
+  const validKey = (expectedKey && internalKey === expectedKey) || (triggerKey && internalKey === triggerKey);
   if (!validKey) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
@@ -170,12 +96,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  const phoneNumberId  = (Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "").trim();
-  const permanentToken = (Deno.env.get("WHATSAPP_PERMANENT_TOKEN") ?? "").trim();
-
-  if (!phoneNumberId || !permanentToken) {
+  if (!gatewayConfigured()) {
     return new Response(
-      JSON.stringify({ error: "WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_PERMANENT_TOKEN not set in Supabase secrets" }),
+      JSON.stringify({ error: "NEXUS_GATEWAY_URL / NEXUS_GATEWAY_API_KEY not configured" }),
       { status: 500, headers: { ...CORS, "Content-Type": "application/json" } },
     );
   }
@@ -196,7 +119,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Use phone from trigger payload, fallback to DB lookup
     let rawPhone = phone_number;
     let userName = "Student";
 
@@ -207,7 +129,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!rawPhone) rawPhone = profile?.whatsapp_number;
-    if (profile?.full_name) userName = profile.full_name.split(" ")[0]; // first name only
+    if (profile?.full_name) userName = profile.full_name.split(" ")[0];
 
     // Always require opt-in — never bypass based on request-supplied phone_number
     if (!profile?.whatsapp_opted_in) {
@@ -222,7 +144,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const toPhone = normalisePhone(rawPhone);
+    const toPhone = toDigits(rawPhone);
     if (!toPhone) {
       return new Response(JSON.stringify({ error: `Invalid phone: ${rawPhone}` }), {
         status: 400,
@@ -238,33 +160,12 @@ Deno.serve(async (req) => {
       userName,
     );
 
-    // ── Send via Meta WhatsApp Cloud API ──────────────────────────
-    const metaRes = await fetch(
-      `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${permanentToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: toPhone,
-          type: "template",
-          template: {
-            name: template.name,
-            language: { code: "en" },
-            components: template.components,
-          },
-        }),
-      },
-    );
+    // Register/refresh consent, then send via the gateway.
+    await optInContact(toPhone, profile?.full_name ?? userName);
+    const res = await sendWhatsAppTemplate(toPhone, template.name, "en", template.variables);
+    const wamid = res.success ? extractWamid(res.data) : null;
+    const success = res.success;
 
-    const metaData = await metaRes.json();
-    const wamid = metaData?.messages?.[0]?.id ?? null;
-    const success = metaRes.ok && !!wamid;
-
-    // ── Log the attempt ───────────────────────────────────────────
     await supabase.from("whatsapp_message_log" as any).insert({
       user_id,
       phone_number: toPhone,
@@ -272,13 +173,13 @@ Deno.serve(async (req) => {
       event_type: event_type ?? "unknown",
       notification_id: notification_id ?? null,
       status: success ? "sent" : "failed",
-      error_message: success ? null : JSON.stringify(metaData),
+      error_message: success ? null : (res.error ?? "Unknown gateway error").slice(0, 500),
       wamid,
     });
 
     return new Response(
-      JSON.stringify({ success, wamid, template: template.name }),
-      { headers: { ...CORS, "Content-Type": "application/json" } },
+      JSON.stringify({ success, wamid, template: template.name, error: success ? undefined : res.error }),
+      { status: success ? 200 : 502, headers: { ...CORS, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("[send-whatsapp] Error:", err);

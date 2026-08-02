@@ -23,3 +23,10 @@ verify_jwt = false
 
 [functions.whatsapp-admin]
 verify_jwt = true
+
+[functions.nexus-webhook]
+verify_jwt = false
+
+[functions.nexus-register]
+verify_jwt = false
+

@@ -6,6 +6,15 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  extractWamid,
+  gatewayConfigured,
+  listTemplates,
+  optInContact,
+  sendWhatsAppTemplate,
+  sendWhatsAppText,
+  toDigits,
+} from "../_shared/nexusGateway.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -19,62 +28,28 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// ── Meta API helpers ───────────────────────────────────────────────
-
-async function metaGet(path: string, token: string) {
-  const res = await fetch(`https://graph.facebook.com/v20.0${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`Meta API ${res.status}: ${JSON.stringify(err)}`);
-  }
-  return res.json();
-}
-
-async function metaPost(path: string, body: object, token: string) {
-  const res = await fetch(`https://graph.facebook.com/v20.0${path}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Meta API ${res.status}: ${JSON.stringify(data)}`);
-  return data;
-}
-
+// All provider traffic now goes through the Nexus WhatsApp Gateway.
+// Phone numbers are stored digits-only for inbox continuity; the gateway
+// client converts to E.164 before sending.
 function normalisePhone(raw: string): string | null {
-  const d = String(raw ?? "").replace(/\D/g, "");
-  if (d.startsWith("254") && d.length === 12) return d;
-  if (d.startsWith("0") && d.length === 10) return "254" + d.slice(1);
-  if (d.startsWith("7") && d.length === 9) return "254" + d;
-  if (d.length >= 10) return d;
-  return null;
+  return toDigits(raw);
 }
 
-function buildComponents(template: Record<string, any>, vars: Record<string, string>): object[] {
-  const components: object[] = [];
-  if (template.header_type === "TEXT" && template.header_text) {
-    const headerVars = Object.keys(vars).filter((k) => k.startsWith("header_"));
-    if (headerVars.length) {
-      components.push({
-        type: "header",
-        parameters: headerVars.map((k) => ({ type: "text", text: vars[k] })),
-      });
-    }
-  }
+
+/**
+ * The gateway takes an ordered variable array instead of Meta components.
+ * vars are keyed "1", "2", … (matching the {{n}} placeholders in the body).
+ */
+function buildVariables(template: Record<string, any>, vars: Record<string, string>): string[] {
   const bodyVarKeys = (template.body_variables as string[] ?? []);
-  if (bodyVarKeys.length) {
-    components.push({
-      type: "body",
-      parameters: bodyVarKeys.map((_, i) => ({
-        type: "text",
-        text: vars[String(i + 1)] ?? `{{${i + 1}}}`,
-      })),
-    });
-  }
-  return components;
+  const count = bodyVarKeys.length
+    ? bodyVarKeys.length
+    : Object.keys(vars ?? {}).filter((k) => /^\d+$/.test(k)).length;
+  const out: string[] = [];
+  for (let i = 1; i <= count; i++) out.push(vars[String(i)] ?? "");
+  return out;
 }
+
 
 // Ensure a conversation exists for this phone, return its id.
 async function ensureConversation(
@@ -103,32 +78,37 @@ async function ensureConversation(
 
 // ── SYNC TEMPLATES ─────────────────────────────────────────────────
 
-async function syncTemplates(sb: ReturnType<typeof createClient>, wabaId: string, token: string) {
-  const data = await metaGet(
-    `/${wabaId}/message_templates?fields=id,name,category,language,status,components&limit=100`,
-    token,
-  );
-  const templates = (data.data ?? []) as any[];
+async function syncTemplates(sb: ReturnType<typeof createClient>) {
+  const res = await listTemplates();
+  if (!res.success) throw new Error(res.error ?? "Gateway template fetch failed");
+
+  const raw = res.data as any;
+  const templates: any[] = Array.isArray(raw)
+    ? raw
+    : (raw?.data ?? raw?.templates ?? raw?.result ?? []);
+
   let upserted = 0;
   for (const tpl of templates) {
     const comps: any[] = tpl.components ?? [];
-    const header = comps.find((c: any) => c.type === "HEADER");
-    const body   = comps.find((c: any) => c.type === "BODY");
-    const footer = comps.find((c: any) => c.type === "FOOTER");
-    const buttons = comps.filter((c: any) => c.type === "BUTTONS");
-    const bodyText: string = body?.text ?? "";
-    const bodyVars = [...bodyText.matchAll(/\{\{(\d+)\}\}/g)].map((m) => `{{${m[1]}}}`);
+    const header = comps.find((c: any) => String(c.type).toUpperCase() === "HEADER");
+    const body = comps.find((c: any) => String(c.type).toUpperCase() === "BODY");
+    const footer = comps.find((c: any) => String(c.type).toUpperCase() === "FOOTER");
+    const buttons = comps.filter((c: any) => String(c.type).toUpperCase() === "BUTTONS");
+    const bodyText: string = body?.text ?? tpl.body_text ?? tpl.bodyText ?? "";
+    const bodyVars = [...String(bodyText).matchAll(/\{\{(\d+)\}\}/g)].map((m) => `{{${m[1]}}}`);
+    const id = String(tpl.id ?? tpl.meta_id ?? tpl.templateId ?? tpl.name);
+
     await sb.from("whatsapp_templates" as any).upsert({
-      meta_id:        tpl.id,
-      name:           tpl.name,
-      category:       tpl.category,
-      language:       tpl.language,
-      status:         tpl.status,
-      header_type:    header?.format ?? null,
-      header_text:    header?.text ?? null,
+      meta_id:        id,
+      name:           tpl.name ?? tpl.templateName,
+      category:       tpl.category ?? "UTILITY",
+      language:       tpl.language ?? tpl.languageCode ?? "en",
+      status:         String(tpl.status ?? "APPROVED").toUpperCase(),
+      header_type:    header?.format ?? tpl.header_type ?? null,
+      header_text:    header?.text ?? tpl.header_text ?? null,
       body_text:      bodyText,
       body_variables: bodyVars,
-      footer_text:    footer?.text ?? null,
+      footer_text:    footer?.text ?? tpl.footer_text ?? null,
       buttons:        buttons,
       last_synced_at: new Date().toISOString(),
     }, { onConflict: "meta_id" });
@@ -137,12 +117,11 @@ async function syncTemplates(sb: ReturnType<typeof createClient>, wabaId: string
   return { synced: upserted, total: templates.length };
 }
 
+
 // ── SEND TEMPLATE ──────────────────────────────────────────────────
 
 async function sendTemplate(
   sb: ReturnType<typeof createClient>,
-  phoneNumberId: string,
-  token: string,
   templateName: string,
   templateLanguage: string,
   recipients: { user_id?: string; phone: string; name?: string }[],
@@ -151,6 +130,7 @@ async function sendTemplate(
   sentByUserId: string | null,
   automationId: string | null,
 ) {
+
   const results: { phone: string; status: string; wamid?: string; error?: string }[] = [];
   const BATCH = 20;
   const batches: typeof recipients[] = [];
@@ -176,14 +156,13 @@ async function sendTemplate(
       const convId = await ensureConversation(sb, phone, r.name ?? null, r.user_id ?? null);
 
       try {
-        const components = buildComponents(template, personalVars);
-        const metaData = await metaPost(`/${phoneNumberId}/messages`, {
-          messaging_product: "whatsapp",
-          to: phone,
-          type: "template",
-          template: { name: templateName, language: { code: templateLanguage }, components },
-        }, token);
-        const wamid = metaData?.messages?.[0]?.id ?? null;
+        // Register/refresh consent, then send through the Nexus Gateway.
+        await optInContact(phone, r.name ?? "Student");
+        const variables = buildVariables(template, personalVars);
+        const res = await sendWhatsAppTemplate(phone, templateName, templateLanguage, variables);
+        if (!res.success) throw new Error(res.error ?? "Gateway send failed");
+        const wamid = extractWamid(res.data);
+
 
         if (convId) {
           await sb.from("whatsapp_messages" as any).insert({
@@ -194,12 +173,13 @@ async function sendTemplate(
             body:          template.body_text ?? null,
             template_name: templateName,
             template_vars: personalVars,
-            status:        wamid ? "sent" : "failed",
+            status:        "sent",
             sent_by_user_id: sentByUserId,
             automation_id: automationId,
           });
         }
-        results.push({ phone, status: wamid ? "sent" : "failed", wamid });
+        results.push({ phone, status: "sent", wamid: wamid ?? undefined });
+
       } catch (err: any) {
         const errMsg = err?.message ?? String(err);
         // Log failed attempt so failure count and inbox history stay accurate.
@@ -242,8 +222,6 @@ async function sendTemplate(
 
 async function sendFreeform(
   sb: ReturnType<typeof createClient>,
-  phoneNumberId: string,
-  token: string,
   phone: string,
   text: string,
   conversationId: string,
@@ -252,23 +230,20 @@ async function sendFreeform(
   const normPhone = normalisePhone(phone);
   if (!normPhone) throw new Error("Invalid phone number");
   try {
-    const metaData = await metaPost(`/${phoneNumberId}/messages`, {
-      messaging_product: "whatsapp",
-      to: normPhone,
-      type: "text",
-      text: { body: text },
-    }, token);
-    const wamid = metaData?.messages?.[0]?.id ?? null;
+    const res = await sendWhatsAppText(normPhone, text);
+    if (!res.success) throw new Error(res.error ?? "Gateway send failed");
+    const wamid = extractWamid(res.data);
     await sb.from("whatsapp_messages" as any).insert({
       conversation_id: conversationId,
       wamid,
       direction:       "outbound",
       message_type:    "text",
       body:            text,
-      status:          wamid ? "sent" : "failed",
+      status:          "sent",
       sent_by_user_id: sentByUserId,
     });
-    return { wamid, status: wamid ? "sent" : "failed" };
+    return { wamid, status: "sent" };
+
   } catch (err: any) {
     await sb.from("whatsapp_messages" as any).insert({
       conversation_id: conversationId,
@@ -320,13 +295,11 @@ Deno.serve(async (req) => {
     user = { id: authedUser.id };
   }
 
-  // Trim whitespace/newlines — secrets pasted from the Meta dashboard often
-  // include a trailing space, which corrupts the Graph API URL and yields
-  // GraphMethodException code 100 subcode 33 ("Object with ID '… ' does not exist").
-  const TOKEN    = (Deno.env.get("WHATSAPP_PERMANENT_TOKEN") ?? "").trim();
-  const PHONE_ID = (Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "").trim();
-  const WABA_ID  = (Deno.env.get("WHATSAPP_BUSINESS_ACCOUNT_ID") ?? "").trim();
-  if (!TOKEN || !PHONE_ID) return json({ error: "WhatsApp credentials not configured" }, 500);
+  // All provider traffic goes through the Nexus WhatsApp Gateway now —
+  // no Meta token or phone-number id is needed here.
+  if (!gatewayConfigured()) {
+    return json({ error: "Nexus Gateway not configured (NEXUS_GATEWAY_URL / NEXUS_GATEWAY_API_KEY)" }, 500);
+  }
 
   const url = new URL(req.url);
   try {
@@ -334,8 +307,7 @@ Deno.serve(async (req) => {
     const action = url.searchParams.get("action") ?? (body as any)?.action ?? null;
 
     if (action === "sync_templates") {
-      if (!WABA_ID) return json({ error: "WHATSAPP_BUSINESS_ACCOUNT_ID not set" }, 500);
-      const result = await syncTemplates(sb, WABA_ID, TOKEN);
+      const result = await syncTemplates(sb);
       return json({ success: true, ...result });
     }
 
@@ -353,7 +325,7 @@ Deno.serve(async (req) => {
       if (!tpl) return json({ error: "Template not found or not approved" }, 404);
 
       const results = await sendTemplate(
-        sb, PHONE_ID, TOKEN,
+        sb,
         (tpl as any).name, (tpl as any).language,
         recipients, vars ?? {}, tpl as any,
         user?.id ?? null,
@@ -369,9 +341,10 @@ Deno.serve(async (req) => {
       if (!phone || !text || !conversation_id) {
         return json({ error: "phone, text, conversation_id required" }, 400);
       }
-      const result = await sendFreeform(sb, PHONE_ID, TOKEN, phone, text, conversation_id, user?.id ?? null);
+      const result = await sendFreeform(sb, phone, text, conversation_id, user?.id ?? null);
       return json({ success: true, ...result });
     }
+
 
     if (action === "get_analytics") {
       const { data } = await sb.rpc("get_whatsapp_analytics" as any);
