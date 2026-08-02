@@ -222,8 +222,6 @@ async function sendTemplate(
 
 async function sendFreeform(
   sb: ReturnType<typeof createClient>,
-  phoneNumberId: string,
-  token: string,
   phone: string,
   text: string,
   conversationId: string,
@@ -232,23 +230,20 @@ async function sendFreeform(
   const normPhone = normalisePhone(phone);
   if (!normPhone) throw new Error("Invalid phone number");
   try {
-    const metaData = await metaPost(`/${phoneNumberId}/messages`, {
-      messaging_product: "whatsapp",
-      to: normPhone,
-      type: "text",
-      text: { body: text },
-    }, token);
-    const wamid = metaData?.messages?.[0]?.id ?? null;
+    const res = await sendWhatsAppText(normPhone, text);
+    if (!res.success) throw new Error(res.error ?? "Gateway send failed");
+    const wamid = extractWamid(res.data);
     await sb.from("whatsapp_messages" as any).insert({
       conversation_id: conversationId,
       wamid,
       direction:       "outbound",
       message_type:    "text",
       body:            text,
-      status:          wamid ? "sent" : "failed",
+      status:          "sent",
       sent_by_user_id: sentByUserId,
     });
-    return { wamid, status: wamid ? "sent" : "failed" };
+    return { wamid, status: "sent" };
+
   } catch (err: any) {
     await sb.from("whatsapp_messages" as any).insert({
       conversation_id: conversationId,
