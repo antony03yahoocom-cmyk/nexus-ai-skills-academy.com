@@ -173,12 +173,13 @@ async function sendTemplate(
             body:          template.body_text ?? null,
             template_name: templateName,
             template_vars: personalVars,
-            status:        wamid ? "sent" : "failed",
+            status:        "sent",
             sent_by_user_id: sentByUserId,
             automation_id: automationId,
           });
         }
-        results.push({ phone, status: wamid ? "sent" : "failed", wamid });
+        results.push({ phone, status: "sent", wamid: wamid ?? undefined });
+
       } catch (err: any) {
         const errMsg = err?.message ?? String(err);
         // Log failed attempt so failure count and inbox history stay accurate.
