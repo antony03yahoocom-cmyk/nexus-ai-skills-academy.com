@@ -295,13 +295,11 @@ Deno.serve(async (req) => {
     user = { id: authedUser.id };
   }
 
-  // Trim whitespace/newlines — secrets pasted from the Meta dashboard often
-  // include a trailing space, which corrupts the Graph API URL and yields
-  // GraphMethodException code 100 subcode 33 ("Object with ID '… ' does not exist").
-  const TOKEN    = (Deno.env.get("WHATSAPP_PERMANENT_TOKEN") ?? "").trim();
-  const PHONE_ID = (Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "").trim();
-  const WABA_ID  = (Deno.env.get("WHATSAPP_BUSINESS_ACCOUNT_ID") ?? "").trim();
-  if (!TOKEN || !PHONE_ID) return json({ error: "WhatsApp credentials not configured" }, 500);
+  // All provider traffic goes through the Nexus WhatsApp Gateway now —
+  // no Meta token or phone-number id is needed here.
+  if (!gatewayConfigured()) {
+    return json({ error: "Nexus Gateway not configured (NEXUS_GATEWAY_URL / NEXUS_GATEWAY_API_KEY)" }, 500);
+  }
 
   const url = new URL(req.url);
   try {
@@ -309,8 +307,7 @@ Deno.serve(async (req) => {
     const action = url.searchParams.get("action") ?? (body as any)?.action ?? null;
 
     if (action === "sync_templates") {
-      if (!WABA_ID) return json({ error: "WHATSAPP_BUSINESS_ACCOUNT_ID not set" }, 500);
-      const result = await syncTemplates(sb, WABA_ID, TOKEN);
+      const result = await syncTemplates(sb);
       return json({ success: true, ...result });
     }
 
@@ -328,7 +325,7 @@ Deno.serve(async (req) => {
       if (!tpl) return json({ error: "Template not found or not approved" }, 404);
 
       const results = await sendTemplate(
-        sb, PHONE_ID, TOKEN,
+        sb,
         (tpl as any).name, (tpl as any).language,
         recipients, vars ?? {}, tpl as any,
         user?.id ?? null,
@@ -344,9 +341,10 @@ Deno.serve(async (req) => {
       if (!phone || !text || !conversation_id) {
         return json({ error: "phone, text, conversation_id required" }, 400);
       }
-      const result = await sendFreeform(sb, PHONE_ID, TOKEN, phone, text, conversation_id, user?.id ?? null);
+      const result = await sendFreeform(sb, phone, text, conversation_id, user?.id ?? null);
       return json({ success: true, ...result });
     }
+
 
     if (action === "get_analytics") {
       const { data } = await sb.rpc("get_whatsapp_analytics" as any);
