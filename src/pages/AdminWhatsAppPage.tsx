@@ -333,14 +333,12 @@ const AdminWhatsAppPage = () => {
     try {
       const res = await callAdmin(session, "sync_templates");
       if (res.success) {
-        toast.success(`Synced ${res.synced} templates from Meta`);
+        toast.success(`Synced ${res.synced} templates from Nexus Gateway`);
         qc.invalidateQueries({ queryKey: ["wa-templates"] });
       } else {
         const errMsg = res.error ?? "Sync failed";
-        if (errMsg.includes("WHATSAPP_BUSINESS_ACCOUNT_ID")) {
-          toast.error("Missing secret: add WHATSAPP_BUSINESS_ACCOUNT_ID in Supabase → Edge Functions → Secrets");
-        } else if (errMsg.includes("credentials")) {
-          toast.error("WhatsApp credentials not configured. Check WHATSAPP_PERMANENT_TOKEN in Supabase secrets.");
+        if (errMsg.includes("NEXUS_GATEWAY") || errMsg.includes("not configured")) {
+          toast.error("Nexus Gateway is not configured. Add NEXUS_GATEWAY_URL and NEXUS_GATEWAY_API_KEY in backend secrets.");
         } else {
           toast.error(errMsg);
         }
@@ -694,7 +692,7 @@ const AdminWhatsAppPage = () => {
                 <div className="glass-card p-12 text-center">
                   <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="font-medium mb-1">No templates found</p>
-                  <p className="text-sm text-muted-foreground">Click "Sync Templates" to pull your approved templates from Meta.</p>
+                  <p className="text-sm text-muted-foreground">Click "Sync Templates" to pull your approved templates from Nexus Gateway.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
