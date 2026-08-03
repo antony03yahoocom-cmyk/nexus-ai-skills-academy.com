@@ -351,6 +351,37 @@ Deno.serve(async (req) => {
       return json({ success: true, analytics: data });
     }
 
+    // Settings → WhatsApp Integration: "Save & Test"
+    if (action === "gateway_status") {
+      const res = await getSettings();
+      if (!res.success) {
+        return json({ success: false, error: res.error, status: res.status ?? null });
+      }
+      const d = (res.data ?? {}) as Record<string, any>;
+      const info = (d.data ?? d) as Record<string, any>;
+      return json({
+        success: true,
+        business_name: info.businessName ?? info.business_name ?? info.name ?? null,
+        version: info.version ?? info.gatewayVersion ?? info.gateway_version ?? null,
+        whatsapp_connected:
+          info.whatsappConnected ?? info.whatsapp_connected ?? info.connected ?? null,
+        raw: info,
+      });
+    }
+
+    // Settings → register the inbound webhook with the gateway
+    if (action === "register_webhook") {
+      const target = String((body as any)?.url ?? "").trim() ||
+        (Deno.env.get("NEXUS_APP_WEBHOOK_URL") ?? "").trim();
+      if (!target) return json({ error: "NEXUS_APP_WEBHOOK_URL not configured" }, 400);
+      const res = await registerWebhook(target);
+      if (!res.success) return json({ success: false, url: target, error: res.error }, res.status ?? 502);
+      const d = (res.data ?? {}) as Record<string, any>;
+      const secret = d.webhookSecret ?? d.secret ?? d.data?.webhookSecret ?? null;
+      return json({ success: true, url: target, webhook_secret_returned: !!secret, gateway: d });
+    }
+
+
     return json({ error: `Unknown action: ${action}` }, 400);
   } catch (err: any) {
     console.error("[whatsapp-admin] Error:", err);
