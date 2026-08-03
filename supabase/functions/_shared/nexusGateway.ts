@@ -199,3 +199,8 @@ export function registerWebhook(webhookUrl: string): Promise<GatewayResult> {
 export function listTemplates(): Promise<GatewayResult> {
   return request("/api/v1/templates", { method: "GET" });
 }
+
+/** Gateway connection / business info — used by the admin Settings card. */
+export function getSettings(): Promise<GatewayResult> {
+  return request("/api/v1/settings", { method: "GET" });
+}
