@@ -150,6 +150,49 @@ const AdminWhatsAppPage = () => {
   const [contactSearch, setContactSearch] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // ── Nexus Gateway connection ───────────────────────────────────
+  type GwStatus = {
+    success: boolean; error?: string; business_name?: string | null;
+    version?: string | null; whatsapp_connected?: boolean | null;
+  };
+  const [gwStatus, setGwStatus] = useState<GwStatus | null>(null);
+  const [testingGw, setTestingGw] = useState(false);
+  const [registeringHook, setRegisteringHook] = useState(false);
+
+  const testGateway = async () => {
+    setTestingGw(true);
+    try {
+      const res = await callAdmin(session, "gateway_status");
+      setGwStatus(res as GwStatus);
+      if (res.success) {
+        if (res.whatsapp_connected === false) {
+          toast.warning("WhatsApp is not connected inside Nexus Gateway.");
+        } else {
+          toast.success(`Connected to ${res.business_name ?? "Nexus Gateway"}`);
+        }
+      } else {
+        toast.error(res.error ?? "Gateway test failed");
+      }
+    } catch (e: any) {
+      setGwStatus({ success: false, error: e.message ?? "Unknown error" });
+      toast.error(e.message ?? "Gateway test failed");
+    }
+    setTestingGw(false);
+  };
+
+  const registerGatewayWebhook = async () => {
+    setRegisteringHook(true);
+    try {
+      const res = await callAdmin(session, "register_webhook");
+      if (res.success) toast.success("Inbound webhook registered with Nexus Gateway");
+      else toast.error(res.error ?? "Webhook registration failed");
+    } catch (e: any) {
+      toast.error(e.message ?? "Webhook registration failed");
+    }
+    setRegisteringHook(false);
+  };
+
+
   // ── Analytics ──────────────────────────────────────────────────
   const { data: analytics } = useQuery({
     queryKey: ["wa-analytics"],
