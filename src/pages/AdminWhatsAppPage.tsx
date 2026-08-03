@@ -538,26 +538,51 @@ const AdminWhatsAppPage = () => {
           ══════════════════════════════════════════════════════════ */}
           {tab === "overview" && (
             <div className="space-y-6">
-              {/* Credentials check banner */}
+              {/* WhatsApp Integration — Nexus Gateway */}
               <div className="glass-card p-4 border-accent/20 bg-accent/5">
-                <p className="text-sm font-semibold mb-2 flex items-center gap-2">
-                  <Settings className="w-4 h-4 text-accent" /> Required Supabase Secrets
-                  <span className="text-xs font-normal text-muted-foreground">(Supabase Dashboard → Edge Functions → Secrets)</span>
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {[
-                    "WHATSAPP_PHONE_NUMBER_ID",
-                    "WHATSAPP_PERMANENT_TOKEN",
-                    "WHATSAPP_BUSINESS_ACCOUNT_ID",
-                    "WHATSAPP_WEBHOOK_VERIFY_TOKEN",
-                  ].map((key) => (
-                    <div key={key} className="flex items-center gap-2 font-mono text-muted-foreground">
-                      <div className="w-2 h-2 rounded-full bg-accent/40 shrink-0" />
-                      {key}
-                    </div>
-                  ))}
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="text-sm font-semibold flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-accent" /> WhatsApp Integration — Nexus Gateway
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Credentials are stored server-side only and never exposed to the browser.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={testGateway} disabled={testingGw}>
+                      <RefreshCw className={`w-4 h-4 mr-2 ${testingGw ? "animate-spin" : ""}`} />
+                      {testingGw ? "Testing…" : "Save & Test"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={registerGatewayWebhook} disabled={registeringHook}>
+                      <Globe className={`w-4 h-4 mr-2 ${registeringHook ? "animate-spin" : ""}`} />
+                      {registeringHook ? "Registering…" : "Register Webhook"}
+                    </Button>
+                  </div>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${gwStatus?.success ? "bg-green-500" : "bg-destructive"}`} />
+                    <span className="text-muted-foreground">Gateway:</span>
+                    <span className="font-medium">{gwStatus == null ? "Not tested" : gwStatus.success ? "Connected" : "Error"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Business:</span>
+                    <span className="font-medium">{gwStatus?.business_name ?? "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Version:</span>
+                    <span className="font-medium font-mono">{gwStatus?.version ?? "—"}</span>
+                  </div>
+                </div>
+                {gwStatus?.success && gwStatus.whatsapp_connected === false && (
+                  <p className="text-xs text-destructive mt-3">WhatsApp is not connected inside Nexus Gateway.</p>
+                )}
+                {gwStatus && !gwStatus.success && (
+                  <p className="text-xs text-destructive mt-3 break-words">{gwStatus.error}</p>
+                )}
               </div>
+
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Sent Today"          value={analytics?.sent_today ?? 0}      icon={Send}         color="bg-green-500/10 text-green-500" />
                 <StatCard label="Templates Sent"      value={analytics?.templates_sent ?? 0}  icon={FileText}     color="bg-primary/10 text-primary" />
