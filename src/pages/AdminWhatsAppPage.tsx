@@ -150,6 +150,49 @@ const AdminWhatsAppPage = () => {
   const [contactSearch, setContactSearch] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // ── Nexus Gateway connection ───────────────────────────────────
+  type GwStatus = {
+    success: boolean; error?: string; business_name?: string | null;
+    version?: string | null; whatsapp_connected?: boolean | null;
+  };
+  const [gwStatus, setGwStatus] = useState<GwStatus | null>(null);
+  const [testingGw, setTestingGw] = useState(false);
+  const [registeringHook, setRegisteringHook] = useState(false);
+
+  const testGateway = async () => {
+    setTestingGw(true);
+    try {
+      const res = await callAdmin(session, "gateway_status");
+      setGwStatus(res as GwStatus);
+      if (res.success) {
+        if (res.whatsapp_connected === false) {
+          toast.warning("WhatsApp is not connected inside Nexus Gateway.");
+        } else {
+          toast.success(`Connected to ${res.business_name ?? "Nexus Gateway"}`);
+        }
+      } else {
+        toast.error(res.error ?? "Gateway test failed");
+      }
+    } catch (e: any) {
+      setGwStatus({ success: false, error: e.message ?? "Unknown error" });
+      toast.error(e.message ?? "Gateway test failed");
+    }
+    setTestingGw(false);
+  };
+
+  const registerGatewayWebhook = async () => {
+    setRegisteringHook(true);
+    try {
+      const res = await callAdmin(session, "register_webhook");
+      if (res.success) toast.success("Inbound webhook registered with Nexus Gateway");
+      else toast.error(res.error ?? "Webhook registration failed");
+    } catch (e: any) {
+      toast.error(e.message ?? "Webhook registration failed");
+    }
+    setRegisteringHook(false);
+  };
+
+
   // ── Analytics ──────────────────────────────────────────────────
   const { data: analytics } = useQuery({
     queryKey: ["wa-analytics"],
@@ -290,14 +333,12 @@ const AdminWhatsAppPage = () => {
     try {
       const res = await callAdmin(session, "sync_templates");
       if (res.success) {
-        toast.success(`Synced ${res.synced} templates from Meta`);
+        toast.success(`Synced ${res.synced} templates from Nexus Gateway`);
         qc.invalidateQueries({ queryKey: ["wa-templates"] });
       } else {
         const errMsg = res.error ?? "Sync failed";
-        if (errMsg.includes("WHATSAPP_BUSINESS_ACCOUNT_ID")) {
-          toast.error("Missing secret: add WHATSAPP_BUSINESS_ACCOUNT_ID in Supabase → Edge Functions → Secrets");
-        } else if (errMsg.includes("credentials")) {
-          toast.error("WhatsApp credentials not configured. Check WHATSAPP_PERMANENT_TOKEN in Supabase secrets.");
+        if (errMsg.includes("NEXUS_GATEWAY") || errMsg.includes("not configured")) {
+          toast.error("Nexus Gateway is not configured. Add NEXUS_GATEWAY_URL and NEXUS_GATEWAY_API_KEY in backend secrets.");
         } else {
           toast.error(errMsg);
         }
@@ -538,26 +579,51 @@ const AdminWhatsAppPage = () => {
           ══════════════════════════════════════════════════════════ */}
           {tab === "overview" && (
             <div className="space-y-6">
-              {/* Credentials check banner */}
+              {/* WhatsApp Integration — Nexus Gateway */}
               <div className="glass-card p-4 border-accent/20 bg-accent/5">
-                <p className="text-sm font-semibold mb-2 flex items-center gap-2">
-                  <Settings className="w-4 h-4 text-accent" /> Required Supabase Secrets
-                  <span className="text-xs font-normal text-muted-foreground">(Supabase Dashboard → Edge Functions → Secrets)</span>
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {[
-                    "WHATSAPP_PHONE_NUMBER_ID",
-                    "WHATSAPP_PERMANENT_TOKEN",
-                    "WHATSAPP_BUSINESS_ACCOUNT_ID",
-                    "WHATSAPP_WEBHOOK_VERIFY_TOKEN",
-                  ].map((key) => (
-                    <div key={key} className="flex items-center gap-2 font-mono text-muted-foreground">
-                      <div className="w-2 h-2 rounded-full bg-accent/40 shrink-0" />
-                      {key}
-                    </div>
-                  ))}
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="text-sm font-semibold flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-accent" /> WhatsApp Integration — Nexus Gateway
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Credentials are stored server-side only and never exposed to the browser.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={testGateway} disabled={testingGw}>
+                      <RefreshCw className={`w-4 h-4 mr-2 ${testingGw ? "animate-spin" : ""}`} />
+                      {testingGw ? "Testing…" : "Save & Test"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={registerGatewayWebhook} disabled={registeringHook}>
+                      <Globe className={`w-4 h-4 mr-2 ${registeringHook ? "animate-spin" : ""}`} />
+                      {registeringHook ? "Registering…" : "Register Webhook"}
+                    </Button>
+                  </div>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${gwStatus?.success ? "bg-green-500" : "bg-destructive"}`} />
+                    <span className="text-muted-foreground">Gateway:</span>
+                    <span className="font-medium">{gwStatus == null ? "Not tested" : gwStatus.success ? "Connected" : "Error"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Business:</span>
+                    <span className="font-medium">{gwStatus?.business_name ?? "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Version:</span>
+                    <span className="font-medium font-mono">{gwStatus?.version ?? "—"}</span>
+                  </div>
+                </div>
+                {gwStatus?.success && gwStatus.whatsapp_connected === false && (
+                  <p className="text-xs text-destructive mt-3">WhatsApp is not connected inside Nexus Gateway.</p>
+                )}
+                {gwStatus && !gwStatus.success && (
+                  <p className="text-xs text-destructive mt-3 break-words">{gwStatus.error}</p>
+                )}
               </div>
+
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Sent Today"          value={analytics?.sent_today ?? 0}      icon={Send}         color="bg-green-500/10 text-green-500" />
                 <StatCard label="Templates Sent"      value={analytics?.templates_sent ?? 0}  icon={FileText}     color="bg-primary/10 text-primary" />
@@ -626,7 +692,7 @@ const AdminWhatsAppPage = () => {
                 <div className="glass-card p-12 text-center">
                   <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="font-medium mb-1">No templates found</p>
-                  <p className="text-sm text-muted-foreground">Click "Sync Templates" to pull your approved templates from Meta.</p>
+                  <p className="text-sm text-muted-foreground">Click "Sync Templates" to pull your approved templates from Nexus Gateway.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

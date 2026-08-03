@@ -44,14 +44,15 @@ export function toDigits(raw: string): string | null {
   return e ? e.slice(1) : null;
 }
 
-async function request<T>(
+const TIMEOUT_MS = 15_000;
+
+async function attempt<T>(
   path: string,
-  init: { method: "GET" | "POST"; body?: unknown } ,
+  init: { method: "GET" | "POST"; body?: unknown },
 ): Promise<GatewayResult<T>> {
-  if (!gatewayConfigured()) {
-    return { success: false, error: "NEXUS_GATEWAY_URL or NEXUS_GATEWAY_API_KEY not configured" };
-  }
   const url = `${baseUrl()}${path}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(url, {
       method: init.method,
@@ -60,6 +61,7 @@ async function request<T>(
         "Content-Type": "application/json",
       },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      signal: ctrl.signal,
     });
 
     const text = await res.text();
@@ -83,9 +85,28 @@ async function request<T>(
 
     return { success: true, data: parsed as T, status: res.status };
   } catch (err) {
-    console.error(`[nexusGateway] ${init.method} ${path} threw:`, err);
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    const aborted = err instanceof DOMException && err.name === "AbortError";
+    const msg = aborted ? `Gateway request timed out after ${TIMEOUT_MS}ms` : (err instanceof Error ? err.message : String(err));
+    console.error(`[nexusGateway] ${init.method} ${path} threw: ${msg}`);
+    return { success: false, error: msg };
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+/** Single retry on network/timeout or 5xx — never throws. */
+async function request<T>(
+  path: string,
+  init: { method: "GET" | "POST"; body?: unknown },
+): Promise<GatewayResult<T>> {
+  if (!gatewayConfigured()) {
+    return { success: false, error: "NEXUS_GATEWAY_URL or NEXUS_GATEWAY_API_KEY not configured" };
+  }
+  const first = await attempt<T>(path, init);
+  if (first.success) return first;
+  const retryable = first.status === undefined || first.status >= 500;
+  if (!retryable) return first;
+  return await attempt<T>(path, init);
 }
 
 /** Extract a provider message id (wamid) from whatever shape the gateway returns. */
@@ -177,4 +198,9 @@ export function registerWebhook(webhookUrl: string): Promise<GatewayResult> {
 /** List templates known to the gateway (used by the admin template sync). */
 export function listTemplates(): Promise<GatewayResult> {
   return request("/api/v1/templates", { method: "GET" });
+}
+
+/** Gateway connection / business info — used by the admin Settings card. */
+export function getSettings(): Promise<GatewayResult> {
+  return request("/api/v1/settings", { method: "GET" });
 }
