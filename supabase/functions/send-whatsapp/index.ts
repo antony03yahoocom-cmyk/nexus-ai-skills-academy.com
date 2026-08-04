@@ -96,9 +96,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (!gatewayConfigured()) {
+  if (!(await gatewayConfigured())) {
     return new Response(
-      JSON.stringify({ error: "NEXUS_GATEWAY_URL / NEXUS_GATEWAY_API_KEY not configured" }),
+      JSON.stringify({ error: "Nexus Gateway not configured — connect it in Admin → WhatsApp → Settings" }),
       { status: 500, headers: { ...CORS, "Content-Type": "application/json" } },
     );
   }

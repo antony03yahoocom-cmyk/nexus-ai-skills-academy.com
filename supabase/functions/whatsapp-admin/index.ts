@@ -7,16 +7,23 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  defaultWebhookUrl,
   extractWamid,
+  extractWebhookSecret,
   gatewayConfigured,
   getSettings,
   listTemplates,
+  loadConfig,
   optInContact,
   registerWebhook,
+  saveConfig,
+  saveConnectionState,
+  saveWebhookInfo,
   sendWhatsAppTemplate,
   sendWhatsAppText,
   toDigits,
 } from "../_shared/nexusGateway.ts";
+
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -297,16 +304,110 @@ Deno.serve(async (req) => {
     user = { id: authedUser.id };
   }
 
-  // All provider traffic goes through the Nexus WhatsApp Gateway now —
-  // no Meta token or phone-number id is needed here.
-  if (!gatewayConfigured()) {
-    return json({ error: "Nexus Gateway not configured (NEXUS_GATEWAY_URL / NEXUS_GATEWAY_API_KEY)" }, 500);
+  const url = new URL(req.url);
+  const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+  const action = url.searchParams.get("action") ?? (body as any)?.action ?? null;
+
+  // ── Settings: save Base URL + API Key, verify, register webhook, sync templates
+  if (action === "save_gateway_config") {
+    const baseUrl = String((body as any)?.base_url ?? "").trim().replace(/\/+$/, "");
+    const apiKey = String((body as any)?.api_key ?? "").trim();
+    if (!/^https?:\/\/.+/i.test(baseUrl)) {
+      return json({ success: false, error: "Gateway Base URL must start with http:// or https://" }, 400);
+    }
+    if (!apiKey) return json({ success: false, error: "Gateway API Key is required" }, 400);
+
+    // 1 — verify credentials before storing anything
+    const probe = await getSettings({ baseUrl, apiKey });
+    if (!probe.success) {
+      return json({
+        success: false,
+        error: probe.status === 401 || probe.status === 403
+          ? "Connection failed — check your Base URL and API Key"
+          : (probe.error ?? "Connection failed — check your Base URL and API Key"),
+      }, 400);
+    }
+    const info = ((probe.data as any)?.data ?? probe.data ?? {}) as Record<string, any>;
+    const businessName = info.businessName ?? info.business_name ?? info.name ?? null;
+    const waConnected =
+      info.whatsapp?.connected ?? info.whatsappConnected ?? info.whatsapp_connected ?? info.connected ?? null;
+
+    await saveConfig(baseUrl, apiKey);
+    await saveConnectionState(businessName, typeof waConnected === "boolean" ? waConnected : null);
+
+    // 2 — webhook registration (unsigned by design; failure must not block sending)
+    const hookUrl = await defaultWebhookUrl();
+    let webhook: { registered: boolean; url: string; error?: string; already_registered?: boolean } = {
+      registered: false, url: hookUrl,
+    };
+    if (!hookUrl) {
+      webhook.error = "Could not determine this app's public webhook URL";
+    } else {
+      const reg = await registerWebhook(hookUrl, { baseUrl, apiKey });
+      if (reg.success) {
+        await saveWebhookInfo(hookUrl, extractWebhookSecret(reg.data));
+        webhook.registered = true;
+      } else {
+        const msg = reg.error ?? "Webhook registration failed";
+        const conflict = /already|exist|conflict|registered|409/i.test(msg);
+        webhook.error = conflict
+          ? "This gateway account already has a different webhook registered — only one receiver is supported per account. Remove the existing webhook in the gateway, then try again. Sending still works; only receiving replies is affected."
+          : `${msg} — sending still works; only receiving replies is affected.`;
+        webhook.already_registered = conflict;
+      }
+    }
+
+    // 3 — template cache
+    let templates: { synced: number; total: number } | null = null;
+    let templateError: string | null = null;
+    try {
+      templates = await syncTemplates(sb);
+    } catch (err: any) {
+      templateError = err?.message ?? String(err);
+    }
+
+    return json({
+      success: true,
+      base_url: baseUrl,
+      business_name: businessName,
+      version: info.version ?? info.gatewayVersion ?? null,
+      whatsapp_connected: waConnected,
+      webhook,
+      templates,
+      template_error: templateError,
+    });
   }
 
-  const url = new URL(req.url);
+  // Non-destructive status read for the Settings screen (never returns the API key)
+  if (action === "gateway_config") {
+    const cfg = await loadConfig(true);
+    const { data: row } = await sb
+      .from("wa_admin_config" as any)
+      .select("business_name, whatsapp_connected, connected_at, webhook_url")
+      .eq("id", true)
+      .maybeSingle();
+    return json({
+      success: true,
+      configured: !!cfg.baseUrl && !!cfg.apiKey,
+      base_url: cfg.baseUrl || null,
+      api_key_set: !!cfg.apiKey,
+      webhook_url: cfg.webhookUrl ?? (row as any)?.webhook_url ?? null,
+      receiving_live: !!cfg.webhookSecret,
+      business_name: (row as any)?.business_name ?? null,
+      whatsapp_connected: (row as any)?.whatsapp_connected ?? null,
+      connected_at: (row as any)?.connected_at ?? null,
+    });
+  }
+
+  // All provider traffic goes through the Nexus WhatsApp Gateway.
+  if (!(await gatewayConfigured())) {
+    return json({
+      error: "Nexus Gateway is not configured. Open Admin → WhatsApp → Settings, enter the Gateway Base URL and API Key, then click Save & Connect.",
+    }, 500);
+  }
+
   try {
-    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const action = url.searchParams.get("action") ?? (body as any)?.action ?? null;
+
 
     if (action === "sync_templates") {
       const result = await syncTemplates(sb);
@@ -353,7 +454,7 @@ Deno.serve(async (req) => {
       return json({ success: true, analytics: data });
     }
 
-    // Settings → WhatsApp Integration: "Save & Test"
+    // Settings → live connection probe
     if (action === "gateway_status") {
       const res = await getSettings();
       if (!res.success) {
@@ -361,27 +462,40 @@ Deno.serve(async (req) => {
       }
       const d = (res.data ?? {}) as Record<string, any>;
       const info = (d.data ?? d) as Record<string, any>;
+      const waConnected =
+        info.whatsapp?.connected ?? info.whatsappConnected ?? info.whatsapp_connected ?? info.connected ?? null;
+      const businessName = info.businessName ?? info.business_name ?? info.name ?? null;
+      await saveConnectionState(businessName, typeof waConnected === "boolean" ? waConnected : null);
       return json({
         success: true,
-        business_name: info.businessName ?? info.business_name ?? info.name ?? null,
+        business_name: businessName,
         version: info.version ?? info.gatewayVersion ?? info.gateway_version ?? null,
-        whatsapp_connected:
-          info.whatsappConnected ?? info.whatsapp_connected ?? info.connected ?? null,
-        raw: info,
+        whatsapp_connected: waConnected,
       });
     }
 
     // Settings → register the inbound webhook with the gateway
     if (action === "register_webhook") {
-      const target = String((body as any)?.url ?? "").trim() ||
-        (Deno.env.get("NEXUS_APP_WEBHOOK_URL") ?? "").trim();
-      if (!target) return json({ error: "NEXUS_APP_WEBHOOK_URL not configured" }, 400);
+      const target = String((body as any)?.url ?? "").trim() || (await defaultWebhookUrl());
+      if (!target) return json({ error: "Could not determine this app's public webhook URL" }, 400);
       const res = await registerWebhook(target);
-      if (!res.success) return json({ success: false, url: target, error: res.error }, res.status ?? 502);
-      const d = (res.data ?? {}) as Record<string, any>;
-      const secret = d.webhookSecret ?? d.secret ?? d.data?.webhookSecret ?? null;
-      return json({ success: true, url: target, webhook_secret_returned: !!secret, gateway: d });
+      if (!res.success) {
+        const msg = res.error ?? "Webhook registration failed";
+        const conflict = /already|exist|conflict|registered|409/i.test(msg);
+        return json({
+          success: false,
+          url: target,
+          already_registered: conflict,
+          error: conflict
+            ? "This gateway account already has a different webhook registered — only one receiver is supported per account. Remove it in the gateway, then retry. Sending still works; only receiving replies is affected."
+            : msg,
+        }, res.status ?? 502);
+      }
+      const secret = extractWebhookSecret(res.data);
+      await saveWebhookInfo(target, secret);
+      return json({ success: true, url: target, receiving_live: !!secret });
     }
+
 
 
     return json({ error: `Unknown action: ${action}` }, 400);
