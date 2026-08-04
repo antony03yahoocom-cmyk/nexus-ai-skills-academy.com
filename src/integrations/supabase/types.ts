@@ -1778,22 +1778,43 @@ export type Database = {
       }
       wa_admin_config: {
         Row: {
+          business_name: string | null
+          connected_at: string | null
+          gateway_api_key: string | null
+          gateway_base_url: string | null
           id: boolean
           internal_key: string | null
           supabase_url: string | null
           updated_at: string
+          webhook_secret: string | null
+          webhook_url: string | null
+          whatsapp_connected: boolean | null
         }
         Insert: {
+          business_name?: string | null
+          connected_at?: string | null
+          gateway_api_key?: string | null
+          gateway_base_url?: string | null
           id?: boolean
           internal_key?: string | null
           supabase_url?: string | null
           updated_at?: string
+          webhook_secret?: string | null
+          webhook_url?: string | null
+          whatsapp_connected?: boolean | null
         }
         Update: {
+          business_name?: string | null
+          connected_at?: string | null
+          gateway_api_key?: string | null
+          gateway_base_url?: string | null
           id?: boolean
           internal_key?: string | null
           supabase_url?: string | null
           updated_at?: string
+          webhook_secret?: string | null
+          webhook_url?: string | null
+          whatsapp_connected?: boolean | null
         }
         Relationships: []
       }
