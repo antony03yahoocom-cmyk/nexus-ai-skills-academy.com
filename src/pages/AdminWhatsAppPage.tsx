@@ -656,42 +656,91 @@ const AdminWhatsAppPage = () => {
                       <Settings className="w-4 h-4 text-accent" /> WhatsApp Integration — Nexus Gateway
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Credentials are stored server-side only and never exposed to the browser.
+                      Enter your Gateway Base URL and API Key once. They are stored server-side only and never sent back to the browser.
+                      Webhook registration, secret storage and template sync happen automatically.
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={testGateway} disabled={testingGw}>
                       <RefreshCw className={`w-4 h-4 mr-2 ${testingGw ? "animate-spin" : ""}`} />
-                      {testingGw ? "Testing…" : "Save & Test"}
+                      {testingGw ? "Testing…" : "Test Connection"}
                     </Button>
                     <Button size="sm" variant="outline" onClick={registerGatewayWebhook} disabled={registeringHook}>
                       <Globe className={`w-4 h-4 mr-2 ${registeringHook ? "animate-spin" : ""}`} />
-                      {registeringHook ? "Registering…" : "Register Webhook"}
+                      {registeringHook ? "Registering…" : "Re-register Webhook"}
                     </Button>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 text-xs">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Gateway Base URL</label>
+                    <Input
+                      value={gwBaseUrl}
+                      onChange={(e) => setGwBaseUrl(e.target.value)}
+                      placeholder="https://your-gateway.example.com"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">
+                      Gateway API Key {gwConfig?.api_key_set && <span className="text-green-500">(saved — leave blank to keep)</span>}
+                    </label>
+                    <Input
+                      type="password"
+                      value={gwApiKey}
+                      onChange={(e) => setGwApiKey(e.target.value)}
+                      placeholder={gwConfig?.api_key_set ? "••••••••••••" : "Paste your API key"}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <Button size="sm" className="mt-3" onClick={saveGateway} disabled={savingGw}>
+                  <CheckCircle className={`w-4 h-4 mr-2 ${savingGw ? "animate-spin" : ""}`} />
+                  {savingGw ? "Connecting…" : "Save & Connect"}
+                </Button>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-4 text-xs">
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${gwStatus?.success ? "bg-green-500" : "bg-destructive"}`} />
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${(gwStatus?.success ?? gwConfig?.configured) ? "bg-green-500" : "bg-destructive"}`} />
                     <span className="text-muted-foreground">Gateway:</span>
-                    <span className="font-medium">{gwStatus == null ? "Not tested" : gwStatus.success ? "Connected" : "Error"}</span>
+                    <span className="font-medium">
+                      {gwStatus ? (gwStatus.success ? "Connected" : "Error") : gwConfig?.configured ? "Configured" : "Not connected"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Business:</span>
-                    <span className="font-medium">{gwStatus?.business_name ?? "—"}</span>
+                    <span className="font-medium">{gwStatus?.business_name ?? gwConfig?.business_name ?? "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${gwConfig?.receiving_live ? "bg-green-500" : "bg-amber-500"}`} />
+                    <span className="text-muted-foreground">Receiving:</span>
+                    <span className="font-medium">{gwConfig?.receiving_live ? "Live" : "Not verified"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Version:</span>
                     <span className="font-medium font-mono">{gwStatus?.version ?? "—"}</span>
                   </div>
                 </div>
-                {gwStatus?.success && gwStatus.whatsapp_connected === false && (
-                  <p className="text-xs text-destructive mt-3">WhatsApp is not connected inside Nexus Gateway.</p>
+
+                {gwConfig?.webhook_url && (
+                  <p className="text-[11px] text-muted-foreground mt-2 break-all">
+                    Inbound webhook: <span className="font-mono">{gwConfig.webhook_url}</span>
+                  </p>
+                )}
+                {(gwStatus?.whatsapp_connected === false || gwConfig?.whatsapp_connected === false) && (
+                  <p className="text-xs text-destructive mt-3">
+                    WhatsApp isn't connected on this gateway account yet. Ask the account owner to connect it in the gateway's own Settings page before sending will work.
+                  </p>
+                )}
+                {gwStatus?.webhook?.error && (
+                  <p className="text-xs text-amber-500 mt-2 break-words">{gwStatus.webhook.error}</p>
                 )}
                 {gwStatus && !gwStatus.success && (
                   <p className="text-xs text-destructive mt-3 break-words">{gwStatus.error}</p>
                 )}
               </div>
+
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Sent Today"          value={analytics?.sent_today ?? 0}      icon={Send}         color="bg-green-500/10 text-green-500" />
