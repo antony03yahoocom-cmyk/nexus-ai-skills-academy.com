@@ -454,7 +454,7 @@ Deno.serve(async (req) => {
       return json({ success: true, analytics: data });
     }
 
-    // Settings → WhatsApp Integration: "Save & Test"
+    // Settings → live connection probe
     if (action === "gateway_status") {
       const res = await getSettings();
       if (!res.success) {
@@ -462,27 +462,40 @@ Deno.serve(async (req) => {
       }
       const d = (res.data ?? {}) as Record<string, any>;
       const info = (d.data ?? d) as Record<string, any>;
+      const waConnected =
+        info.whatsapp?.connected ?? info.whatsappConnected ?? info.whatsapp_connected ?? info.connected ?? null;
+      const businessName = info.businessName ?? info.business_name ?? info.name ?? null;
+      await saveConnectionState(businessName, typeof waConnected === "boolean" ? waConnected : null);
       return json({
         success: true,
-        business_name: info.businessName ?? info.business_name ?? info.name ?? null,
+        business_name: businessName,
         version: info.version ?? info.gatewayVersion ?? info.gateway_version ?? null,
-        whatsapp_connected:
-          info.whatsappConnected ?? info.whatsapp_connected ?? info.connected ?? null,
-        raw: info,
+        whatsapp_connected: waConnected,
       });
     }
 
     // Settings → register the inbound webhook with the gateway
     if (action === "register_webhook") {
-      const target = String((body as any)?.url ?? "").trim() ||
-        (Deno.env.get("NEXUS_APP_WEBHOOK_URL") ?? "").trim();
-      if (!target) return json({ error: "NEXUS_APP_WEBHOOK_URL not configured" }, 400);
+      const target = String((body as any)?.url ?? "").trim() || (await defaultWebhookUrl());
+      if (!target) return json({ error: "Could not determine this app's public webhook URL" }, 400);
       const res = await registerWebhook(target);
-      if (!res.success) return json({ success: false, url: target, error: res.error }, res.status ?? 502);
-      const d = (res.data ?? {}) as Record<string, any>;
-      const secret = d.webhookSecret ?? d.secret ?? d.data?.webhookSecret ?? null;
-      return json({ success: true, url: target, webhook_secret_returned: !!secret, gateway: d });
+      if (!res.success) {
+        const msg = res.error ?? "Webhook registration failed";
+        const conflict = /already|exist|conflict|registered|409/i.test(msg);
+        return json({
+          success: false,
+          url: target,
+          already_registered: conflict,
+          error: conflict
+            ? "This gateway account already has a different webhook registered — only one receiver is supported per account. Remove it in the gateway, then retry. Sending still works; only receiving replies is affected."
+            : msg,
+        }, res.status ?? 502);
+      }
+      const secret = extractWebhookSecret(res.data);
+      await saveWebhookInfo(target, secret);
+      return json({ success: true, url: target, receiving_live: !!secret });
     }
+
 
 
     return json({ error: `Unknown action: ${action}` }, 400);
