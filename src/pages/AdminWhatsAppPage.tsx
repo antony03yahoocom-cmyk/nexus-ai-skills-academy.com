@@ -407,7 +407,7 @@ const AdminWhatsAppPage = () => {
       } else {
         const errMsg = res.error ?? "Sync failed";
         if (errMsg.includes("NEXUS_GATEWAY") || errMsg.includes("not configured")) {
-          toast.error("Nexus Gateway is not configured. Add NEXUS_GATEWAY_URL and NEXUS_GATEWAY_API_KEY in backend secrets.");
+          toast.error("Nexus Gateway is not connected. Enter the Gateway Base URL and API Key above, then click Save & Connect.");
         } else {
           toast.error(errMsg);
         }
