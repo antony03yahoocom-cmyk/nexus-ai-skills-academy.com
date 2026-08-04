@@ -154,10 +154,73 @@ const AdminWhatsAppPage = () => {
   type GwStatus = {
     success: boolean; error?: string; business_name?: string | null;
     version?: string | null; whatsapp_connected?: boolean | null;
+    webhook?: { registered: boolean; url: string; error?: string; already_registered?: boolean };
+    templates?: { synced: number; total: number } | null;
+    template_error?: string | null;
+  };
+  type GwConfig = {
+    configured: boolean; base_url: string | null; api_key_set: boolean;
+    webhook_url: string | null; receiving_live: boolean;
+    business_name: string | null; whatsapp_connected: boolean | null;
   };
   const [gwStatus, setGwStatus] = useState<GwStatus | null>(null);
+  const [gwConfig, setGwConfig] = useState<GwConfig | null>(null);
+  const [gwBaseUrl, setGwBaseUrl] = useState("");
+  const [gwApiKey, setGwApiKey] = useState("");
+  const [savingGw, setSavingGw] = useState(false);
   const [testingGw, setTestingGw] = useState(false);
   const [registeringHook, setRegisteringHook] = useState(false);
+
+  const loadGwConfig = useCallback(async () => {
+    try {
+      const res = await callAdmin(session, "gateway_config");
+      if (res?.success) {
+        setGwConfig(res as GwConfig);
+        if (res.base_url) setGwBaseUrl(res.base_url);
+      }
+    } catch {
+      /* status card simply stays empty */
+    }
+  }, [session]);
+
+  useEffect(() => { if (session) loadGwConfig(); }, [session, loadGwConfig]);
+
+  const saveGateway = async () => {
+    if (!/^https?:\/\/.+/i.test(gwBaseUrl.trim())) {
+      toast.error("Gateway Base URL must start with http:// or https://");
+      return;
+    }
+    if (!gwApiKey.trim() && !gwConfig?.api_key_set) {
+      toast.error("Gateway API Key is required");
+      return;
+    }
+    setSavingGw(true);
+    try {
+      const res = await callAdmin(session, "save_gateway_config", {
+        base_url: gwBaseUrl.trim(),
+        api_key: gwApiKey.trim() || undefined,
+      });
+      setGwStatus(res as GwStatus);
+      if (!res.success) {
+        toast.error(res.error ?? "Connection failed — check your Base URL and API Key");
+      } else {
+        setGwApiKey("");
+        if (res.whatsapp_connected === false) {
+          toast.warning("WhatsApp isn't connected on this gateway account yet. Ask the account owner to connect it in the gateway's Settings page before sending will work.");
+        } else {
+          toast.success(`Connected to ${res.business_name ?? "Nexus Gateway"}`);
+        }
+        if (res.webhook?.error) toast.warning(res.webhook.error);
+        if (res.template_error) toast.warning(`Templates not synced: ${res.template_error}`);
+        await loadGwConfig();
+        qc.invalidateQueries({ queryKey: ["wa-templates"] });
+      }
+    } catch (e: any) {
+      setGwStatus({ success: false, error: e.message ?? "Unknown error" });
+      toast.error(e.message ?? "Connection failed — check your Base URL and API Key");
+    }
+    setSavingGw(false);
+  };
 
   const testGateway = async () => {
     setTestingGw(true);
@@ -166,10 +229,11 @@ const AdminWhatsAppPage = () => {
       setGwStatus(res as GwStatus);
       if (res.success) {
         if (res.whatsapp_connected === false) {
-          toast.warning("WhatsApp is not connected inside Nexus Gateway.");
+          toast.warning("WhatsApp isn't connected on this gateway account yet.");
         } else {
           toast.success(`Connected to ${res.business_name ?? "Nexus Gateway"}`);
         }
+        await loadGwConfig();
       } else {
         toast.error(res.error ?? "Gateway test failed");
       }
@@ -184,13 +248,18 @@ const AdminWhatsAppPage = () => {
     setRegisteringHook(true);
     try {
       const res = await callAdmin(session, "register_webhook");
-      if (res.success) toast.success("Inbound webhook registered with Nexus Gateway");
-      else toast.error(res.error ?? "Webhook registration failed");
+      if (res.success) {
+        toast.success("Inbound webhook registered — receiving live");
+        await loadGwConfig();
+      } else {
+        toast.error(res.error ?? "Webhook registration failed");
+      }
     } catch (e: any) {
       toast.error(e.message ?? "Webhook registration failed");
     }
     setRegisteringHook(false);
   };
+
 
 
   // ── Analytics ──────────────────────────────────────────────────
