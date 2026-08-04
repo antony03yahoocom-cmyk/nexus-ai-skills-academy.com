@@ -7,16 +7,23 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  defaultWebhookUrl,
   extractWamid,
+  extractWebhookSecret,
   gatewayConfigured,
   getSettings,
   listTemplates,
+  loadConfig,
   optInContact,
   registerWebhook,
+  saveConfig,
+  saveConnectionState,
+  saveWebhookInfo,
   sendWhatsAppTemplate,
   sendWhatsAppText,
   toDigits,
 } from "../_shared/nexusGateway.ts";
+
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
