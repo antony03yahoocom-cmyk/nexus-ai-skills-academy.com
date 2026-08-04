@@ -8,7 +8,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { registerWebhook, gatewayConfigured } from "../_shared/nexusGateway.ts";
+import { registerWebhook, gatewayConfigured, defaultWebhookUrl, extractWebhookSecret, saveWebhookInfo } from "../_shared/nexusGateway.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -55,20 +55,21 @@ Deno.serve(async (req) => {
     if (!roleRow) return json({ error: "Forbidden — admin only" }, 403);
   }
 
-  if (!gatewayConfigured()) {
-    return json({ error: "NEXUS_GATEWAY_URL / NEXUS_GATEWAY_API_KEY not configured" }, 500);
+  if (!(await gatewayConfigured())) {
+    return json({ error: "Nexus Gateway not configured — connect it in Admin → WhatsApp → Settings" }, 500);
   }
 
   const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
   const webhookUrl =
-    (body as Record<string, string>)?.url?.trim() ||
-    (Deno.env.get("NEXUS_APP_WEBHOOK_URL") ?? "").trim();
+    (body as Record<string, string>)?.url?.trim() || (await defaultWebhookUrl());
 
-  if (!webhookUrl) return json({ error: "NEXUS_APP_WEBHOOK_URL not configured" }, 500);
+  if (!webhookUrl) return json({ error: "Could not determine this app's public webhook URL" }, 500);
 
   const result = await registerWebhook(webhookUrl);
   if (!result.success) {
     return json({ success: false, url: webhookUrl, error: result.error }, result.status ?? 502);
   }
-  return json({ success: true, url: webhookUrl, gateway: result.data });
+  const secret = extractWebhookSecret(result.data);
+  await saveWebhookInfo(webhookUrl, secret);
+  return json({ success: true, url: webhookUrl, receiving_live: !!secret });
 });
