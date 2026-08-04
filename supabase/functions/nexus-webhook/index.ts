@@ -15,7 +15,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { toDigits, toE164 } from "../_shared/nexusGateway.ts";
+import { loadConfig, toDigits, toE164 } from "../_shared/nexusGateway.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -140,8 +140,11 @@ Deno.serve(async (req) => {
     return json({ success: true, event: "webhook.test" });
   }
 
-  // 3 — signature verification for real events
-  const secret = (Deno.env.get("NEXUS_WEBHOOK_SECRET") ?? "").trim();
+  // 3 — signature verification for real events.
+  // Secret comes from the stored gateway config (written during webhook
+  // registration); NEXUS_WEBHOOK_SECRET is a legacy fallback.
+  const cfg = await loadConfig(true);
+  const secret = (cfg.webhookSecret ?? "").trim();
   if (secret) {
     const provided = (req.headers.get("x-gateway-signature") ?? req.headers.get("x-nexus-secret") ?? "").trim();
     const bare = provided.replace(/^sha256=/i, "");
@@ -151,6 +154,10 @@ Deno.serve(async (req) => {
       console.error("[nexus-webhook] invalid signature — rejected");
       return json({ error: "Invalid signature" }, 401);
     }
+  } else {
+    // No secret stored yet (gateway did not return one at registration time).
+    // Accept, but log loudly so the admin can re-register the webhook.
+    console.warn("[nexus-webhook] no webhook secret stored — accepting unverified event");
   }
 
   const sb = createClient(
