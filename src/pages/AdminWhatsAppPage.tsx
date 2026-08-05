@@ -384,10 +384,26 @@ const AdminWhatsAppPage = () => {
   const { data: scheduled = [] } = useQuery({
     queryKey: ["wa-scheduled"],
     queryFn: async () => {
-      const { data } = await supabase.from("whatsapp_scheduled" as any).select("*, whatsapp_templates(name)").order("scheduled_at");
+      const { data } = await supabase.from("whatsapp_scheduled" as any).select("*, whatsapp_templates(name)").order("scheduled_at", { ascending: false });
       return data ?? [];
     },
+    refetchInterval: 15_000,
   });
+
+  const runScheduledNow = async (id?: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-scheduler", { body: id ? { id } : {} });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const d = data as any;
+      toast.success(d?.processed ? `Processed ${d.processed} batch(es) · ${d.sent} sent · ${d.failed} failed` : "Nothing due right now");
+      qc.invalidateQueries({ queryKey: ["wa-scheduled"] });
+      qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+      qc.invalidateQueries({ queryKey: ["wa-analytics"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not run the scheduler");
+    }
+  };
 
   // ── Logs ────────────────────────────────────────────────────────
   const { data: logs = [] } = useQuery({
@@ -1384,7 +1400,10 @@ const AdminWhatsAppPage = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold">Scheduled Messages</h2>
-                <Button variant="hero" size="sm" onClick={() => setTab("send")}><Plus className="w-4 h-4 mr-1" /> Schedule New</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => runScheduledNow()}><Play className="w-4 h-4 mr-1" /> Process due now</Button>
+                  <Button variant="hero" size="sm" onClick={() => setTab("send")}><Plus className="w-4 h-4 mr-1" /> Schedule New</Button>
+                </div>
               </div>
               {scheduled.length === 0 ? (
                 <div className="glass-card p-12 text-center">
@@ -1395,18 +1414,27 @@ const AdminWhatsAppPage = () => {
               ) : (
                 <div className="space-y-3">
                   {scheduled.map((s: any) => (
-                    <div key={s.id} className="glass-card p-4 flex items-center justify-between gap-4">
+                    <div key={s.id} className="glass-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center"><Calendar className="w-4 h-4 text-accent" /></div>
                         <div>
                           <p className="font-medium text-sm">{s.whatsapp_templates?.name ?? "Template"}</p>
                           <p className="text-xs text-muted-foreground">{format(new Date(s.scheduled_at), "d MMM yyyy, HH:mm")} · {s.schedule_type} · {Array.isArray(s.recipients) ? s.recipients.length : 0} recipients</p>
+                          {(s.sent_count > 0 || s.failed_count > 0) && (
+                            <p className="text-[11px] text-muted-foreground mt-0.5">✓ {s.sent_count} sent · ✗ {s.failed_count} failed</p>
+                          )}
+                          {s.last_error && <p className="text-[11px] text-destructive mt-0.5 break-all">{s.last_error}</p>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className={`px-2 py-0.5 rounded-full text-xs border ${s.status === "queued" ? "bg-accent/10 text-accent border-accent/20" : s.status === "sent" ? "bg-success/10 text-success border-success/20" : "bg-muted/20 text-muted-foreground border-muted/30"}`}>
                           {s.status}
                         </span>
+                        {s.status === "queued" && (
+                          <Button size="sm" variant="outline" onClick={() => runScheduledNow(s.id)}>
+                            <Play className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                         {s.status === "queued" && (
                           <Button size="sm" variant="ghost" className="text-destructive" onClick={async () => {
                             await supabase.from("whatsapp_scheduled" as any).update({ status: "cancelled" }).eq("id", s.id);
@@ -1436,10 +1464,10 @@ const AdminWhatsAppPage = () => {
                 </div>
               ) : (
                 <div className="glass-card overflow-hidden">
-                  <table className="w-full text-sm">
+                  <div className="overflow-x-auto"><table className="w-full text-sm min-w-[720px]">
                     <thead className="border-b border-border/40 bg-muted/20">
                       <tr>
-                        {["Trigger", "Phone", "Template", "Status", "Time"].map(h => (
+                        {["Trigger", "Phone", "Template", "Status", "Reason", "Time"].map(h => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{h}</th>
                         ))}
                       </tr>
@@ -1455,11 +1483,12 @@ const AdminWhatsAppPage = () => {
                               {log.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs text-muted-foreground">{formatDistanceToNow(new Date(log.created_at))} ago</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground max-w-[240px] truncate" title={log.error_message ?? ""}>{log.error_message ?? "—"}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(log.created_at))} ago</td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 </div>
               )}
             </div>
