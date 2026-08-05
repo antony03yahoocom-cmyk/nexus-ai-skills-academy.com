@@ -20,7 +20,7 @@ import {
   LayoutDashboard, RefreshCw, Send, MessageCircle, Zap, Clock, FileText,
   Search, Filter, CheckCircle, XCircle, AlertCircle, Eye, Users, TrendingUp,
   BarChart3, ChevronRight, Plus, Trash2, Play, Pause, Phone, Check, CheckCheck,
-  ArrowLeft, X, Calendar, MessageSquare, Settings, Bell, Globe, ContactRound,
+  ArrowLeft, X, Paperclip, Calendar, MessageSquare, Settings, Bell, Globe, ContactRound,
 } from "lucide-react";
 
 // Edge function called via supabase.functions.invoke() — no raw URL needed
@@ -609,6 +609,40 @@ const AdminWhatsAppPage = () => {
       qc.invalidateQueries({ queryKey: ["wa-messages", activeConv.id] });
       qc.invalidateQueries({ queryKey: ["wa-conversations"] });
     } else { toast.error(res.error ?? "Send failed"); }
+  };
+
+  const sendMedia = async (file: File) => {
+    if (!activeConv) return;
+    const uid = session?.user?.id;
+    if (!uid) { toast.error("Session expired — refresh and try again."); return; }
+    if (file.size > 16 * 1024 * 1024) { toast.error("WhatsApp media must be 16MB or smaller."); return; }
+    setMediaUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `${uid}/whatsapp/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("project-files").upload(path, file, { cacheControl: "3600", upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("project-files").getPublicUrl(path);
+      const mediaType = file.type.startsWith("image/") ? "image"
+        : file.type.startsWith("video/") ? "video"
+        : file.type.startsWith("audio/") ? "audio" : "document";
+      const res = await callAdmin(session, "send_media", {
+        phone: activeConv.phone_number,
+        media_url: pub.publicUrl,
+        media_type: mediaType,
+        caption: freeformText.trim() || undefined,
+        conversation_id: activeConv.id,
+      });
+      if (!res.success) throw new Error(res.error ?? "Media send failed");
+      setFreeformText("");
+      toast.success("Attachment sent");
+      qc.invalidateQueries({ queryKey: ["wa-messages", activeConv.id] });
+      qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not send attachment");
+    } finally {
+      setMediaUploading(false);
+    }
   };
 
   const toggleAutomation = useMutation({
@@ -1283,6 +1317,12 @@ const AdminWhatsAppPage = () => {
                   <div className="p-3 border-t border-border/40">
                     {activeConv.window_expires_at && new Date(activeConv.window_expires_at) > new Date() ? (
                       <div className="flex gap-2">
+                        <label className="h-10 w-10 shrink-0 rounded-md border border-border/60 flex items-center justify-center cursor-pointer hover:bg-muted/40">
+                          <Paperclip className={`w-4 h-4 ${mediaUploading ? "animate-pulse text-primary" : "text-muted-foreground"}`} />
+                          <input type="file" className="hidden" disabled={mediaUploading}
+                            accept="image/*,video/*,application/pdf"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) sendMedia(f); e.currentTarget.value = ""; }} />
+                        </label>
                         <Textarea className="resize-none min-h-[40px] text-sm" rows={1} value={freeformText}
                           onChange={e => setFreeformText(e.target.value)}
                           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendFreeform(); }}}
@@ -1293,6 +1333,12 @@ const AdminWhatsAppPage = () => {
                       </div>
                     ) : activeConv.is_manual_contact ? (
                       <div className="flex gap-2">
+                        <label className="h-10 w-10 shrink-0 rounded-md border border-border/60 flex items-center justify-center cursor-pointer hover:bg-muted/40">
+                          <Paperclip className={`w-4 h-4 ${mediaUploading ? "animate-pulse text-primary" : "text-muted-foreground"}`} />
+                          <input type="file" className="hidden" disabled={mediaUploading}
+                            accept="image/*,video/*,application/pdf"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) sendMedia(f); e.currentTarget.value = ""; }} />
+                        </label>
                         <Textarea className="resize-none min-h-[40px] text-sm" rows={1} value={freeformText}
                           onChange={e => setFreeformText(e.target.value)}
                           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendFreeform(); }}}
