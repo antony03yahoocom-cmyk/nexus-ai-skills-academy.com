@@ -19,6 +19,7 @@ import {
   saveConfig,
   saveConnectionState,
   saveWebhookInfo,
+  sendWhatsAppMedia,
   sendWhatsAppTemplate,
   sendWhatsAppText,
   toDigits,
@@ -448,6 +449,51 @@ Deno.serve(async (req) => {
       return json({ success: true, ...result });
     }
 
+
+    if (action === "send_media") {
+      const { phone, media_url, media_type, caption, conversation_id } = body as any;
+      if (!phone || !media_url) return json({ error: "phone and media_url required" }, 400);
+      const norm = normalisePhone(phone);
+      if (!norm) return json({ error: `Invalid phone: ${phone}` }, 400);
+      const convId = conversation_id ?? (await ensureConversation(sb, norm, null, null));
+      const res = await sendWhatsAppMedia(norm, media_url, (media_type ?? "image"), caption);
+      const wamid = res.success ? extractWamid(res.data) : null;
+      if (convId) {
+        await sb.from("whatsapp_messages" as any).insert({
+          conversation_id: convId,
+          wamid,
+          direction: "outbound",
+          message_type: media_type ?? "image",
+          body: caption ?? null,
+          media_url,
+          media_caption: caption ?? null,
+          status: res.success ? "sent" : "failed",
+          error_message: res.success ? null : (res.error ?? "Gateway media send failed").slice(0, 500),
+          sent_by_user_id: user?.id ?? null,
+        });
+      }
+      if (!res.success) return json({ success: false, error: res.error ?? "Media send failed" }, 502);
+      return json({ success: true, wamid });
+    }
+
+    if (action === "schedule_template") {
+      const { template_id, recipients, vars, scheduled_at, timezone } = body as any;
+      if (!template_id || !recipients?.length || !scheduled_at) {
+        return json({ error: "template_id, recipients and scheduled_at required" }, 400);
+      }
+      const { data: row, error } = await sb.from("whatsapp_scheduled" as any).insert({
+        template_id,
+        template_vars: vars ?? {},
+        recipients,
+        schedule_type: "once",
+        scheduled_at,
+        timezone: timezone ?? "UTC",
+        status: "queued",
+        created_by: user?.id ?? null,
+      }).select("id").single();
+      if (error) return json({ error: error.message }, 500);
+      return json({ success: true, id: (row as any)?.id });
+    }
 
     if (action === "get_analytics") {
       const { data } = await sb.rpc("get_whatsapp_analytics" as any);

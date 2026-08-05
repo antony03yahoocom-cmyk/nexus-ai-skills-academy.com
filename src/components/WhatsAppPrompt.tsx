@@ -17,6 +17,7 @@ const WhatsAppPrompt = () => {
   const { user, profile, refreshProfile, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
+  const [optedIn, setOptedIn] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ const WhatsAppPrompt = () => {
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ whatsapp_number: trimmed, whatsapp_opted_in: true, phone: trimmed })
+      .update({ whatsapp_number: trimmed, whatsapp_opted_in: optedIn, phone: trimmed })
       .eq("user_id", user.id);
     setSaving(false);
     if (error) {
@@ -77,6 +78,15 @@ const WhatsAppPrompt = () => {
             autoFocus
           />
           <p className="text-xs text-muted-foreground">Include your country code (e.g. +254 for Kenya).</p>
+          <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer select-none pt-1">
+            <input
+              type="checkbox"
+              checked={optedIn}
+              onChange={(e) => setOptedIn(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-border accent-[#25D366]"
+            />
+            <span>Receive WhatsApp messages from NEXUS AI ACADEMY. You can turn this off any time in Settings.</span>
+          </label>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">

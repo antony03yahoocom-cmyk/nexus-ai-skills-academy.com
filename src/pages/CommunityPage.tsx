@@ -90,7 +90,7 @@ const CommunityPage = () => {
           continue;
         }
         const ext = file.name.split(".").pop() || "png";
-        const path = `community/${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const path = `${user.id}/community/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const { error } = await supabase.storage.from("project-files").upload(path, file, {
           cacheControl: "3600",
           upsert: false,

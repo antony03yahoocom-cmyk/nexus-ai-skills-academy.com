@@ -2101,6 +2101,8 @@ export type Database = {
           created_by: string | null
           failed_count: number
           id: string
+          last_error: string | null
+          processed_at: string | null
           recipients: Json
           schedule_type: string
           scheduled_at: string
@@ -2115,6 +2117,8 @@ export type Database = {
           created_by?: string | null
           failed_count?: number
           id?: string
+          last_error?: string | null
+          processed_at?: string | null
           recipients?: Json
           schedule_type?: string
           scheduled_at: string
@@ -2129,6 +2133,8 @@ export type Database = {
           created_by?: string | null
           failed_count?: number
           id?: string
+          last_error?: string | null
+          processed_at?: string | null
           recipients?: Json
           schedule_type?: string
           scheduled_at?: string

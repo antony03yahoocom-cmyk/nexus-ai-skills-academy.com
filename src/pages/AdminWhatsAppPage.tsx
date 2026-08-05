@@ -20,7 +20,7 @@ import {
   LayoutDashboard, RefreshCw, Send, MessageCircle, Zap, Clock, FileText,
   Search, Filter, CheckCircle, XCircle, AlertCircle, Eye, Users, TrendingUp,
   BarChart3, ChevronRight, Plus, Trash2, Play, Pause, Phone, Check, CheckCheck,
-  ArrowLeft, X, Calendar, MessageSquare, Settings, Bell, Globe, ContactRound,
+  ArrowLeft, X, Paperclip, Calendar, MessageSquare, Settings, Bell, Globe, ContactRound,
 } from "lucide-react";
 
 // Edge function called via supabase.functions.invoke() — no raw URL needed
@@ -48,6 +48,7 @@ type WaMessage = {
   id: string; direction: "inbound" | "outbound"; message_type: string;
   body: string | null; template_name: string | null; status: string;
   created_at: string; sent_by_user_id: string | null;
+  media_url?: string | null; media_caption?: string | null; error_message?: string | null;
 };
 
 type Automation = {
@@ -82,19 +83,23 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
-  student_registered:    "Student Registered",
-  course_enrolled:       "Course Enrolled",
-  payment_success:       "Payment Success",
-  payment_failed:        "Payment Failed",
-  certificate_generated: "Certificate Generated",
-  course_completed:      "Course Completed",
-  lesson_completed:      "Lesson Completed",
-  assignment_graded:     "Assignment Graded",
-  subscription_expiring: "Subscription Expiring",
-  new_notification:      "New Notification",
-  new_message:           "New Private Message",
-  student_inactive:      "Student Inactive (7 days)",
-  welcome:               "Welcome Message",
+  any:                        "Any Notification (all events)",
+  new_message:                "New Private Message",
+  new_assignment:             "New Assignment Published",
+  assignment_due_date_reminder: "Assignment Due Reminder",
+  assignment_review_complete: "Assignment Reviewed",
+  course_content_updated:     "Course Content Updated",
+  new_announcement:           "New Announcement",
+  announcement:               "Announcement Sent",
+  application_update:         "Job Application Update",
+  shortlisted:                "Student Shortlisted",
+  hired:                      "Student Hired",
+  new_opportunity:            "New Opportunity Posted",
+  profile_view:               "Profile Viewed",
+  lesson_unlocked:            "Lesson Unlocked",
+  certificate_earned:         "Certificate Earned",
+  trial_expiry:               "Trial Expiring",
+  payment_confirmed:          "Payment Confirmed",
 };
 
 async function callAdmin(_session: any, action: string, body?: object) {
@@ -148,6 +153,9 @@ const AdminWhatsAppPage = () => {
   const [showNewContactForm, setShowNewContactForm] = useState(false);
   const [newContact, setNewContact] = useState({ full_name: "", phone_number: "", email: "", notes: "" });
   const [contactSearch, setContactSearch] = useState("");
+  const [scheduleMode, setScheduleMode] = useState<"now" | "later">("now");
+  const [scheduleAt, setScheduleAt] = useState("");
+  const [mediaUploading, setMediaUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // ── Nexus Gateway connection ───────────────────────────────────
@@ -377,10 +385,26 @@ const AdminWhatsAppPage = () => {
   const { data: scheduled = [] } = useQuery({
     queryKey: ["wa-scheduled"],
     queryFn: async () => {
-      const { data } = await supabase.from("whatsapp_scheduled" as any).select("*, whatsapp_templates(name)").order("scheduled_at");
+      const { data } = await supabase.from("whatsapp_scheduled" as any).select("*, whatsapp_templates(name)").order("scheduled_at", { ascending: false });
       return data ?? [];
     },
+    refetchInterval: 15_000,
   });
+
+  const runScheduledNow = async (id?: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-scheduler", { body: id ? { id } : {} });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const d = data as any;
+      toast.success(d?.processed ? `Processed ${d.processed} batch(es) · ${d.sent} sent · ${d.failed} failed` : "Nothing due right now");
+      qc.invalidateQueries({ queryKey: ["wa-scheduled"] });
+      qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+      qc.invalidateQueries({ queryKey: ["wa-analytics"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not run the scheduler");
+    }
+  };
 
   // ── Logs ────────────────────────────────────────────────────────
   const { data: logs = [] } = useQuery({
@@ -525,6 +549,32 @@ const AdminWhatsAppPage = () => {
 
     if (!recipients.length) { toast.error("No recipients with WhatsApp numbers"); return; }
 
+    if (scheduleMode === "later") {
+      if (!scheduleAt) { toast.error("Pick a date and time to schedule this message."); return; }
+      const when = new Date(scheduleAt);
+      if (isNaN(when.getTime()) || when.getTime() < Date.now() - 60_000) {
+        toast.error("Choose a future date and time.");
+        return;
+      }
+      try {
+        const res = await callAdmin(session, "schedule_template", {
+          template_id: selectedTemplate.id,
+          recipients,
+          vars: sendVars,
+          scheduled_at: when.toISOString(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
+        if (res.success) {
+          toast.success(`Scheduled for ${format(when, "d MMM yyyy, HH:mm")} — ${recipients.length} recipient(s)`);
+          setScheduleAt("");
+          setScheduleMode("now");
+          qc.invalidateQueries({ queryKey: ["wa-scheduled"] });
+          setTab("scheduled");
+        } else toast.error(res.error ?? "Could not schedule message");
+      } catch (e: any) { toast.error(e.message); }
+      return;
+    }
+
     setSendProgress({ total: recipients.length, sent: 0, failed: 0 });
     try {
       const res = await callAdmin(session, "send_template", {
@@ -559,6 +609,40 @@ const AdminWhatsAppPage = () => {
       qc.invalidateQueries({ queryKey: ["wa-messages", activeConv.id] });
       qc.invalidateQueries({ queryKey: ["wa-conversations"] });
     } else { toast.error(res.error ?? "Send failed"); }
+  };
+
+  const sendMedia = async (file: File) => {
+    if (!activeConv) return;
+    const uid = session?.user?.id;
+    if (!uid) { toast.error("Session expired — refresh and try again."); return; }
+    if (file.size > 16 * 1024 * 1024) { toast.error("WhatsApp media must be 16MB or smaller."); return; }
+    setMediaUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `${uid}/whatsapp/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("project-files").upload(path, file, { cacheControl: "3600", upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("project-files").getPublicUrl(path);
+      const mediaType = file.type.startsWith("image/") ? "image"
+        : file.type.startsWith("video/") ? "video"
+        : file.type.startsWith("audio/") ? "audio" : "document";
+      const res = await callAdmin(session, "send_media", {
+        phone: activeConv.phone_number,
+        media_url: pub.publicUrl,
+        media_type: mediaType,
+        caption: freeformText.trim() || undefined,
+        conversation_id: activeConv.id,
+      });
+      if (!res.success) throw new Error(res.error ?? "Media send failed");
+      setFreeformText("");
+      toast.success("Attachment sent");
+      qc.invalidateQueries({ queryKey: ["wa-messages", activeConv.id] });
+      qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not send attachment");
+    } finally {
+      setMediaUploading(false);
+    }
   };
 
   const toggleAutomation = useMutation({
@@ -977,11 +1061,27 @@ const AdminWhatsAppPage = () => {
                       <Button size="sm" variant="outline" onClick={() => setSendProgress(null)}>Reset</Button>
                     </div>
                   ) : (
-                    <Button variant="hero" className="w-full" onClick={doSend}
-                      disabled={bulkMode === "selected" && !selectedRecipients.length}>
-                      <Send className="w-4 h-4 mr-2" />
-                      Send {bulkMode === "all" ? "to All Students" : `to ${selectedRecipients.length} Student${selectedRecipients.length !== 1 ? "s" : ""}`}
-                    </Button>
+                    <div className="space-y-3">
+                      <div className="flex gap-2 flex-wrap">
+                        {[{ v: "now", l: "Send now" }, { v: "later", l: "Schedule for later" }].map(o => (
+                          <button key={o.v} onClick={() => setScheduleMode(o.v as "now" | "later")}
+                            className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${scheduleMode === o.v ? "bg-primary/10 border-primary/40 text-primary font-medium" : "border-border/40 text-muted-foreground"}`}>
+                            {o.l}
+                          </button>
+                        ))}
+                      </div>
+                      {scheduleMode === "later" && (
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-1 block">Date &amp; time ({Intl.DateTimeFormat().resolvedOptions().timeZone})</label>
+                          <Input type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} />
+                        </div>
+                      )}
+                      <Button variant="hero" className="w-full" onClick={doSend}
+                        disabled={(bulkMode === "selected" && !selectedRecipients.length) || (scheduleMode === "later" && !scheduleAt)}>
+                        {scheduleMode === "later" ? <Clock className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                        {scheduleMode === "later" ? "Schedule" : "Send"} {bulkMode === "all" ? "to All Students" : `to ${selectedRecipients.length} Student${selectedRecipients.length !== 1 ? "s" : ""}`}
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -1122,9 +1222,9 @@ const AdminWhatsAppPage = () => {
               INBOX
           ══════════════════════════════════════════════════════════ */}
           {tab === "inbox" && (
-            <div className="flex gap-4 h-[calc(100vh-16rem)]">
+            <div className="flex gap-0 md:gap-4 h-[calc(100dvh-14rem)] md:h-[calc(100vh-16rem)]">
               {/* Conversation list */}
-              <div className="w-80 shrink-0 glass-card overflow-y-auto">
+              <div className={`w-full md:w-80 shrink-0 glass-card overflow-y-auto ${activeConv ? "hidden md:block" : "block"}`}>
                 <div className="p-3 border-b border-border/40">
                   <p className="font-semibold text-sm">Conversations <span className="text-muted-foreground font-normal">({conversations.length})</span></p>
                 </div>
@@ -1155,16 +1255,19 @@ const AdminWhatsAppPage = () => {
 
               {/* Message thread */}
               {activeConv ? (
-                <div className="flex-1 glass-card flex flex-col overflow-hidden">
+                <div className="flex-1 min-w-0 glass-card flex flex-col overflow-hidden">
                   {/* Header */}
-                  <div className="p-4 border-b border-border/40 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="p-3 md:p-4 border-b border-border/40 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                      <button onClick={() => setActiveConv(null)} className="md:hidden text-muted-foreground shrink-0">
+                        <ArrowLeft className="w-5 h-5" />
+                      </button>
                       <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center text-green-600 font-semibold text-sm">
                         {(activeConv.display_name ?? activeConv.phone_number)?.[0]?.toUpperCase() ?? "?"}
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm">{activeConv.display_name ?? activeConv.phone_number}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{activeConv.display_name ?? activeConv.phone_number}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
                           <Phone className="w-3 h-3" /> {activeConv.phone_number}
                           {activeConv.window_expires_at && new Date(activeConv.window_expires_at) > new Date()
                             ? <span className="text-success ml-2">● Window active</span>
@@ -1173,16 +1276,33 @@ const AdminWhatsAppPage = () => {
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => setActiveConv(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                    <button onClick={() => setActiveConv(null)} className="hidden md:block text-muted-foreground hover:text-foreground shrink-0"><X className="w-4 h-4" /></button>
                   </div>
 
                   {/* Messages */}
-                  <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+                  <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain p-3 md:p-4 space-y-3">
                     {convMessages.map(msg => (
                       <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${msg.direction === "outbound" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted/70 border border-border/40 rounded-bl-sm"}`}>
-                          {msg.template_name && <p className="text-[10px] opacity-70 mb-1 font-mono">Template: {msg.template_name}</p>}
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body ?? `[${msg.message_type}]`}</p>
+                        <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 md:px-3.5 md:py-2.5 ${msg.direction === "outbound" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted/70 border border-border/40 rounded-bl-sm"}`}>
+                          {msg.template_name && <p className="text-[10px] opacity-70 mb-1 font-mono break-all">Template: {msg.template_name}</p>}
+                          {msg.media_url && (
+                            /\.(png|jpe?g|gif|webp)($|\?)/i.test(msg.media_url) ? (
+                              <a href={msg.media_url} target="_blank" rel="noreferrer">
+                                <img src={msg.media_url} alt={msg.media_caption ?? "Attachment"} loading="lazy"
+                                  className="rounded-xl mb-1.5 max-h-64 w-auto object-cover" />
+                              </a>
+                            ) : /\.(mp4|webm|mov)($|\?)/i.test(msg.media_url) ? (
+                              <video src={msg.media_url} controls className="rounded-xl mb-1.5 max-h-64 w-full" />
+                            ) : (
+                              <a href={msg.media_url} target="_blank" rel="noreferrer"
+                                className="flex items-center gap-2 mb-1.5 underline text-xs break-all">
+                                <Paperclip className="w-3.5 h-3.5 shrink-0" /> Open attachment
+                              </a>
+                            )
+                          )}
+                          {(msg.body || msg.media_caption || !msg.media_url) && (
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.body ?? msg.media_caption ?? `[${msg.message_type}]`}</p>
+                          )}
                           <div className="flex items-center justify-end gap-1 mt-1">
                             <span className="text-[10px] opacity-60">{format(new Date(msg.created_at), "HH:mm")}</span>
                             {msg.direction === "outbound" && STATUS_ICON[msg.status]}
@@ -1197,6 +1317,12 @@ const AdminWhatsAppPage = () => {
                   <div className="p-3 border-t border-border/40">
                     {activeConv.window_expires_at && new Date(activeConv.window_expires_at) > new Date() ? (
                       <div className="flex gap-2">
+                        <label className="h-10 w-10 shrink-0 rounded-md border border-border/60 flex items-center justify-center cursor-pointer hover:bg-muted/40">
+                          <Paperclip className={`w-4 h-4 ${mediaUploading ? "animate-pulse text-primary" : "text-muted-foreground"}`} />
+                          <input type="file" className="hidden" disabled={mediaUploading}
+                            accept="image/*,video/*,application/pdf"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) sendMedia(f); e.currentTarget.value = ""; }} />
+                        </label>
                         <Textarea className="resize-none min-h-[40px] text-sm" rows={1} value={freeformText}
                           onChange={e => setFreeformText(e.target.value)}
                           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendFreeform(); }}}
@@ -1207,6 +1333,12 @@ const AdminWhatsAppPage = () => {
                       </div>
                     ) : activeConv.is_manual_contact ? (
                       <div className="flex gap-2">
+                        <label className="h-10 w-10 shrink-0 rounded-md border border-border/60 flex items-center justify-center cursor-pointer hover:bg-muted/40">
+                          <Paperclip className={`w-4 h-4 ${mediaUploading ? "animate-pulse text-primary" : "text-muted-foreground"}`} />
+                          <input type="file" className="hidden" disabled={mediaUploading}
+                            accept="image/*,video/*,application/pdf"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) sendMedia(f); e.currentTarget.value = ""; }} />
+                        </label>
                         <Textarea className="resize-none min-h-[40px] text-sm" rows={1} value={freeformText}
                           onChange={e => setFreeformText(e.target.value)}
                           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendFreeform(); }}}
@@ -1226,7 +1358,7 @@ const AdminWhatsAppPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="flex-1 glass-card flex items-center justify-center text-muted-foreground">
+                <div className="hidden md:flex flex-1 glass-card items-center justify-center text-muted-foreground">
                   <div className="text-center">
                     <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-20" />
                     <p>Select a conversation</p>
@@ -1243,7 +1375,7 @@ const AdminWhatsAppPage = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold">Automation Engine</h2>
-                <Button variant="hero" size="sm" onClick={() => setNewAuto({ name: "", event_trigger: "student_registered", enabled: true, delay_minutes: 0, template_vars: {} })}>
+                <Button variant="hero" size="sm" onClick={() => setNewAuto({ name: "", event_trigger: "any", enabled: true, delay_minutes: 0, template_vars: {} })}>
                   <Plus className="w-4 h-4 mr-1" /> New Automation
                 </Button>
               </div>
@@ -1335,7 +1467,10 @@ const AdminWhatsAppPage = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold">Scheduled Messages</h2>
-                <Button variant="hero" size="sm" onClick={() => setTab("send")}><Plus className="w-4 h-4 mr-1" /> Schedule New</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => runScheduledNow()}><Play className="w-4 h-4 mr-1" /> Process due now</Button>
+                  <Button variant="hero" size="sm" onClick={() => setTab("send")}><Plus className="w-4 h-4 mr-1" /> Schedule New</Button>
+                </div>
               </div>
               {scheduled.length === 0 ? (
                 <div className="glass-card p-12 text-center">
@@ -1346,18 +1481,27 @@ const AdminWhatsAppPage = () => {
               ) : (
                 <div className="space-y-3">
                   {scheduled.map((s: any) => (
-                    <div key={s.id} className="glass-card p-4 flex items-center justify-between gap-4">
+                    <div key={s.id} className="glass-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center"><Calendar className="w-4 h-4 text-accent" /></div>
                         <div>
                           <p className="font-medium text-sm">{s.whatsapp_templates?.name ?? "Template"}</p>
                           <p className="text-xs text-muted-foreground">{format(new Date(s.scheduled_at), "d MMM yyyy, HH:mm")} · {s.schedule_type} · {Array.isArray(s.recipients) ? s.recipients.length : 0} recipients</p>
+                          {(s.sent_count > 0 || s.failed_count > 0) && (
+                            <p className="text-[11px] text-muted-foreground mt-0.5">✓ {s.sent_count} sent · ✗ {s.failed_count} failed</p>
+                          )}
+                          {s.last_error && <p className="text-[11px] text-destructive mt-0.5 break-all">{s.last_error}</p>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className={`px-2 py-0.5 rounded-full text-xs border ${s.status === "queued" ? "bg-accent/10 text-accent border-accent/20" : s.status === "sent" ? "bg-success/10 text-success border-success/20" : "bg-muted/20 text-muted-foreground border-muted/30"}`}>
                           {s.status}
                         </span>
+                        {s.status === "queued" && (
+                          <Button size="sm" variant="outline" onClick={() => runScheduledNow(s.id)}>
+                            <Play className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                         {s.status === "queued" && (
                           <Button size="sm" variant="ghost" className="text-destructive" onClick={async () => {
                             await supabase.from("whatsapp_scheduled" as any).update({ status: "cancelled" }).eq("id", s.id);
@@ -1387,10 +1531,10 @@ const AdminWhatsAppPage = () => {
                 </div>
               ) : (
                 <div className="glass-card overflow-hidden">
-                  <table className="w-full text-sm">
+                  <div className="overflow-x-auto"><table className="w-full text-sm min-w-[720px]">
                     <thead className="border-b border-border/40 bg-muted/20">
                       <tr>
-                        {["Trigger", "Phone", "Template", "Status", "Time"].map(h => (
+                        {["Trigger", "Phone", "Template", "Status", "Reason", "Time"].map(h => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{h}</th>
                         ))}
                       </tr>
@@ -1406,11 +1550,12 @@ const AdminWhatsAppPage = () => {
                               {log.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs text-muted-foreground">{formatDistanceToNow(new Date(log.created_at))} ago</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground max-w-[240px] truncate" title={log.error_message ?? ""}>{log.error_message ?? "—"}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(log.created_at))} ago</td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 </div>
               )}
             </div>
