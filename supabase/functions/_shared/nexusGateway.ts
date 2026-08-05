@@ -298,6 +298,28 @@ export function sendWhatsAppTemplate(
   });
 }
 
+/** Media message (image / document / video) inside the 24h window. */
+export function sendWhatsAppMedia(
+  phone: string,
+  mediaUrl: string,
+  mediaType: "image" | "document" | "video" | "audio",
+  caption?: string,
+): Promise<GatewayResult> {
+  const e164 = toE164(phone);
+  if (!e164) return Promise.resolve({ success: false, error: `Invalid phone: ${phone}` });
+  if (!mediaUrl) return Promise.resolve({ success: false, error: "mediaUrl is required" });
+  return request("/api/v1/messages/send", {
+    method: "POST",
+    body: {
+      to: e164,
+      channel: "whatsapp",
+      mediaUrl,
+      mediaType,
+      ...(caption ? { caption } : {}),
+    },
+  });
+}
+
 /** Opt in, then send text. */
 export async function ensureOptInAndSendText(
   phone: string,

@@ -14,6 +14,7 @@ const SignupPage = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [whatsapp, setWhatsapp] = useState("");
+  const [waOptedIn, setWaOptedIn] = useState(true);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,7 +33,7 @@ const SignupPage = () => {
       email,
       password,
       options: {
-        data: { full_name: name, whatsapp_number: trimmedWa, phone: trimmedWa },
+        data: { full_name: name, whatsapp_number: trimmedWa, phone: trimmedWa, whatsapp_opted_in: waOptedIn },
         emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     });
@@ -109,9 +110,18 @@ const SignupPage = () => {
                 className="bg-secondary border-border"
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                We'll use your WhatsApp number to send course updates, assignment notifications, and community announcements.
-              </p>
+              <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={waOptedIn}
+                  onChange={(e) => setWaOptedIn(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-border accent-[#25D366]"
+                />
+                <span>
+                  Receive WhatsApp messages — course updates, assignment notifications, and community
+                  announcements. You can turn this off any time in Settings.
+                </span>
+              </label>
             </div>
 
             <div className="space-y-2">

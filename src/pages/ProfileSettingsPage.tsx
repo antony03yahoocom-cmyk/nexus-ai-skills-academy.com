@@ -18,7 +18,7 @@ const ProfileSettingsPage = () => {
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [whatsappNumber, setWhatsappNumber]   = useState("");
-  const [whatsappOptedIn, setWhatsappOptedIn] = useState(false);
+  const [whatsappOptedIn, setWhatsappOptedIn] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -113,7 +113,7 @@ const ProfileSettingsPage = () => {
       .then(({ data }) => {
         if (data) {
           setWhatsappNumber((data as any).whatsapp_number ?? "");
-          setWhatsappOptedIn((data as any).whatsapp_opted_in ?? false);
+          setWhatsappOptedIn((data as any).whatsapp_opted_in ?? true);
         }
       });
   }, [user]);

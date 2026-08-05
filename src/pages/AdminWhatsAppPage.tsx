@@ -82,19 +82,23 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
-  student_registered:    "Student Registered",
-  course_enrolled:       "Course Enrolled",
-  payment_success:       "Payment Success",
-  payment_failed:        "Payment Failed",
-  certificate_generated: "Certificate Generated",
-  course_completed:      "Course Completed",
-  lesson_completed:      "Lesson Completed",
-  assignment_graded:     "Assignment Graded",
-  subscription_expiring: "Subscription Expiring",
-  new_notification:      "New Notification",
-  new_message:           "New Private Message",
-  student_inactive:      "Student Inactive (7 days)",
-  welcome:               "Welcome Message",
+  any:                        "Any Notification (all events)",
+  new_message:                "New Private Message",
+  new_assignment:             "New Assignment Published",
+  assignment_due_date_reminder: "Assignment Due Reminder",
+  assignment_review_complete: "Assignment Reviewed",
+  course_content_updated:     "Course Content Updated",
+  new_announcement:           "New Announcement",
+  announcement:               "Announcement Sent",
+  application_update:         "Job Application Update",
+  shortlisted:                "Student Shortlisted",
+  hired:                      "Student Hired",
+  new_opportunity:            "New Opportunity Posted",
+  profile_view:               "Profile Viewed",
+  lesson_unlocked:            "Lesson Unlocked",
+  certificate_earned:         "Certificate Earned",
+  trial_expiry:               "Trial Expiring",
+  payment_confirmed:          "Payment Confirmed",
 };
 
 async function callAdmin(_session: any, action: string, body?: object) {
@@ -148,6 +152,9 @@ const AdminWhatsAppPage = () => {
   const [showNewContactForm, setShowNewContactForm] = useState(false);
   const [newContact, setNewContact] = useState({ full_name: "", phone_number: "", email: "", notes: "" });
   const [contactSearch, setContactSearch] = useState("");
+  const [scheduleMode, setScheduleMode] = useState<"now" | "later">("now");
+  const [scheduleAt, setScheduleAt] = useState("");
+  const [mediaUploading, setMediaUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // ── Nexus Gateway connection ───────────────────────────────────
@@ -524,6 +531,32 @@ const AdminWhatsAppPage = () => {
     }
 
     if (!recipients.length) { toast.error("No recipients with WhatsApp numbers"); return; }
+
+    if (scheduleMode === "later") {
+      if (!scheduleAt) { toast.error("Pick a date and time to schedule this message."); return; }
+      const when = new Date(scheduleAt);
+      if (isNaN(when.getTime()) || when.getTime() < Date.now() - 60_000) {
+        toast.error("Choose a future date and time.");
+        return;
+      }
+      try {
+        const res = await callAdmin(session, "schedule_template", {
+          template_id: selectedTemplate.id,
+          recipients,
+          vars: sendVars,
+          scheduled_at: when.toISOString(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
+        if (res.success) {
+          toast.success(`Scheduled for ${format(when, "d MMM yyyy, HH:mm")} — ${recipients.length} recipient(s)`);
+          setScheduleAt("");
+          setScheduleMode("now");
+          qc.invalidateQueries({ queryKey: ["wa-scheduled"] });
+          setTab("scheduled");
+        } else toast.error(res.error ?? "Could not schedule message");
+      } catch (e: any) { toast.error(e.message); }
+      return;
+    }
 
     setSendProgress({ total: recipients.length, sent: 0, failed: 0 });
     try {
@@ -977,11 +1010,27 @@ const AdminWhatsAppPage = () => {
                       <Button size="sm" variant="outline" onClick={() => setSendProgress(null)}>Reset</Button>
                     </div>
                   ) : (
-                    <Button variant="hero" className="w-full" onClick={doSend}
-                      disabled={bulkMode === "selected" && !selectedRecipients.length}>
-                      <Send className="w-4 h-4 mr-2" />
-                      Send {bulkMode === "all" ? "to All Students" : `to ${selectedRecipients.length} Student${selectedRecipients.length !== 1 ? "s" : ""}`}
-                    </Button>
+                    <div className="space-y-3">
+                      <div className="flex gap-2 flex-wrap">
+                        {[{ v: "now", l: "Send now" }, { v: "later", l: "Schedule for later" }].map(o => (
+                          <button key={o.v} onClick={() => setScheduleMode(o.v as "now" | "later")}
+                            className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${scheduleMode === o.v ? "bg-primary/10 border-primary/40 text-primary font-medium" : "border-border/40 text-muted-foreground"}`}>
+                            {o.l}
+                          </button>
+                        ))}
+                      </div>
+                      {scheduleMode === "later" && (
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-1 block">Date &amp; time ({Intl.DateTimeFormat().resolvedOptions().timeZone})</label>
+                          <Input type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} />
+                        </div>
+                      )}
+                      <Button variant="hero" className="w-full" onClick={doSend}
+                        disabled={(bulkMode === "selected" && !selectedRecipients.length) || (scheduleMode === "later" && !scheduleAt)}>
+                        {scheduleMode === "later" ? <Clock className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                        {scheduleMode === "later" ? "Schedule" : "Send"} {bulkMode === "all" ? "to All Students" : `to ${selectedRecipients.length} Student${selectedRecipients.length !== 1 ? "s" : ""}`}
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -1243,7 +1292,7 @@ const AdminWhatsAppPage = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold">Automation Engine</h2>
-                <Button variant="hero" size="sm" onClick={() => setNewAuto({ name: "", event_trigger: "student_registered", enabled: true, delay_minutes: 0, template_vars: {} })}>
+                <Button variant="hero" size="sm" onClick={() => setNewAuto({ name: "", event_trigger: "any", enabled: true, delay_minutes: 0, template_vars: {} })}>
                   <Plus className="w-4 h-4 mr-1" /> New Automation
                 </Button>
               </div>
