@@ -48,6 +48,7 @@ type WaMessage = {
   id: string; direction: "inbound" | "outbound"; message_type: string;
   body: string | null; template_name: string | null; status: string;
   created_at: string; sent_by_user_id: string | null;
+  media_url?: string | null; media_caption?: string | null; error_message?: string | null;
 };
 
 type Automation = {
@@ -1187,9 +1188,9 @@ const AdminWhatsAppPage = () => {
               INBOX
           ══════════════════════════════════════════════════════════ */}
           {tab === "inbox" && (
-            <div className="flex gap-4 h-[calc(100vh-16rem)]">
+            <div className="flex gap-0 md:gap-4 h-[calc(100dvh-14rem)] md:h-[calc(100vh-16rem)]">
               {/* Conversation list */}
-              <div className="w-80 shrink-0 glass-card overflow-y-auto">
+              <div className={`w-full md:w-80 shrink-0 glass-card overflow-y-auto ${activeConv ? "hidden md:block" : "block"}`}>
                 <div className="p-3 border-b border-border/40">
                   <p className="font-semibold text-sm">Conversations <span className="text-muted-foreground font-normal">({conversations.length})</span></p>
                 </div>
@@ -1220,16 +1221,19 @@ const AdminWhatsAppPage = () => {
 
               {/* Message thread */}
               {activeConv ? (
-                <div className="flex-1 glass-card flex flex-col overflow-hidden">
+                <div className="flex-1 min-w-0 glass-card flex flex-col overflow-hidden">
                   {/* Header */}
-                  <div className="p-4 border-b border-border/40 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="p-3 md:p-4 border-b border-border/40 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                      <button onClick={() => setActiveConv(null)} className="md:hidden text-muted-foreground shrink-0">
+                        <ArrowLeft className="w-5 h-5" />
+                      </button>
                       <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center text-green-600 font-semibold text-sm">
                         {(activeConv.display_name ?? activeConv.phone_number)?.[0]?.toUpperCase() ?? "?"}
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm">{activeConv.display_name ?? activeConv.phone_number}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{activeConv.display_name ?? activeConv.phone_number}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
                           <Phone className="w-3 h-3" /> {activeConv.phone_number}
                           {activeConv.window_expires_at && new Date(activeConv.window_expires_at) > new Date()
                             ? <span className="text-success ml-2">● Window active</span>
@@ -1238,16 +1242,33 @@ const AdminWhatsAppPage = () => {
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => setActiveConv(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                    <button onClick={() => setActiveConv(null)} className="hidden md:block text-muted-foreground hover:text-foreground shrink-0"><X className="w-4 h-4" /></button>
                   </div>
 
                   {/* Messages */}
-                  <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+                  <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain p-3 md:p-4 space-y-3">
                     {convMessages.map(msg => (
                       <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${msg.direction === "outbound" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted/70 border border-border/40 rounded-bl-sm"}`}>
-                          {msg.template_name && <p className="text-[10px] opacity-70 mb-1 font-mono">Template: {msg.template_name}</p>}
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body ?? `[${msg.message_type}]`}</p>
+                        <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 md:px-3.5 md:py-2.5 ${msg.direction === "outbound" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted/70 border border-border/40 rounded-bl-sm"}`}>
+                          {msg.template_name && <p className="text-[10px] opacity-70 mb-1 font-mono break-all">Template: {msg.template_name}</p>}
+                          {msg.media_url && (
+                            /\.(png|jpe?g|gif|webp)($|\?)/i.test(msg.media_url) ? (
+                              <a href={msg.media_url} target="_blank" rel="noreferrer">
+                                <img src={msg.media_url} alt={msg.media_caption ?? "Attachment"} loading="lazy"
+                                  className="rounded-xl mb-1.5 max-h-64 w-auto object-cover" />
+                              </a>
+                            ) : /\.(mp4|webm|mov)($|\?)/i.test(msg.media_url) ? (
+                              <video src={msg.media_url} controls className="rounded-xl mb-1.5 max-h-64 w-full" />
+                            ) : (
+                              <a href={msg.media_url} target="_blank" rel="noreferrer"
+                                className="flex items-center gap-2 mb-1.5 underline text-xs break-all">
+                                <Paperclip className="w-3.5 h-3.5 shrink-0" /> Open attachment
+                              </a>
+                            )
+                          )}
+                          {(msg.body || msg.media_caption || !msg.media_url) && (
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.body ?? msg.media_caption ?? `[${msg.message_type}]`}</p>
+                          )}
                           <div className="flex items-center justify-end gap-1 mt-1">
                             <span className="text-[10px] opacity-60">{format(new Date(msg.created_at), "HH:mm")}</span>
                             {msg.direction === "outbound" && STATUS_ICON[msg.status]}
@@ -1291,7 +1312,7 @@ const AdminWhatsAppPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="flex-1 glass-card flex items-center justify-center text-muted-foreground">
+                <div className="hidden md:flex flex-1 glass-card items-center justify-center text-muted-foreground">
                   <div className="text-center">
                     <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-20" />
                     <p>Select a conversation</p>
