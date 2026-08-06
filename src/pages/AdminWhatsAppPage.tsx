@@ -42,6 +42,7 @@ type Conversation = {
   unread_count: number; window_expires_at: string | null;
   status: string; student_user_id: string | null;
   is_manual_contact?: boolean;
+  ai_enabled?: boolean; ai_last_reply_at?: string | null; ai_replies_count?: number;
 };
 
 type WaMessage = {
@@ -49,6 +50,7 @@ type WaMessage = {
   body: string | null; template_name: string | null; status: string;
   created_at: string; sent_by_user_id: string | null;
   media_url?: string | null; media_caption?: string | null; error_message?: string | null;
+  is_ai?: boolean;
 };
 
 type Automation = {
