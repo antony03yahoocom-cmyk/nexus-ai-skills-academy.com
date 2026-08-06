@@ -1284,7 +1284,12 @@ const AdminWhatsAppPage = () => {
                         </div>
                         <p className="text-xs text-muted-foreground truncate">{conv.last_message_text ?? "No messages"}</p>
                         {conv.last_message_at && <p className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(conv.last_message_at))} ago</p>}
-                        {conv.is_manual_contact && <p className="text-[10px] text-accent font-medium mt-0.5">● Manual Contact</p>}
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          {conv.is_manual_contact && <span className="text-[10px] text-accent font-medium">● Manual Contact</span>}
+                          <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 ${conv.ai_enabled === false ? "text-muted-foreground" : "text-primary"}`}>
+                            <Bot className="w-3 h-3" /> AI {conv.ai_enabled === false ? "off" : "on"}
+                          </span>
+                        </div>
                       </div>
                     </button>
                   ))
