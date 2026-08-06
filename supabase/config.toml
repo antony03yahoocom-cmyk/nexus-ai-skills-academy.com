@@ -27,3 +27,10 @@ verify_jwt = false
 [functions.nexus-register]
 verify_jwt = false
 
+[functions.whatsapp-scheduler]
+verify_jwt = false
+
+[functions.whatsapp-ai-agent]
+verify_jwt = false
+
+
