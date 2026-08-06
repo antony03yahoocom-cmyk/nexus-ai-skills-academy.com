@@ -241,6 +241,25 @@ Deno.serve(async (req) => {
     }
     saved++;
 
+    // ── AI auto-reply (per-contact switch is enforced inside the agent) ──
+    try {
+      const agentUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-ai-agent`;
+      const triggerKey =
+        Deno.env.get("WHATSAPP_TRIGGER_KEY") ?? Deno.env.get("WHATSAPP_INTERNAL_KEY") ?? "";
+      await fetch(agentUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-whatsapp-internal-key": triggerKey,
+        },
+        body: JSON.stringify({ conversation_id: convId }),
+      }).then(async (r) => {
+        if (!r.ok) console.error("[nexus-webhook] ai-agent responded", r.status, (await r.text()).slice(0, 300));
+      });
+    } catch (err) {
+      console.error("[nexus-webhook] ai-agent invoke failed:", err);
+    }
+
     // in-app notification for the admin (drives the Realtime badge)
     const { data: adminRole } = await sb
       .from("user_roles")

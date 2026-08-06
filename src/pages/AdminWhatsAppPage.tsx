@@ -16,11 +16,13 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
+import { Switch } from "@/components/ui/switch";
 import {
   LayoutDashboard, RefreshCw, Send, MessageCircle, Zap, Clock, FileText,
   Search, Filter, CheckCircle, XCircle, AlertCircle, Eye, Users, TrendingUp,
   BarChart3, ChevronRight, Plus, Trash2, Play, Pause, Phone, Check, CheckCheck,
   ArrowLeft, X, Paperclip, Calendar, MessageSquare, Settings, Bell, Globe, ContactRound,
+  Bot, Sparkles,
 } from "lucide-react";
 
 // Edge function called via supabase.functions.invoke() — no raw URL needed
@@ -42,6 +44,7 @@ type Conversation = {
   unread_count: number; window_expires_at: string | null;
   status: string; student_user_id: string | null;
   is_manual_contact?: boolean;
+  ai_enabled?: boolean; ai_last_reply_at?: string | null; ai_replies_count?: number;
 };
 
 type WaMessage = {
@@ -49,6 +52,7 @@ type WaMessage = {
   body: string | null; template_name: string | null; status: string;
   created_at: string; sent_by_user_id: string | null;
   media_url?: string | null; media_caption?: string | null; error_message?: string | null;
+  is_ai?: boolean;
 };
 
 type Automation = {
@@ -403,6 +407,40 @@ const AdminWhatsAppPage = () => {
       qc.invalidateQueries({ queryKey: ["wa-analytics"] });
     } catch (e: any) {
       toast.error(e.message ?? "Could not run the scheduler");
+    }
+  };
+
+  // ── AI agent (per-contact) ──────────────────────────────────────
+  const [aiBusy, setAiBusy] = useState(false);
+
+  const toggleAiAgent = async (conv: Conversation, enabled: boolean) => {
+    const { error } = await supabase
+      .from("whatsapp_conversations" as any)
+      .update({ ai_enabled: enabled })
+      .eq("id", conv.id);
+    if (error) { toast.error(error.message); return; }
+    setActiveConv(prev => (prev && prev.id === conv.id ? { ...prev, ai_enabled: enabled } : prev));
+    qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+    toast.success(enabled ? "AI agent ON for this contact" : "AI agent OFF for this contact");
+  };
+
+  const aiReplyNow = async () => {
+    if (!activeConv) return;
+    setAiBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-ai-agent", {
+        body: { conversation_id: activeConv.id, force: true },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.skipped) toast.info(`AI skipped: ${(data as any).skipped}`);
+      else toast.success("AI reply sent");
+      qc.invalidateQueries({ queryKey: ["wa-messages", activeConv.id] });
+      qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "AI reply failed");
+    } finally {
+      setAiBusy(false);
     }
   };
 
@@ -1246,7 +1284,12 @@ const AdminWhatsAppPage = () => {
                         </div>
                         <p className="text-xs text-muted-foreground truncate">{conv.last_message_text ?? "No messages"}</p>
                         {conv.last_message_at && <p className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(conv.last_message_at))} ago</p>}
-                        {conv.is_manual_contact && <p className="text-[10px] text-accent font-medium mt-0.5">● Manual Contact</p>}
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          {conv.is_manual_contact && <span className="text-[10px] text-accent font-medium">● Manual Contact</span>}
+                          <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 ${conv.ai_enabled === false ? "text-muted-foreground" : "text-primary"}`}>
+                            <Bot className="w-3 h-3" /> AI {conv.ai_enabled === false ? "off" : "on"}
+                          </span>
+                        </div>
                       </div>
                     </button>
                   ))
@@ -1276,7 +1319,22 @@ const AdminWhatsAppPage = () => {
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => setActiveConv(null)} className="hidden md:block text-muted-foreground hover:text-foreground shrink-0"><X className="w-4 h-4" /></button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 rounded-full border border-border/50 px-2 py-1">
+                        <Bot className={`w-3.5 h-3.5 ${activeConv.ai_enabled === false ? "text-muted-foreground" : "text-primary"}`} />
+                        <span className="text-[11px] hidden sm:inline text-muted-foreground">AI agent</span>
+                        <Switch
+                          checked={activeConv.ai_enabled !== false}
+                          onCheckedChange={(v) => toggleAiAgent(activeConv, v)}
+                          aria-label="Toggle AI agent for this contact"
+                        />
+                      </div>
+                      <Button size="sm" variant="outline" onClick={aiReplyNow} disabled={aiBusy} className="h-8">
+                        <Sparkles className={`w-3.5 h-3.5 ${aiBusy ? "animate-pulse" : ""}`} />
+                        <span className="hidden md:inline ml-1">AI reply</span>
+                      </Button>
+                      <button onClick={() => setActiveConv(null)} className="hidden md:block text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                    </div>
                   </div>
 
                   {/* Messages */}
@@ -1284,6 +1342,7 @@ const AdminWhatsAppPage = () => {
                     {convMessages.map(msg => (
                       <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 md:px-3.5 md:py-2.5 ${msg.direction === "outbound" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted/70 border border-border/40 rounded-bl-sm"}`}>
+                          {msg.is_ai && <p className="text-[10px] opacity-80 mb-1 inline-flex items-center gap-1"><Bot className="w-3 h-3" /> AI agent</p>}
                           {msg.template_name && <p className="text-[10px] opacity-70 mb-1 font-mono break-all">Template: {msg.template_name}</p>}
                           {msg.media_url && (
                             /\.(png|jpe?g|gif|webp)($|\?)/i.test(msg.media_url) ? (
