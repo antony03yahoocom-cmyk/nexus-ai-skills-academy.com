@@ -16,11 +16,13 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
+import { Switch } from "@/components/ui/switch";
 import {
   LayoutDashboard, RefreshCw, Send, MessageCircle, Zap, Clock, FileText,
   Search, Filter, CheckCircle, XCircle, AlertCircle, Eye, Users, TrendingUp,
   BarChart3, ChevronRight, Plus, Trash2, Play, Pause, Phone, Check, CheckCheck,
   ArrowLeft, X, Paperclip, Calendar, MessageSquare, Settings, Bell, Globe, ContactRound,
+  Bot, Sparkles,
 } from "lucide-react";
 
 // Edge function called via supabase.functions.invoke() — no raw URL needed
