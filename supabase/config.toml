@@ -19,7 +19,9 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.whatsapp-admin]
-verify_jwt = true
+# Auth is enforced in code: admin JWT OR x-whatsapp-internal-key (used by the
+# database automation triggers, which cannot attach a JWT).
+verify_jwt = false
 
 [functions.nexus-webhook]
 verify_jwt = false
