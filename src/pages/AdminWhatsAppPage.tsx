@@ -410,6 +410,40 @@ const AdminWhatsAppPage = () => {
     }
   };
 
+  // ── AI agent (per-contact) ──────────────────────────────────────
+  const [aiBusy, setAiBusy] = useState(false);
+
+  const toggleAiAgent = async (conv: Conversation, enabled: boolean) => {
+    const { error } = await supabase
+      .from("whatsapp_conversations" as any)
+      .update({ ai_enabled: enabled })
+      .eq("id", conv.id);
+    if (error) { toast.error(error.message); return; }
+    setActiveConv(prev => (prev && prev.id === conv.id ? { ...prev, ai_enabled: enabled } : prev));
+    qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+    toast.success(enabled ? "AI agent ON for this contact" : "AI agent OFF for this contact");
+  };
+
+  const aiReplyNow = async () => {
+    if (!activeConv) return;
+    setAiBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-ai-agent", {
+        body: { conversation_id: activeConv.id, force: true },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.skipped) toast.info(`AI skipped: ${(data as any).skipped}`);
+      else toast.success("AI reply sent");
+      qc.invalidateQueries({ queryKey: ["wa-messages", activeConv.id] });
+      qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "AI reply failed");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
   // ── Logs ────────────────────────────────────────────────────────
   const { data: logs = [] } = useQuery({
     queryKey: ["wa-logs"],
