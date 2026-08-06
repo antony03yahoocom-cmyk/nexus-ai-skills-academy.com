@@ -1917,6 +1917,9 @@ export type Database = {
       }
       whatsapp_conversations: {
         Row: {
+          ai_enabled: boolean
+          ai_last_reply_at: string | null
+          ai_replies_count: number
           created_at: string
           display_name: string | null
           id: string
@@ -1929,6 +1932,9 @@ export type Database = {
           window_expires_at: string | null
         }
         Insert: {
+          ai_enabled?: boolean
+          ai_last_reply_at?: string | null
+          ai_replies_count?: number
           created_at?: string
           display_name?: string | null
           id?: string
@@ -1941,6 +1947,9 @@ export type Database = {
           window_expires_at?: string | null
         }
         Update: {
+          ai_enabled?: boolean
+          ai_last_reply_at?: string | null
+          ai_replies_count?: number
           created_at?: string
           display_name?: string | null
           id?: string
@@ -2035,6 +2044,7 @@ export type Database = {
           direction: string
           error_message: string | null
           id: string
+          is_ai: boolean
           media_caption: string | null
           media_url: string | null
           message_type: string
@@ -2052,6 +2062,7 @@ export type Database = {
           direction: string
           error_message?: string | null
           id?: string
+          is_ai?: boolean
           media_caption?: string | null
           media_url?: string | null
           message_type?: string
@@ -2069,6 +2080,7 @@ export type Database = {
           direction?: string
           error_message?: string | null
           id?: string
+          is_ai?: boolean
           media_caption?: string | null
           media_url?: string | null
           message_type?: string
