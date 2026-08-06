@@ -1342,6 +1342,7 @@ const AdminWhatsAppPage = () => {
                     {convMessages.map(msg => (
                       <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 md:px-3.5 md:py-2.5 ${msg.direction === "outbound" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted/70 border border-border/40 rounded-bl-sm"}`}>
+                          {msg.is_ai && <p className="text-[10px] opacity-80 mb-1 inline-flex items-center gap-1"><Bot className="w-3 h-3" /> AI agent</p>}
                           {msg.template_name && <p className="text-[10px] opacity-70 mb-1 font-mono break-all">Template: {msg.template_name}</p>}
                           {msg.media_url && (
                             /\.(png|jpe?g|gif|webp)($|\?)/i.test(msg.media_url) ? (
