@@ -1319,7 +1319,22 @@ const AdminWhatsAppPage = () => {
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => setActiveConv(null)} className="hidden md:block text-muted-foreground hover:text-foreground shrink-0"><X className="w-4 h-4" /></button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 rounded-full border border-border/50 px-2 py-1">
+                        <Bot className={`w-3.5 h-3.5 ${activeConv.ai_enabled === false ? "text-muted-foreground" : "text-primary"}`} />
+                        <span className="text-[11px] hidden sm:inline text-muted-foreground">AI agent</span>
+                        <Switch
+                          checked={activeConv.ai_enabled !== false}
+                          onCheckedChange={(v) => toggleAiAgent(activeConv, v)}
+                          aria-label="Toggle AI agent for this contact"
+                        />
+                      </div>
+                      <Button size="sm" variant="outline" onClick={aiReplyNow} disabled={aiBusy} className="h-8">
+                        <Sparkles className={`w-3.5 h-3.5 ${aiBusy ? "animate-pulse" : ""}`} />
+                        <span className="hidden md:inline ml-1">AI reply</span>
+                      </Button>
+                      <button onClick={() => setActiveConv(null)} className="hidden md:block text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                    </div>
                   </div>
 
                   {/* Messages */}
