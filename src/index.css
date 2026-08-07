@@ -180,3 +180,14 @@
     overflow-x: hidden;
   }
 }
+
+@layer utilities {
+  /* Horizontal filter rails in the WhatsApp inbox */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -349,12 +349,32 @@ const AdminWhatsAppPage = () => {
       const { data } = await supabase
         .from("whatsapp_conversations" as any)
         .select("*")
-        .order("last_message_at", { ascending: false })
-        .limit(100);
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(200);
       return (data ?? []) as unknown as Conversation[];
     },
-    refetchInterval: 15_000,
+    refetchInterval: 60_000, // realtime does the heavy lifting; this is a safety net
   });
+
+  // Smart inbox filtering
+  const [inboxSearch, setInboxSearch] = useState("");
+  const [inboxFilter, setInboxFilter] = useState<"all" | "unread" | "students" | "ai">("all");
+
+  const visibleConversations = conversations.filter((c) => {
+    const q = inboxSearch.trim().toLowerCase();
+    const matchSearch = !q
+      || (c.display_name ?? "").toLowerCase().includes(q)
+      || c.phone_number.includes(q)
+      || (c.last_message_text ?? "").toLowerCase().includes(q);
+    const matchFilter =
+      inboxFilter === "all" ? true
+      : inboxFilter === "unread" ? (c.unread_count ?? 0) > 0
+      : inboxFilter === "students" ? !!c.student_user_id
+      : c.ai_enabled !== false;
+    return matchSearch && matchFilter;
+  });
+
+  const totalUnread = conversations.reduce((n, c) => n + (c.unread_count ?? 0), 0);
 
   // ── Messages for active conversation ──────────────────────────
   const { data: convMessages = [] } = useQuery({
@@ -365,12 +385,46 @@ const AdminWhatsAppPage = () => {
         .select("*")
         .eq("conversation_id", activeConv!.id)
         .order("created_at", { ascending: true })
-        .limit(100);
+        .limit(200);
       return (data ?? []) as unknown as WaMessage[];
     },
     enabled: !!activeConv,
-    refetchInterval: 5_000,
   });
+
+  // ── Realtime: instant send/receive in the academy inbox ────────
+  useEffect(() => {
+    const channel = supabase
+      .channel("wa-inbox-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_messages" }, (payload) => {
+        const row = (payload.new ?? payload.old) as any;
+        qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+        if (row?.conversation_id) {
+          qc.invalidateQueries({ queryKey: ["wa-messages", row.conversation_id] });
+        }
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_conversations" }, () => {
+        qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
+
+  // Keep the open thread's header data fresh from the live list
+  useEffect(() => {
+    if (!activeConv) return;
+    const fresh = conversations.find((c) => c.id === activeConv.id);
+    if (fresh && fresh.window_expires_at !== activeConv.window_expires_at) setActiveConv(fresh);
+  }, [conversations, activeConv]);
+
+  // Mark a thread read when it is opened
+  const openConversation = useCallback(async (conv: Conversation) => {
+    setActiveConv(conv);
+    setFreeformText("");
+    if ((conv.unread_count ?? 0) > 0) {
+      await supabase.from("whatsapp_conversations" as any).update({ unread_count: 0 }).eq("id", conv.id);
+      qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+    }
+  }, [qc]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -464,7 +518,11 @@ const AdminWhatsAppPage = () => {
     try {
       const res = await callAdmin(session, "sync_templates");
       if (res.success) {
-        toast.success(`Synced ${res.synced} templates from Nexus Gateway`);
+        toast.success(
+          res.added
+            ? `${res.added} new template${res.added === 1 ? "" : "s"} added · ${res.skipped ?? 0} already saved`
+            : `No new templates — ${res.skipped ?? 0} already up to date`
+        );
         qc.invalidateQueries({ queryKey: ["wa-templates"] });
       } else {
         const errMsg = res.error ?? "Sync failed";
@@ -1260,41 +1318,81 @@ const AdminWhatsAppPage = () => {
               INBOX
           ══════════════════════════════════════════════════════════ */}
           {tab === "inbox" && (
-            <div className="flex gap-0 md:gap-4 h-[calc(100dvh-14rem)] md:h-[calc(100vh-16rem)]">
+            <div className="flex gap-0 md:gap-4 h-[calc(100dvh-13rem)] md:h-[calc(100vh-16rem)]">
               {/* Conversation list */}
-              <div className={`w-full md:w-80 shrink-0 glass-card overflow-y-auto ${activeConv ? "hidden md:block" : "block"}`}>
-                <div className="p-3 border-b border-border/40">
-                  <p className="font-semibold text-sm">Conversations <span className="text-muted-foreground font-normal">({conversations.length})</span></p>
+              <div className={`w-full md:w-80 lg:w-96 shrink-0 glass-card flex flex-col overflow-hidden ${activeConv ? "hidden md:flex" : "flex"}`}>
+                <div className="p-3 border-b border-border/40 space-y-2.5 shrink-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-sm">Inbox <span className="text-muted-foreground font-normal">({conversations.length})</span></p>
+                    {totalUnread > 0 && (
+                      <span className="text-[10px] font-bold rounded-full bg-green-500 text-white px-2 py-0.5">{totalUnread} new</span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input value={inboxSearch} onChange={e => setInboxSearch(e.target.value)}
+                      placeholder="Search name, number or message…" className="pl-8 h-9 text-sm" />
+                  </div>
+                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-0.5 px-0.5">
+                    {([
+                      { id: "all", label: "All" },
+                      { id: "unread", label: `Unread${totalUnread ? ` (${totalUnread})` : ""}` },
+                      { id: "students", label: "Students" },
+                      { id: "ai", label: "AI on" },
+                    ] as const).map(f => (
+                      <button key={f.id} onClick={() => setInboxFilter(f.id)}
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors ${inboxFilter === f.id ? "bg-primary text-primary-foreground border-primary" : "border-border/60 text-muted-foreground hover:bg-muted/40"}`}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {conversations.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-muted-foreground">No conversations yet</div>
-                ) : (
-                  conversations.map(conv => (
-                    <button key={conv.id} onClick={() => { setActiveConv(conv); setFreeformText(""); }}
-                      className={`w-full flex items-start gap-3 p-3 border-b border-border/20 hover:bg-muted/30 transition-colors text-left ${activeConv?.id === conv.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}>
-                      <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-600 font-semibold text-sm">
-                        {(conv.display_name ?? conv.phone_number)?.[0]?.toUpperCase() ?? "?"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium truncate">{conv.display_name ?? conv.phone_number}</p>
-                          {conv.unread_count > 0 && (
-                            <span className="w-4 h-4 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center font-bold shrink-0">{conv.unread_count}</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">{conv.last_message_text ?? "No messages"}</p>
-                        {conv.last_message_at && <p className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(conv.last_message_at))} ago</p>}
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          {conv.is_manual_contact && <span className="text-[10px] text-accent font-medium">● Manual Contact</span>}
-                          <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 ${conv.ai_enabled === false ? "text-muted-foreground" : "text-primary"}`}>
-                            <Bot className="w-3 h-3" /> AI {conv.ai_enabled === false ? "off" : "on"}
-                          </span>
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                )}
+                <div className="flex-1 overflow-y-auto overscroll-contain">
+                  {visibleConversations.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                      {conversations.length === 0 ? "No conversations yet" : "No conversations match this filter"}
+                    </div>
+                  ) : (
+                    visibleConversations.map(conv => {
+                      const unread = (conv.unread_count ?? 0) > 0;
+                      return (
+                        <button key={conv.id} onClick={() => openConversation(conv)}
+                          className={`w-full flex items-start gap-3 p-3 border-b border-border/20 hover:bg-muted/30 transition-colors text-left ${activeConv?.id === conv.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}>
+                          <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-600 font-semibold text-sm">
+                            {(conv.display_name ?? conv.phone_number)?.[0]?.toUpperCase() ?? "?"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <p className={`text-sm truncate ${unread ? "font-bold" : "font-medium"}`}>{conv.display_name ?? conv.phone_number}</p>
+                              {conv.last_message_at && (
+                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                  {formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className={`text-xs truncate ${unread ? "text-foreground" : "text-muted-foreground"}`}>{conv.last_message_text ?? "No messages"}</p>
+                              {unread && (
+                                <span className="min-w-4 h-4 px-1 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center font-bold shrink-0">{conv.unread_count}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {conv.student_user_id
+                                ? <span className="text-[10px] text-success font-medium">● Student</span>
+                                : <span className="text-[10px] text-muted-foreground font-medium">● Unlinked</span>}
+                              {conv.is_manual_contact && <span className="text-[10px] text-accent font-medium">● Manual</span>}
+                              <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 ${conv.ai_enabled === false ? "text-muted-foreground" : "text-primary"}`}>
+                                <Bot className="w-3 h-3" /> AI {conv.ai_enabled === false ? "off" : "on"}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
+
 
               {/* Message thread */}
               {activeConv ? (
@@ -1339,8 +1437,19 @@ const AdminWhatsAppPage = () => {
 
                   {/* Messages */}
                   <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain p-3 md:p-4 space-y-3">
-                    {convMessages.map(msg => (
-                      <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
+                    {convMessages.map((msg, i) => {
+                      const prev = convMessages[i - 1];
+                      const dayChanged = !prev || format(new Date(prev.created_at), "yyyy-MM-dd") !== format(new Date(msg.created_at), "yyyy-MM-dd");
+                      return (
+                      <div key={msg.id}>
+                      {dayChanged && (
+                        <div className="flex justify-center my-3">
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted/60 rounded-full px-2.5 py-0.5">
+                            {format(new Date(msg.created_at), "EEE, d MMM yyyy")}
+                          </span>
+                        </div>
+                      )}
+                      <div className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 md:px-3.5 md:py-2.5 ${msg.direction === "outbound" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted/70 border border-border/40 rounded-bl-sm"}`}>
                           {msg.is_ai && <p className="text-[10px] opacity-80 mb-1 inline-flex items-center gap-1"><Bot className="w-3 h-3" /> AI agent</p>}
                           {msg.template_name && <p className="text-[10px] opacity-70 mb-1 font-mono break-all">Template: {msg.template_name}</p>}
@@ -1368,7 +1477,9 @@ const AdminWhatsAppPage = () => {
                           </div>
                         </div>
                       </div>
-                    ))}
+                      </div>
+                      );
+                    })}
                     {convMessages.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No messages yet</p>}
                   </div>
 

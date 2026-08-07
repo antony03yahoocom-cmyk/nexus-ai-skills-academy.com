@@ -97,7 +97,20 @@ async function syncTemplates(sb: ReturnType<typeof createClient>) {
     ? raw
     : (raw?.data ?? raw?.templates ?? raw?.result ?? []);
 
-  let upserted = 0;
+  // Everything already stored, keyed by "name|language" — the identity the
+  // academy actually cares about (gateway ids change between providers).
+  const { data: existingRows } = await sb
+    .from("whatsapp_templates" as any)
+    .select("id, name, language");
+  const existing = new Map<string, string>();
+  for (const r of (existingRows ?? []) as any[]) {
+    existing.set(`${String(r.name).toLowerCase()}|${String(r.language ?? "en").toLowerCase()}`, r.id);
+  }
+
+  let added = 0;
+  let skipped = 0;
+  const seen = new Set<string>();
+
   for (const tpl of templates) {
     const comps: any[] = tpl.components ?? [];
     const header = comps.find((c: any) => String(c.type).toUpperCase() === "HEADER");
@@ -107,12 +120,31 @@ async function syncTemplates(sb: ReturnType<typeof createClient>) {
     const bodyText: string = body?.text ?? tpl.body_text ?? tpl.bodyText ?? "";
     const bodyVars = [...String(bodyText).matchAll(/\{\{(\d+)\}\}/g)].map((m) => `{{${m[1]}}}`);
     const id = String(tpl.id ?? tpl.meta_id ?? tpl.templateId ?? tpl.name);
+    const name = tpl.name ?? tpl.templateName;
+    const language = tpl.language ?? tpl.languageCode ?? "en";
+    if (!name) continue;
 
-    await sb.from("whatsapp_templates" as any).upsert({
+    const key = `${String(name).toLowerCase()}|${String(language).toLowerCase()}`;
+    // Guard against the gateway itself returning the same template twice.
+    if (seen.has(key)) { skipped++; continue; }
+    seen.add(key);
+
+    const existingId = existing.get(key);
+    if (existingId) {
+      // Already saved — refresh only the volatile fields, never create a copy.
+      await sb.from("whatsapp_templates" as any).update({
+        status:         String(tpl.status ?? "APPROVED").toUpperCase(),
+        last_synced_at: new Date().toISOString(),
+      }).eq("id", existingId);
+      skipped++;
+      continue;
+    }
+
+    const { error: insErr } = await sb.from("whatsapp_templates" as any).insert({
       meta_id:        id,
-      name:           tpl.name ?? tpl.templateName,
+      name,
       category:       tpl.category ?? "UTILITY",
-      language:       tpl.language ?? tpl.languageCode ?? "en",
+      language,
       status:         String(tpl.status ?? "APPROVED").toUpperCase(),
       header_type:    header?.format ?? tpl.header_type ?? null,
       header_text:    header?.text ?? tpl.header_text ?? null,
@@ -121,10 +153,17 @@ async function syncTemplates(sb: ReturnType<typeof createClient>) {
       footer_text:    footer?.text ?? tpl.footer_text ?? null,
       buttons:        buttons,
       last_synced_at: new Date().toISOString(),
-    }, { onConflict: "meta_id" });
-    upserted++;
+    });
+    if (insErr) {
+      // Unique index tripped by a concurrent sync — treat as already saved.
+      console.warn("[whatsapp-admin] template insert skipped:", insErr.message);
+      skipped++;
+      continue;
+    }
+    existing.set(key, id);
+    added++;
   }
-  return { synced: upserted, total: templates.length };
+  return { synced: added, added, skipped, total: templates.length };
 }
 
 
