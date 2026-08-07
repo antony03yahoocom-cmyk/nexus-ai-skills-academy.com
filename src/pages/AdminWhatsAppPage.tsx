@@ -1473,7 +1473,9 @@ const AdminWhatsAppPage = () => {
                           </div>
                         </div>
                       </div>
-                    ))}
+                      </div>
+                      );
+                    })}
                     {convMessages.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No messages yet</p>}
                   </div>
 
