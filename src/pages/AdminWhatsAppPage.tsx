@@ -1433,8 +1433,19 @@ const AdminWhatsAppPage = () => {
 
                   {/* Messages */}
                   <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain p-3 md:p-4 space-y-3">
-                    {convMessages.map(msg => (
-                      <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
+                    {convMessages.map((msg, i) => {
+                      const prev = convMessages[i - 1];
+                      const dayChanged = !prev || format(new Date(prev.created_at), "yyyy-MM-dd") !== format(new Date(msg.created_at), "yyyy-MM-dd");
+                      return (
+                      <div key={msg.id}>
+                      {dayChanged && (
+                        <div className="flex justify-center my-3">
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted/60 rounded-full px-2.5 py-0.5">
+                            {format(new Date(msg.created_at), "EEE, d MMM yyyy")}
+                          </span>
+                        </div>
+                      )}
+                      <div className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 md:px-3.5 md:py-2.5 ${msg.direction === "outbound" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted/70 border border-border/40 rounded-bl-sm"}`}>
                           {msg.is_ai && <p className="text-[10px] opacity-80 mb-1 inline-flex items-center gap-1"><Bot className="w-3 h-3" /> AI agent</p>}
                           {msg.template_name && <p className="text-[10px] opacity-70 mb-1 font-mono break-all">Template: {msg.template_name}</p>}
