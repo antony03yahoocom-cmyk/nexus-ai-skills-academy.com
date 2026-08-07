@@ -277,31 +277,88 @@ Deno.serve(async (req) => {
   // ── Model call ──────────────────────────────────────────────────
   let reply = "";
   try {
+  // ── Model call: never send a half-written message ───────────────
+  // The reply is composed fully (and continued if the model got cut off)
+  // before a single character reaches WhatsApp.
+  async function callModel(msgs: unknown[]) {
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Lovable-API-Key": apiKey,
+        "Lovable-API-Key": apiKey!,
         "X-Lovable-AIG-SDK": "fetch",
       },
-      body: JSON.stringify({ model: AI_MODEL, messages, max_tokens: 400 }),
+      body: JSON.stringify({ model: AI_MODEL, messages: msgs, max_tokens: 500 }),
     });
-    if (res.status === 429) return json({ error: "AI rate limit reached — try again shortly" }, 429);
-    if (res.status === 402) return json({ error: "AI credits exhausted — please top up" }, 402);
     if (!res.ok) {
       const t = await res.text();
-      console.error("[whatsapp-ai-agent] AI error", res.status, t.slice(0, 400));
-      return json({ error: `AI request failed (${res.status})` }, 502);
+      return { ok: false as const, status: res.status, text: t };
     }
     const data = await res.json();
-    reply = String(data?.choices?.[0]?.message?.content ?? "").trim();
+    return {
+      ok: true as const,
+      content: String(data?.choices?.[0]?.message?.content ?? ""),
+      finish: String(data?.choices?.[0]?.finish_reason ?? ""),
+    };
+  }
+
+  let reply = "";
+  try {
+    let attemptMessages = [...messages] as unknown[];
+    let finish = "";
+
+    // Up to 2 continuation rounds if the model hits the token ceiling.
+    for (let round = 0; round < 3; round++) {
+      const out = await callModel(attemptMessages);
+      if (!out.ok) {
+        if (out.status === 429) return json({ error: "AI rate limit reached — try again shortly" }, 429);
+        if (out.status === 402) return json({ error: "AI credits exhausted — please top up" }, 402);
+        console.error("[whatsapp-ai-agent] AI error", out.status, out.text.slice(0, 400));
+        return json({ error: `AI request failed (${out.status})` }, 502);
+      }
+      reply += out.content;
+      finish = out.finish;
+      if (finish !== "length") break;
+      attemptMessages = [
+        ...attemptMessages,
+        { role: "assistant", content: out.content },
+        { role: "user", content: "Continue the reply from exactly where you stopped. Do not repeat anything." },
+      ];
+    }
+
+    reply = reply.trim();
+
+    // Still truncated after continuations → do not deliver a partial message.
+    if (finish === "length") {
+      console.error("[whatsapp-ai-agent] reply still incomplete after continuations — not sending");
+      return json({ success: true, skipped: "incomplete AI reply — not sent" });
+    }
   } catch (err) {
     console.error("[whatsapp-ai-agent] AI call threw:", err);
     return json({ error: "AI request failed" }, 502);
   }
 
+  // ── Safety net: strip anything sensitive the model may have echoed ──
+  const UNSAFE = [
+    /\b(?:eyJ[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9]{10,}|Bearer\s+[A-Za-z0-9._-]{10,})/i, // tokens/keys
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i,             // internal UUIDs
+    /(service_role|SUPABASE_|postgres:\/\/|password\s*[:=])/i,                        // infra details
+    /(system prompt|my instructions are)/i,                                            // prompt leakage
+  ];
+  if (UNSAFE.some((re) => re.test(reply))) {
+    console.error("[whatsapp-ai-agent] unsafe content detected — replaced with a safe fallback");
+    reply =
+      "I can't share that here. A member of the NEXUS AI ACADEMY team will follow up with you shortly. 🙏";
+  }
+
   if (!reply) return json({ success: true, skipped: "empty AI reply" });
-  if (reply.length > 900) reply = reply.slice(0, 897) + "…";
+
+  // Trim on a sentence boundary so the student never reads a cut-off line.
+  if (reply.length > 900) {
+    const cut = reply.slice(0, 900);
+    const lastStop = Math.max(cut.lastIndexOf("."), cut.lastIndexOf("!"), cut.lastIndexOf("?"), cut.lastIndexOf("\n"));
+    reply = (lastStop > 400 ? cut.slice(0, lastStop + 1) : cut).trim();
+  }
 
   // ── Send + persist ──────────────────────────────────────────────
   const sendRes = await sendWhatsAppText(c.phone_number, reply);
