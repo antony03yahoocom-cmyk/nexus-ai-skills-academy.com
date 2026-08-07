@@ -1314,41 +1314,81 @@ const AdminWhatsAppPage = () => {
               INBOX
           ══════════════════════════════════════════════════════════ */}
           {tab === "inbox" && (
-            <div className="flex gap-0 md:gap-4 h-[calc(100dvh-14rem)] md:h-[calc(100vh-16rem)]">
+            <div className="flex gap-0 md:gap-4 h-[calc(100dvh-13rem)] md:h-[calc(100vh-16rem)]">
               {/* Conversation list */}
-              <div className={`w-full md:w-80 shrink-0 glass-card overflow-y-auto ${activeConv ? "hidden md:block" : "block"}`}>
-                <div className="p-3 border-b border-border/40">
-                  <p className="font-semibold text-sm">Conversations <span className="text-muted-foreground font-normal">({conversations.length})</span></p>
+              <div className={`w-full md:w-80 lg:w-96 shrink-0 glass-card flex flex-col overflow-hidden ${activeConv ? "hidden md:flex" : "flex"}`}>
+                <div className="p-3 border-b border-border/40 space-y-2.5 shrink-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-sm">Inbox <span className="text-muted-foreground font-normal">({conversations.length})</span></p>
+                    {totalUnread > 0 && (
+                      <span className="text-[10px] font-bold rounded-full bg-green-500 text-white px-2 py-0.5">{totalUnread} new</span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input value={inboxSearch} onChange={e => setInboxSearch(e.target.value)}
+                      placeholder="Search name, number or message…" className="pl-8 h-9 text-sm" />
+                  </div>
+                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-0.5 px-0.5">
+                    {([
+                      { id: "all", label: "All" },
+                      { id: "unread", label: `Unread${totalUnread ? ` (${totalUnread})` : ""}` },
+                      { id: "students", label: "Students" },
+                      { id: "ai", label: "AI on" },
+                    ] as const).map(f => (
+                      <button key={f.id} onClick={() => setInboxFilter(f.id)}
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors ${inboxFilter === f.id ? "bg-primary text-primary-foreground border-primary" : "border-border/60 text-muted-foreground hover:bg-muted/40"}`}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {conversations.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-muted-foreground">No conversations yet</div>
-                ) : (
-                  conversations.map(conv => (
-                    <button key={conv.id} onClick={() => { setActiveConv(conv); setFreeformText(""); }}
-                      className={`w-full flex items-start gap-3 p-3 border-b border-border/20 hover:bg-muted/30 transition-colors text-left ${activeConv?.id === conv.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}>
-                      <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-600 font-semibold text-sm">
-                        {(conv.display_name ?? conv.phone_number)?.[0]?.toUpperCase() ?? "?"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium truncate">{conv.display_name ?? conv.phone_number}</p>
-                          {conv.unread_count > 0 && (
-                            <span className="w-4 h-4 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center font-bold shrink-0">{conv.unread_count}</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">{conv.last_message_text ?? "No messages"}</p>
-                        {conv.last_message_at && <p className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(conv.last_message_at))} ago</p>}
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          {conv.is_manual_contact && <span className="text-[10px] text-accent font-medium">● Manual Contact</span>}
-                          <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 ${conv.ai_enabled === false ? "text-muted-foreground" : "text-primary"}`}>
-                            <Bot className="w-3 h-3" /> AI {conv.ai_enabled === false ? "off" : "on"}
-                          </span>
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                )}
+                <div className="flex-1 overflow-y-auto overscroll-contain">
+                  {visibleConversations.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                      {conversations.length === 0 ? "No conversations yet" : "No conversations match this filter"}
+                    </div>
+                  ) : (
+                    visibleConversations.map(conv => {
+                      const unread = (conv.unread_count ?? 0) > 0;
+                      return (
+                        <button key={conv.id} onClick={() => openConversation(conv)}
+                          className={`w-full flex items-start gap-3 p-3 border-b border-border/20 hover:bg-muted/30 transition-colors text-left ${activeConv?.id === conv.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}>
+                          <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-600 font-semibold text-sm">
+                            {(conv.display_name ?? conv.phone_number)?.[0]?.toUpperCase() ?? "?"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <p className={`text-sm truncate ${unread ? "font-bold" : "font-medium"}`}>{conv.display_name ?? conv.phone_number}</p>
+                              {conv.last_message_at && (
+                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                  {formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className={`text-xs truncate ${unread ? "text-foreground" : "text-muted-foreground"}`}>{conv.last_message_text ?? "No messages"}</p>
+                              {unread && (
+                                <span className="min-w-4 h-4 px-1 rounded-full bg-green-500 text-white text-[10px] flex items-center justify-center font-bold shrink-0">{conv.unread_count}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {conv.student_user_id
+                                ? <span className="text-[10px] text-success font-medium">● Student</span>
+                                : <span className="text-[10px] text-muted-foreground font-medium">● Unlinked</span>}
+                              {conv.is_manual_contact && <span className="text-[10px] text-accent font-medium">● Manual</span>}
+                              <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 ${conv.ai_enabled === false ? "text-muted-foreground" : "text-primary"}`}>
+                                <Bot className="w-3 h-3" /> AI {conv.ai_enabled === false ? "off" : "on"}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
+
 
               {/* Message thread */}
               {activeConv ? (
