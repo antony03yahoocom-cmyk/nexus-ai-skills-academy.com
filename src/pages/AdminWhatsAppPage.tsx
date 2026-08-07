@@ -518,7 +518,11 @@ const AdminWhatsAppPage = () => {
     try {
       const res = await callAdmin(session, "sync_templates");
       if (res.success) {
-        toast.success(`Synced ${res.synced} templates from Nexus Gateway`);
+        toast.success(
+          res.added
+            ? `${res.added} new template${res.added === 1 ? "" : "s"} added · ${res.skipped ?? 0} already saved`
+            : `No new templates — ${res.skipped ?? 0} already up to date`
+        );
         qc.invalidateQueries({ queryKey: ["wa-templates"] });
       } else {
         const errMsg = res.error ?? "Sync failed";
