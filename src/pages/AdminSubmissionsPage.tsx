@@ -7,6 +7,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, MessageSquare, Upload } from "lucide-react";
+import { SignedFileLink } from "@/components/shared/SignedFileLink";
+
 
 const AdminSubmissionsPage = () => {
   const queryClient = useQueryClient();
@@ -85,32 +87,21 @@ const AdminSubmissionsPage = () => {
                       {s.text_submission && <p className="text-sm mt-2 bg-secondary/50 p-3 rounded-lg">{s.text_submission}</p>}
                       {s.file_url && (
                         <div className="mt-2">
-                          {/\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(s.file_url) ? (
-                            <a href={s.file_url} target="_blank" rel="noreferrer">
-                              <img src={s.file_url} alt="Submission" className="max-w-[200px] max-h-[150px] rounded-lg border border-border object-cover" />
-                            </a>
-                          ) : (
-                            <a href={s.file_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-                              <Upload className="w-3 h-3" /> View File
-                            </a>
-                          )}
+                          <SignedFileLink
+                            url={s.file_url}
+                            label="View File"
+                            imageClassName="max-w-[200px] max-h-[150px] rounded-lg border border-border object-cover"
+                          />
                         </div>
                       )}
                       {s.submission_files && (s.submission_files as string[]).length > 0 && (
                         <div className="flex gap-2 mt-2 flex-wrap">
                           {(s.submission_files as string[]).map((url: string, i: number) => (
-                            /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url) ? (
-                              <a key={i} href={url} target="_blank" rel="noreferrer">
-                                <img src={url} alt={`File ${i + 1}`} className="max-w-[120px] max-h-[90px] rounded-lg border border-border object-cover" />
-                              </a>
-                            ) : (
-                              <a key={i} href={url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-                                <Upload className="w-3 h-3" /> File {i + 1}
-                              </a>
-                            )
+                            <SignedFileLink key={i} url={url} label={`File ${i + 1}`} />
                           ))}
                         </div>
                       )}
+
                       {s.feedback && (
                         <div className="mt-2 p-2 rounded-lg bg-accent/5 border border-accent/20">
                           <p className="text-xs text-accent font-medium">Feedback: {s.feedback}</p>
