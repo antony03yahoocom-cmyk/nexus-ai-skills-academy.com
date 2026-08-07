@@ -274,9 +274,6 @@ Deno.serve(async (req) => {
     })),
   ];
 
-  // ── Model call ──────────────────────────────────────────────────
-  let reply = "";
-  try {
   // ── Model call: never send a half-written message ───────────────
   // The reply is composed fully (and continued if the model got cut off)
   // before a single character reaches WhatsApp.
