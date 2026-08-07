@@ -349,12 +349,32 @@ const AdminWhatsAppPage = () => {
       const { data } = await supabase
         .from("whatsapp_conversations" as any)
         .select("*")
-        .order("last_message_at", { ascending: false })
-        .limit(100);
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(200);
       return (data ?? []) as unknown as Conversation[];
     },
-    refetchInterval: 15_000,
+    refetchInterval: 60_000, // realtime does the heavy lifting; this is a safety net
   });
+
+  // Smart inbox filtering
+  const [inboxSearch, setInboxSearch] = useState("");
+  const [inboxFilter, setInboxFilter] = useState<"all" | "unread" | "students" | "ai">("all");
+
+  const visibleConversations = conversations.filter((c) => {
+    const q = inboxSearch.trim().toLowerCase();
+    const matchSearch = !q
+      || (c.display_name ?? "").toLowerCase().includes(q)
+      || c.phone_number.includes(q)
+      || (c.last_message_text ?? "").toLowerCase().includes(q);
+    const matchFilter =
+      inboxFilter === "all" ? true
+      : inboxFilter === "unread" ? (c.unread_count ?? 0) > 0
+      : inboxFilter === "students" ? !!c.student_user_id
+      : c.ai_enabled !== false;
+    return matchSearch && matchFilter;
+  });
+
+  const totalUnread = conversations.reduce((n, c) => n + (c.unread_count ?? 0), 0);
 
   // ── Messages for active conversation ──────────────────────────
   const { data: convMessages = [] } = useQuery({
@@ -365,12 +385,46 @@ const AdminWhatsAppPage = () => {
         .select("*")
         .eq("conversation_id", activeConv!.id)
         .order("created_at", { ascending: true })
-        .limit(100);
+        .limit(200);
       return (data ?? []) as unknown as WaMessage[];
     },
     enabled: !!activeConv,
-    refetchInterval: 5_000,
   });
+
+  // ── Realtime: instant send/receive in the academy inbox ────────
+  useEffect(() => {
+    const channel = supabase
+      .channel("wa-inbox-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_messages" }, (payload) => {
+        const row = (payload.new ?? payload.old) as any;
+        qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+        if (row?.conversation_id) {
+          qc.invalidateQueries({ queryKey: ["wa-messages", row.conversation_id] });
+        }
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_conversations" }, () => {
+        qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
+
+  // Keep the open thread's header data fresh from the live list
+  useEffect(() => {
+    if (!activeConv) return;
+    const fresh = conversations.find((c) => c.id === activeConv.id);
+    if (fresh && fresh.window_expires_at !== activeConv.window_expires_at) setActiveConv(fresh);
+  }, [conversations, activeConv]);
+
+  // Mark a thread read when it is opened
+  const openConversation = useCallback(async (conv: Conversation) => {
+    setActiveConv(conv);
+    setFreeformText("");
+    if ((conv.unread_count ?? 0) > 0) {
+      await supabase.from("whatsapp_conversations" as any).update({ unread_count: 0 }).eq("id", conv.id);
+      qc.invalidateQueries({ queryKey: ["wa-conversations"] });
+    }
+  }, [qc]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
